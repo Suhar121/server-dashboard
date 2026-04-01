@@ -1,4 +1,5 @@
 # DevOps Control Panel
+![Dashboard](docs/screenshots/dashboard.png)
 
 A full-stack operations dashboard built with **FastAPI + SQLite + vanilla HTML/CSS/JS**.
 
@@ -28,13 +29,14 @@ It provides:
 6. [Environment Variables](#environment-variables)
 7. [Setup and Run](#setup-and-run)
 8. [API Reference](#api-reference)
-9. [Frontend Modules](#frontend-modules)
-10. [Database Schema](#database-schema)
-11. [Security Notes](#security-notes)
-12. [Operational Workflows](#operational-workflows)
-13. [Troubleshooting](#troubleshooting)
-14. [Known Limitations](#known-limitations)
-15. [Future Improvements](#future-improvements)
+9. [UI Screenshots](#ui-screenshots)
+10. [Frontend Modules](#frontend-modules)
+11. [Database Schema](#database-schema)
+12. [Security Notes](#security-notes)
+13. [Operational Workflows](#operational-workflows)
+14. [Troubleshooting](#troubleshooting)
+15. [Known Limitations](#known-limitations)
+16. [Future Improvements](#future-improvements)
 
 ---
 
@@ -99,6 +101,7 @@ This project is an operational dashboard intended for local/server administratio
 ├── users.db               # SQLite database (created/managed by backend)
 ├── logs/                  # Service log files
 ├── .env                   # Environment configuration
+├── docs/screenshots/      # README UI screenshot assets
 ├── test_browse.py         # Scratch/testing script
 ├── patch_*.py, fix.py,
 │   sweep_emojis.py        # One-off patch helper scripts used during UI evolution
@@ -275,6 +278,28 @@ Base URL: `http://127.0.0.1:8000`
 ### Frontend shell
 
 - `GET /` serves dashboard page
+
+---
+
+## UI Screenshots
+
+> Place the screenshot files in `docs/screenshots/` using the filenames below.
+
+### Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Terminal
+
+![Terminal](docs/screenshots/terminal.png)
+
+### Alert Rules
+
+![Alert Rules](docs/screenshots/alert-rules.png)
+
+### File Manager (with Git Clone)
+
+![File Manager](docs/screenshots/file-manager.png)
 
 ---
 
