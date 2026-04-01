@@ -1,0 +1,3158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Control Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --bg-grad: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 50%, #e2e8f0 100%);
+      --card: rgba(255, 255, 255, 0.85);
+      --card-soft: #f8fafc;
+      --glass-bg: rgba(255, 255, 255, 0.65);
+      --glass-strong: rgba(255, 255, 255, 0.95);
+      --nav-bg: rgba(255, 255, 255, 0.6);
+      --nav-hover: rgba(37, 99, 235, 0.1);
+      --text: #0f172a;
+      --muted: #64748b;
+      --ok: #10b981;
+      --bad: #ef4444;
+      --brand: #2563eb;
+      --brand-soft: rgba(37, 99, 235, 0.15);
+      --border: rgba(37, 99, 235, 0.2);
+      --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.08);
+      --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.12);
+      --radius-lg: 16px;
+    }
+
+
+    :root[data-theme="dark"] {
+      --bg: #09090b;
+      --bg-grad: linear-gradient(135deg, #18181b 0%, #09090b 50%, #000000 100%);
+      --card: rgba(24, 24, 27, 0.85);
+      --card-soft: #1f1f22;
+      --glass-bg: rgba(24, 24, 27, 0.7);
+      --glass-strong: rgba(24, 24, 27, 0.98);
+      --nav-bg: rgba(255, 255, 255, 0.05);
+      --nav-hover: rgba(59, 130, 246, 0.15);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --ok: #10b981;
+      --bad: #ef4444;
+      --brand: #3b82f6;
+      --brand-soft: rgba(59, 130, 246, 0.2);
+      --border: rgba(255, 255, 255, 0.12);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    :root[data-theme="car"] {
+      --bg: #111317;
+      --bg-grad: linear-gradient(135deg, #252a34 0%, #111317 50%, #0d0f13 100%);
+      --card: rgba(22, 25, 30, 0.85);
+      --card-soft: #1e242d;
+      --glass-bg: rgba(22, 25, 30, 0.7);
+      --glass-strong: rgba(22, 25, 30, 0.95);
+      --nav-bg: rgba(239, 68, 68, 0.1);
+      --nav-hover: rgba(239, 68, 68, 0.25);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --ok: #10b981;
+      --bad: #ef4444;
+      --brand: #ef4444; /* Racing Red */
+      --brand-soft: rgba(239, 68, 68, 0.15);
+      --border: rgba(239, 68, 68, 0.4);
+      --shadow-sm: 0 4px 12px rgba(239, 68, 68, 0.2);
+      --shadow-md: 0 8px 30px rgba(239, 68, 68, 0.3);
+    }
+
+    :root[data-theme="batman"] {
+      --bg: #09090b;
+      --bg-grad: radial-gradient(circle at top right, #1a1a24 0%, #09090b 60%, #000000 100%);
+      --card: rgba(18, 18, 24, 0.85);
+      --card-soft: #171a23;
+      --glass-bg: rgba(18, 18, 24, 0.75);
+      --glass-strong: rgba(18, 18, 24, 0.98);
+      --nav-bg: rgba(250, 204, 21, 0.08);
+      --nav-hover: rgba(250, 204, 21, 0.2);
+      --text: #fefce8;
+      --muted: #a1a1aa;
+      --ok: #84cc16;
+      --bad: #e11d48;
+      --brand: #eab308; /* Bat Yellow */
+      --brand-soft: rgba(234, 179, 8, 0.15);
+      --border: rgba(234, 179, 8, 0.3);
+      --shadow-sm: 0 4px 15px rgba(234, 179, 8, 0.15);
+      --shadow-md: 0 10px 35px rgba(234, 179, 8, 0.25);
+    }
+
+    :root[data-theme="builder"] {
+      --bg: #fffbf0;
+      --bg-grad: linear-gradient(120deg, #fef0cd 0%, #fffbf0 50%, #fef5d8 100%);
+      --card: rgba(255, 255, 255, 0.9);
+      --card-soft: #fbf5e6;
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-strong: rgba(255, 255, 255, 0.98);
+      --nav-bg: rgba(245, 158, 11, 0.1);
+      --nav-hover: rgba(245, 158, 11, 0.2);
+      --text: #451a03;
+      --muted: #78350f;
+      --ok: #65a30d;
+      --bad: #dc2626;
+      --brand: #d97706; /* Construction Orange/Amber */
+      --brand-soft: rgba(217, 119, 6, 0.15);
+      --border: rgba(217, 119, 6, 0.35);
+      --shadow-sm: 0 4px 12px rgba(217, 119, 6, 0.15);
+      --shadow-md: 0 12px 32px rgba(217, 119, 6, 0.2);
+    }
+
+    :root[data-theme="coding"] {
+      --bg: #0d1117;
+      --bg-grad: linear-gradient(to bottom right, #161b22, #0d1117, #010409);
+      --card: rgba(22, 27, 34, 0.85);
+      --card-soft: #121b28;
+      --glass-bg: rgba(22, 27, 34, 0.7);
+      --glass-strong: rgba(22, 27, 34, 0.95);
+      --nav-bg: rgba(88, 166, 255, 0.1);
+      --nav-hover: rgba(88, 166, 255, 0.2);
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --ok: #2ea043;
+      --bad: #f85149;
+      --brand: #58a6ff; /* Terminal Blue */
+      --brand-soft: rgba(88, 166, 255, 0.15);
+      --border: rgba(88, 166, 255, 0.3);
+      --shadow-sm: 0 4px 12px rgba(88, 166, 255, 0.2);
+      --shadow-md: 0 8px 30px rgba(88, 166, 255, 0.3);
+    }
+
+    :root[data-theme="networking"] {
+      --bg: #f8fafc;
+      --bg-grad: radial-gradient(circle at 50% 0%, #e0f2fe 0%, #f8fafc 60%, #f1f5f9 100%);
+      --card: rgba(255, 255, 255, 0.85);
+      --card-soft: #f1f5f9;
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-strong: rgba(255, 255, 255, 0.95);
+      --nav-bg: rgba(14, 165, 233, 0.1);
+      --nav-hover: rgba(14, 165, 233, 0.2);
+      --text: #0f172a;
+      --muted: #64748b;
+      --ok: #10b981;
+      --bad: #ef4444;
+      --brand: #0ea5e9; /* Sky Blue */
+      --brand-soft: rgba(14, 165, 233, 0.15);
+      --border: rgba(14, 165, 233, 0.3);
+      --shadow-sm: 0 4px 15px rgba(14, 165, 233, 0.15);
+      --shadow-md: 0 10px 35px rgba(14, 165, 233, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg-grad);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(600px 200px at 20% -5%, rgba(59, 130, 246, 0.15), transparent 70%),
+        radial-gradient(540px 180px at 90% 10%, rgba(14, 165, 233, 0.12), transparent 70%);
+      z-index: -1;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      background: var(--glass-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 8px;
+      z-index: 150;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .top-nav-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--nav-bg);
+      color: var(--text);
+      font-size: 0.86rem;
+      box-shadow: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .top-nav-item:hover {
+      border-color: var(--brand);
+      background: var(--nav-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--brand-soft);
+    }
+
+    .top-nav-item.active {
+      background: var(--brand);
+      color: #ffffff;
+      border-color: var(--brand);
+      box-shadow: 0 8px 16px var(--brand-soft);
+    }
+
+    .menu-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      background: linear-gradient(180deg, #2f6df3 0%, #2456d9 100%);
+    }
+
+    .title {
+      font-family: "Space Grotesk", Inter, sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .auth-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--glass-strong);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .theme-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-soft);
+      color: var(--text);
+      padding: 6px 8px;
+      font-size: 0.82rem;
+      outline: none;
+      min-width: 140px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+
+    #menuDrawer {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 260px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.95);
+      border-right: 1px solid var(--border);
+      z-index: 240;
+      transition: left 0.2s ease;
+      padding: 16px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(12px);
+    }
+
+    #menuDrawer.open {
+      left: 0;
+    }
+
+    #drawerBackdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 230;
+      display: none;
+    }
+
+    #drawerBackdrop.show {
+      display: block;
+    }
+
+    .menu-item {
+      width: 100%;
+      text-align: left;
+      margin-top: 8px;
+      background: var(--nav-bg);
+      color: var(--text);
+      border: 1px solid transparent;
+    }
+
+    .menu-item:hover {
+      border-color: var(--brand);
+      background: var(--nav-hover);
+    }
+
+    .card {
+      background: linear-gradient(160deg, var(--card) 0%, var(--card-soft) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      min-height: 90px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, background 0.3s, border-color 0.3s;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+      border-color: var(--brand);
+    }
+
+    .kpi { grid-column: span 4; }
+    .kpi .value {
+      margin-top: 8px;
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: "Space Grotesk", Inter, sans-serif;
+    }
+    .muted { color: var(--muted); font-size: 0.88rem; }
+    .panel-wide { grid-column: span 8; }
+    .panel-side { grid-column: span 4; }
+    .panel-half { grid-column: span 6; min-height: 320px; }
+    .panel-full { grid-column: span 12; }
+
+    .stack { display: flex; flex-direction: column; gap: 8px; }
+
+    .cmd-card {
+      margin-top: 12px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .cmd-line {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #020817;
+      color: #c7e1ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+    }
+
+    .field {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field:focus,
+    .modal-input:focus,
+    .role-select:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    button {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      color: white;
+      background: var(--brand);
+      font-weight: 600;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+      box-shadow: var(--shadow-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-danger { background: var(--bad); }
+    .btn-warn { background: #f59e0b; color: #111827; }
+    .btn-neutral { background: var(--muted); }
+    .btn-success { background: var(--ok); color: #04280f; }
+
+    .services-table,
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 0.92rem;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .services-table th,
+    .services-table td,
+    .data-table th,
+    .data-table td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .services-table thead,
+    .data-table thead {
+      background: var(--nav-bg);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .status-up { color: var(--ok); font-weight: 700; }
+    .status-down { color: var(--bad); font-weight: 700; }
+
+    #logModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(2px);
+      padding: 20px;
+      z-index: 100;
+    }
+
+    #logBox {
+      max-width: 960px;
+      height: min(84vh, 760px);
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #logContent {
+      flex: 1;
+      margin: 0;
+      overflow: auto;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      color: #7ef5b8;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.86rem;
+    }
+
+    .log-meta { color: var(--muted); font-size: 0.85rem; }
+
+    .todo-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .todo-list {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(18, 36, 73, 0.42);
+    }
+
+    .todo-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .todo-text { overflow-wrap: anywhere; }
+    .todo-done .todo-text { text-decoration: line-through; color: var(--muted); }
+
+    #loginModal, #permissionsModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 18, 0.9);
+      z-index: 220;
+      padding: 20px;
+    }
+
+    #loginBox, #permissionsBox {
+      width: min(420px, 92vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(8px);
+    }
+    
+    .perms-grid {
+      display: grid;
+      grid-template-columns: 1fr repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+      background: var(--card-soft);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .perms-grid div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+    .perms-hdr { font-weight: bold; color: var(--muted); }
+
+    .error-text {
+      margin-top: 8px;
+      color: #fca5a5;
+      font-size: 0.86rem;
+      min-height: 20px;
+    }
+
+    .info-text {
+      margin-top: 8px;
+      color: #93c5fd;
+      font-size: 0.86rem;
+      min-height: 20px;
+    }
+
+    .role-select {
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .admin-page {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.76) 100%);
+      box-shadow: var(--shadow-md);
+      padding: 16px;
+    }
+
+    .file-manager-wrapper {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: var(--card-soft);
+      border-radius: 10px;
+      margin-bottom: 14px;
+      font-size: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb-item {
+      cursor: pointer;
+      color: var(--brand);
+      transition: color 0.2s;
+    }
+
+    .breadcrumb-item:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .breadcrumb-separator {
+      color: var(--muted);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .file-item {
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .file-item:hover {
+      border-color: var(--brand);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 24px var(--brand-soft);
+    }
+
+    .file-item-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .file-item:hover .file-item-actions, .file-list-item:hover .list-actions {
+      opacity: 1;
+    }
+
+    .file-item-actions button, .list-actions button {
+      background: var(--nav-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: none;
+    }
+    .file-item-actions button:hover, .list-actions button:hover {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+      background: var(--brand);
+    }
+
+    .file-icon {
+      font-size: 3rem;
+      margin-bottom: 8px;
+    }
+
+    .file-name {
+      font-size: 0.85rem;
+      word-break: break-word;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .file-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .file-list-item {
+      display: grid;
+      grid-template-columns: 40px 1fr 100px 120px 80px 200px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      background: var(--card-soft);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .file-list-item:hover {
+      background: var(--nav-hover);
+      border-color: var(--brand);
+      transform: translateX(4px);
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--nav-bg);
+      border-radius: 8px;
+      padding: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .view-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+
+    .view-btn.active {
+      background: var(--brand);
+      color: white;
+    }
+
+    #fileEditorModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(3px);
+      padding: 20px;
+      z-index: 150;
+      overflow: auto;
+    }
+
+    #fileEditorBox {
+      max-width: 1200px;
+      height: min(90vh, 800px);
+      margin: 20px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(8px);
+    }
+
+    #fileEditorContent {
+      flex: 1;
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #030814;
+      color: #7ef5b8;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      resize: none;
+      overflow: auto;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .editor-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .editor-path {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      color: var(--text);
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .file-context-menu {
+      position: fixed;
+      background: #0a1628;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      min-width: 180px;
+      display: none;
+    }
+
+    .context-menu-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.2s;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .context-menu-item:hover {
+      background: rgba(59, 130, 246, 0.2);
+    }
+
+    .terminal-page {
+      display: none;
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .terminal-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .terminal-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--nav-bg);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .terminal-tab:hover {
+      background: var(--nav-hover);
+      border-color: var(--brand);
+    }
+
+    .terminal-tab.active {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 1px var(--brand-soft) inset;
+      background: var(--brand-soft);
+    }
+
+    .terminal-shell {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #020817;
+      min-height: 440px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(20, 45, 90, 0.35);
+    }
+
+    .terminal-instance {
+      display: none;
+      width: 100%;
+      height: 440px;
+      padding: 8px;
+    }
+
+    .terminal-instance.active {
+      display: block;
+    }
+
+    .terminal-history {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-soft);
+      padding: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .terminal-history ul {
+      list-style: none;
+      padding: 0;
+      margin: 6px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .terminal-history li {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 4px;
+      word-break: break-word;
+    }
+
+    *:focus-visible {
+      outline: 3px solid var(--brand-soft);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .kpi, .panel-wide, .panel-side, .panel-half { grid-column: span 12; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .topbar-center { width: 100%; justify-content: flex-start; }
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .file-list-item {
+        grid-template-columns: 30px 1fr;
+        gap: 8px;
+      }
+      .file-list-item > *:not(:first-child):not(:nth-child(2)) {
+        display: none;
+      }
+    }
+  </style>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 class="title">DevOps Control Panel</h1>
+    </div>
+    <nav class="topbar-center" aria-label="Page navigation">
+      <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+      <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')"><i data-lucide="terminal-square"></i> Terminal</button>
+      <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')"><i data-lucide="users"></i> Admin Users</button>
+      <button id="auditLogsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('audit-logs')"><i data-lucide="clipboard-list"></i> Audit Logs</button>
+      <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> Alert Rules</button>
+      <button id="sshKeysMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('ssh-keys')"><i data-lucide="key-round"></i> SSH Keys</button>
+      <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> File Manager</button>
+    </nav>
+    <div class="auth-badge">
+      <i data-lucide="palette" id="themeIcon"></i>
+      <select id="themeSelect" class="theme-select" onchange="setTheme(this.value)">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="car">Car Theme</option>
+        <option value="batman">Batman Theme</option>
+        <option value="builder">Builder Theme</option>
+        <option value="coding">Coding Theme</option>
+        <option value="networking">Networking Theme</option>
+      </select>
+      <span id="authInfo">Not logged in</span>
+      <button id="logoutBtn" class="btn-neutral" onclick="logout()" style="display:none;">Logout</button>
+    </div>
+  </div>
+
+  <div class="grid" id="dashboardContent" style="display:none;">
+    <section class="card kpi">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="battery"></i> Battery</h3>
+      <div id="batteryValue" class="value">--%</div>
+      <div id="batteryMode" class="muted">Checking battery status...</div>
+    </section>
+
+    <section class="card kpi">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="cpu"></i> CPU Usage</h3>
+      <div id="cpuValue" class="value">--%</div>
+      <div class="muted">Live processor usage</div>
+    </section>
+
+    <section class="card kpi">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="memory-stick"></i> RAM Usage</h3>
+      <div id="ramValue" class="value">--%</div>
+      <div class="muted">Current memory consumption</div>
+    </section>
+
+    <section class="card panel-wide">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="activity"></i> CPU Trend</h3>
+      <div class="muted" style="margin-top: 4px;">Window: last 30 minutes</div>
+      <canvas id="cpuChart" height="110"></canvas>
+    </section>
+
+    <section class="card panel-side">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="server"></i> Pinned Services</h3>
+      <div class="stack" style="margin-top: 10px;">
+        <input id="serviceName" class="field" placeholder="Service name e.g. FastAPI" />
+        <input id="servicePort" class="field" type="number" placeholder="Port e.g. 8000" />
+        <input id="serviceCommand" class="field" placeholder="Command e.g. uvicorn app:app --port 8000" />
+        <button id="addServiceBtn" onclick="addService()">Add Service</button>
+      </div>
+
+      <table class="services-table" id="servicesTable">
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Port</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="servicesBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card panel-half">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="network"></i> Open Ports</h3>
+      <table class="data-table" id="portsTable">
+        <thead>
+          <tr>
+            <th>Protocol</th>
+            <th>State</th>
+            <th>Local Address</th>
+          </tr>
+        </thead>
+        <tbody id="portsBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card panel-half">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="box"></i> Docker Containers</h3>
+      <table class="data-table" id="dockerTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Ports</th>
+          </tr>
+        </thead>
+        <tbody id="dockerBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card panel-full">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="list-todo"></i> Operations To-Do</h3>
+      <div class="todo-row" id="todoComposer">
+        <input id="todoInput" class="field" placeholder="Add task e.g. rotate nginx logs" />
+        <button id="addTodoBtn" onclick="addTodo()">Add Task</button>
+      </div>
+      <div id="todoMeta" class="muted" style="margin-top: 8px;">0 total • 0 done • 0 pending</div>
+      <ul id="todoList" class="todo-list"></ul>
+    </section>
+
+  </div>
+
+  <section class="card admin-page" id="adminPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield"></i> Admin User Management</h3>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadUsers()">Refresh Users</button>
+    </div>
+    <div class="stack" style="margin-top: 10px; max-width: 520px;">
+      <input id="newUsername" class="field" placeholder="Username (3-64 chars)" />
+      <input id="newPassword" class="field" type="password" placeholder="Password (min 8 chars)" />
+      <select id="newUserRole" class="field">
+        <option value="viewer">viewer</option>
+        <option value="operator">operator</option>
+        <option value="admin">admin</option>
+      </select>
+      <button onclick="createUser()">Create User</button>
+    </div>
+    <div id="createUserMsg" class="info-text"></div>
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Created</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card admin-page" id="auditLogsPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="scroll-text"></i> Audit Logs</h3>
+    <div class="muted" style="margin-top: 6px;">Track all user actions and system events</div>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadAuditLogs()">Refresh Logs</button>
+    </div>
+    <table class="data-table" style="margin-top: 12px;">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="auditLogsBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card admin-page" id="alertRulesPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="bell-ring"></i> Alert Rules</h3>
+    <div class="muted" style="margin-top: 6px;">Configure CPU/RAM usage alerts via Telegram</div>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadAlertRules()">Refresh Rules</button>
+    </div>
+    <div class="stack" style="margin-top: 10px; max-width: 520px;">
+      <select id="newAlertMetric" class="field">
+        <option value="cpu">CPU Usage</option>
+        <option value="ram">RAM Usage</option>
+      </select>
+      <input id="newAlertThreshold" class="field" type="number" min="0" max="100" step="1" placeholder="Threshold (0-100%)" />
+      <button onclick="createAlertRule()">Create Alert Rule</button>
+    </div>
+    <div id="createAlertMsg" class="info-text"></div>
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Threshold</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="alertRulesBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card admin-page" id="sshKeysPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key-round"></i> SSH Key Manager</h3>
+    <div class="muted" style="margin-top: 6px;">Add public keys for Linux users. Keys are deployed to <code>~/.ssh/authorized_keys</code> automatically.</div>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadSshKeys()">Refresh Keys</button>
+    </div>
+
+    <div class="stack" style="margin-top: 10px; max-width: 820px;">
+      <input id="newSshLinuxUser" class="field" placeholder="Linux user (e.g. ubuntu, deploy)" />
+      <input id="newSshLabel" class="field" placeholder="Key label (e.g. Laptop - John)" />
+      <textarea id="newSshPublicKey" class="field" rows="4" placeholder="Paste SSH public key (e.g. ssh-ed25519 AAAA... user@host)"></textarea>
+      <button onclick="createSshKey()">Add SSH Key</button>
+    </div>
+
+    <div class="cmd-card" style="max-width: 980px;">
+      <div style="display:flex;align-items:center;gap:8px;font-weight:600;">
+        <i data-lucide="terminal-square" style="width:16px;height:16px;"></i>
+        Windows Quick Commands (so you never forget 🙌)
+      </div>
+      <div class="muted" style="margin-top: 4px;">Customize values below, then copy command.</div>
+
+      <div class="stack" style="margin-top: 10px; max-width: 620px;">
+        <input id="sshCmdEmail" class="field" value="suharyaseen36@gmail.com" placeholder="Email comment" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdKeyPath" class="field" value="C:\\Users\\suhar\\.ssh\\my_custom_key" placeholder="Private key path" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdRemoteUser" class="field" value="user" placeholder="Remote Linux username" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdRemoteHost" class="field" value="server_ip" placeholder="Remote host / IP" oninput="renderSshCommandSnippets()" />
+      </div>
+
+      <textarea id="sshKeygenCmd" class="cmd-line" rows="2" readonly></textarea>
+      <div class="actions" style="margin-top: 8px;">
+        <button class="btn-neutral" onclick="copySshCommand('sshKeygenCmd')">Copy keygen command</button>
+      </div>
+
+      <textarea id="sshConnectCmd" class="cmd-line" rows="2" readonly></textarea>
+      <div class="actions" style="margin-top: 8px;">
+        <button class="btn-neutral" onclick="copySshCommand('sshConnectCmd')">Copy SSH connect command</button>
+      </div>
+    </div>
+
+    <div id="createSshKeyMsg" class="info-text"></div>
+
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Linux User</th>
+          <th>Label</th>
+          <th>Type</th>
+          <th>Fingerprint</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="sshKeysBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card terminal-page" id="terminalPage">
+    <div class="terminal-header">
+      <div>
+        <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="terminal"></i> Web Terminal</h3>
+        <div class="muted" style="margin-top: 4px;">Browser terminal with multi-tab and command history</div>
+      </div>
+      <div class="actions">
+        <button onclick="createTerminalTab()">➕ New Tab</button>
+        <button class="btn-neutral" onclick="clearTerminalHistory()">🧹 Clear History</button>
+      </div>
+    </div>
+
+    <div class="terminal-tabs" id="terminalTabs"></div>
+
+    <div class="terminal-shell" id="terminalShell"></div>
+
+    <div class="terminal-history">
+      <div class="muted">Recent commands (active tab)</div>
+      <ul id="terminalHistoryList"></ul>
+    </div>
+  </section>
+
+  <section class="admin-page" id="fileManagerPage">
+    <div class="file-manager-wrapper">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="hard-drive"></i> File Manager</h3>
+      <div class="muted" style="margin-top: 6px;">Browse and edit server files</div>
+
+      <div class="breadcrumb" id="fileBreadcrumb">
+        <span class="breadcrumb-item" onclick="browseFiles('/')"><i data-lucide="folder" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> root</span>
+      </div>
+
+      <div class="file-actions">
+        <button onclick="createNewFile()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="file-plus" style="width:16px;height:16px;"></i> New File</div></button>
+        <button onclick="createNewFolder()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="folder-plus" style="width:16px;height:16px;"></i> New Folder</div></button>
+        <button class="btn-neutral" onclick="gitCloneRepo()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="git-branch" style="width:16px;height:16px;"></i> Git Clone</div></button>
+        <button class="btn-neutral" onclick="document.getElementById('uploadFileInput').click()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="upload" style="width:16px;height:16px;"></i> Upload File</div></button>
+        <input type="file" id="uploadFileInput" style="display:none;" onchange="uploadSelectedFile(event)" />
+        <button class="btn-neutral" onclick="refreshCurrentDir()">🔄 Refresh</button>
+        <div class="view-toggle" style="margin-left: auto;">
+          <button class="view-btn active" id="gridViewBtn" onclick="switchView('grid')">⊞ Grid</button>
+          <button class="view-btn" id="listViewBtn" onclick="switchView('list')">☰ List</button>
+        </div>
+      </div>
+
+      <div id="fileManagerMsg" class="info-text"></div>
+
+      <div id="fileGridView" class="file-grid"></div>
+      <ul id="fileListView" class="file-list" style="display:none;"></ul>
+    </div>
+  </section>
+
+  <div id="fileEditorModal">
+    <div id="fileEditorBox">
+      <div class="editor-toolbar">
+        <div>
+          <div class="editor-title" id="editorTitle">Edit File</div>
+          <div class="editor-path" id="editorPath">/path/to/file</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-success" onclick="saveFileContent()">💾 Save</button>
+          <button class="btn-neutral" onclick="closeFileEditor()">Close</button>
+        </div>
+      </div>
+      <textarea id="fileEditorContent" placeholder="File content..."></textarea>
+    </div>
+  </div>
+
+  <div id="loginModal">
+    <div id="loginBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="lock"></i> Login Required</h3>
+      <div class="muted" style="margin-top: 6px;">Roles: viewer • operator • admin</div>
+      <div class="stack" style="margin-top: 12px;">
+        <input id="loginUsername" class="field" placeholder="Username" autocomplete="username" />
+        <input id="loginPassword" class="field" type="password" placeholder="Password" autocomplete="current-password" />
+        <button onclick="performLogin()">Login</button>
+      </div>
+      <div id="loginError" class="error-text"></div>
+    </div>
+  </div>
+
+  <div id="permissionsModal">
+    <div id="permissionsBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key"></i> File Permissions</h3>
+      <div class="muted" style="margin-top: 4px;" id="permsFilePath">/path/to/file</div>
+      <div class="perms-grid">
+        <div></div>
+        <div class="perms-hdr">Read</div>
+        <div class="perms-hdr">Write</div>
+        <div class="perms-hdr">Exec</div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Owner</div>
+        <div><input type="checkbox" id="perm_u_r"></div>
+        <div><input type="checkbox" id="perm_u_w"></div>
+        <div><input type="checkbox" id="perm_u_x"></div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Group</div>
+        <div><input type="checkbox" id="perm_g_r"></div>
+        <div><input type="checkbox" id="perm_g_w"></div>
+        <div><input type="checkbox" id="perm_g_x"></div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Other</div>
+        <div><input type="checkbox" id="perm_o_r"></div>
+        <div><input type="checkbox" id="perm_o_w"></div>
+        <div><input type="checkbox" id="perm_o_x"></div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <span id="permsOctalPreview" style="margin-right: auto; padding-top: 8px; font-family: monospace; color: var(--brand);">000</span>
+        <button class="btn-neutral" onclick="closePermissionsModal()">Cancel</button>
+        <button class="btn-success" onclick="savePermissions()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="logModal">
+    <div id="logBox">
+      <h3 id="logTitle">📜 Logs</h3>
+      <div class="log-meta">Showing last 100 lines • Auto-refresh every 2s</div>
+      <pre id="logContent">Loading logs...</pre>
+      <div>
+        <button class="btn-neutral" onclick="closeLogs()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <script>
+    // Theme setup
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    const SUPPORTED_THEMES = ["light", "dark", "car", "batman", "builder", "coding", "networking"];
+
+    function getThemeChartPalette(theme) {
+      const palette = {
+        light: { tick: "#5b6b86", grid: "rgba(15,23,42,0.06)", legend: "#0f172a", border: "#2563eb", bg: "rgba(37,99,235,0.18)" },
+        dark: { tick: "#94a3b8", grid: "rgba(255,255,255,0.06)", legend: "#e2e8f0", border: "#3b82f6", bg: "rgba(59,130,246,0.18)" },
+        car: { tick: "#d1d5db", grid: "rgba(255,255,255,0.08)", legend: "#f3f4f6", border: "#ef4444", bg: "rgba(239,68,68,0.2)" },
+        batman: { tick: "#d4d4c3", grid: "rgba(250,204,21,0.12)", legend: "#f8f7e3", border: "#facc15", bg: "rgba(250,204,21,0.2)" },
+        builder: { tick: "#7a6b57", grid: "rgba(122,107,87,0.12)", legend: "#2f2618", border: "#f59e0b", bg: "rgba(245,158,11,0.2)" },
+        coding: { tick: "#9fb0c3", grid: "rgba(88,166,255,0.12)", legend: "#e6edf3", border: "#58a6ff", bg: "rgba(88,166,255,0.2)" },
+        networking: { tick: "#486581", grid: "rgba(14,165,233,0.12)", legend: "#102a43", border: "#0ea5e9", bg: "rgba(14,165,233,0.2)" },
+      };
+      return palette[theme] || palette.light;
+    }
+
+    function setTheme(theme) {
+      const selected = SUPPORTED_THEMES.includes(theme) ? theme : "light";
+      document.documentElement.setAttribute('data-theme', selected);
+      localStorage.setItem('theme', selected);
+
+      const select = document.getElementById('themeSelect');
+      if (select) select.value = selected;
+
+      if (typeof updateChartColors === 'function') {
+        updateChartColors(selected);
+      }
+
+      lucide.createIcons();
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const idx = SUPPORTED_THEMES.indexOf(current);
+      const next = SUPPORTED_THEMES[(idx + 1) % SUPPORTED_THEMES.length];
+      setTheme(next);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      setTheme(savedTheme);
+    });
+
+    let services = [];
+    let todos = [];
+    let currentLogService = null;
+    let logTimer = null;
+    let refreshTimer = null;
+    let sessionTimer = null;
+    let currentUser = null;
+    let currentPage = "dashboard";
+    let cpuPoints = [];
+    let lastCpuPointAt = 0;
+    const CPU_WINDOW_MINUTES = 30;
+    const CPU_SAMPLE_INTERVAL_MS = 30000;
+
+    let currentPath = "/";
+    let fileView = "grid"; // "grid" or "list"
+    let currentEditingFile = null;
+    let terminalTabs = [];
+    let activeTerminalTabId = null;
+    let terminalTabCounter = 0;
+
+    const ROLE_ORDER = { viewer: 1, operator: 2, admin: 3 };
+
+    function hasRole(minRole) {
+      if (!currentUser) return false;
+      return (ROLE_ORDER[currentUser.role] || 0) >= (ROLE_ORDER[minRole] || 0);
+    }
+
+    function updateChartColors(theme) {
+      if (!cpuChart) return;
+      const palette = getThemeChartPalette(theme);
+
+      cpuChart.data.datasets[0].borderColor = palette.border;
+      cpuChart.data.datasets[0].backgroundColor = palette.bg;
+      
+      cpuChart.options.scales.x.ticks.color = palette.tick;
+      cpuChart.options.scales.x.grid.color = palette.grid;
+      cpuChart.options.scales.y.ticks.color = palette.tick;
+      cpuChart.options.scales.y.grid.color = palette.grid;
+      
+      cpuChart.options.plugins.legend.labels.color = palette.legend;
+      
+      cpuChart.update();
+    }
+
+    const chartCtx = document.getElementById("cpuChart").getContext("2d");
+    const cpuChart = new Chart(chartCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "CPU %",
+          data: [],
+          borderColor: "#4db7ff",
+          backgroundColor: "rgba(77,183,255,0.18)",
+          fill: true,
+          tension: 0.28,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { color: "#9eb2dd" }, grid: { color: "rgba(158,178,221,0.14)" } },
+          x: { ticks: { color: "#9eb2dd" }, grid: { color: "rgba(158,178,221,0.08)" } }
+        },
+        plugins: {
+          legend: { labels: { color: "#e2ebff" } }
+        }
+      }
+    });
+
+    const initialTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    updateChartColors(initialTheme);
+
+    function showLogin(message = "") {
+      document.getElementById("loginModal").style.display = "flex";
+      document.getElementById("dashboardContent").style.display = "none";
+      document.getElementById("adminPage").style.display = "none";
+      document.getElementById("auditLogsPage").style.display = "none";
+      document.getElementById("alertRulesPage").style.display = "none";
+      document.getElementById("sshKeysPage").style.display = "none";
+      document.getElementById("fileManagerPage").style.display = "none";
+      document.getElementById("terminalPage").style.display = "none";
+      document.getElementById("loginError").innerText = message;
+      document.getElementById("logoutBtn").style.display = "none";
+      document.getElementById("authInfo").innerText = "Not logged in";
+      closeAllTerminalTabs();
+      closeMenu();
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById("loginModal").style.display = "none";
+      document.getElementById("logoutBtn").style.display = "inline-block";
+      document.getElementById("authInfo").innerText = `${currentUser.username} (${currentUser.role})`;
+
+      const canOperate = hasRole("operator");
+      const isAdmin = hasRole("admin");
+      document.getElementById("addServiceBtn").disabled = !canOperate;
+      document.getElementById("addTodoBtn").disabled = !canOperate;
+      document.getElementById("todoComposer").style.display = canOperate ? "grid" : "none";
+      document.getElementById("adminMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("auditLogsMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("alertRulesMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("sshKeysMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
+
+      if (!canOperate && currentPage === "terminal") {
+        currentPage = "dashboard";
+      }
+
+      if (!isAdmin && (currentPage === "admin" || currentPage === "audit-logs" || currentPage === "alert-rules" || currentPage === "ssh-keys" || currentPage === "file-manager")) {
+        currentPage = "dashboard";
+      }
+
+      renderPage();
+    }
+
+    function updateHeaderNav() {
+      const mapping = {
+        "dashboard": "dashboardNavItem",
+        "terminal": "terminalMenuItem",
+        "admin": "adminMenuItem",
+        "audit-logs": "auditLogsMenuItem",
+        "alert-rules": "alertRulesMenuItem",
+        "ssh-keys": "sshKeysMenuItem",
+        "file-manager": "fileManagerMenuItem",
+      };
+
+      document.querySelectorAll(".top-nav-item").forEach((btn) => btn.classList.remove("active"));
+      const activeId = mapping[currentPage] || "dashboardNavItem";
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) activeBtn.classList.add("active");
+    }
+
+    function renderPage() {
+      const showAdmin = currentPage === "admin" && hasRole("admin");
+      const showAuditLogs = currentPage === "audit-logs" && hasRole("admin");
+      const showAlertRules = currentPage === "alert-rules" && hasRole("admin");
+      const showSshKeys = currentPage === "ssh-keys" && hasRole("admin");
+      const showFileManager = currentPage === "file-manager" && hasRole("admin");
+      const showTerminal = currentPage === "terminal" && hasRole("operator");
+      const showDash = currentPage === "dashboard";
+
+      document.getElementById("dashboardContent").style.display = showDash ? "grid" : "none";
+      document.getElementById("adminPage").style.display = showAdmin ? "block" : "none";
+      document.getElementById("auditLogsPage").style.display = showAuditLogs ? "block" : "none";
+      document.getElementById("alertRulesPage").style.display = showAlertRules ? "block" : "none";
+      document.getElementById("sshKeysPage").style.display = showSshKeys ? "block" : "none";
+      document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
+      document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
+      updateHeaderNav();
+    }
+
+    function openMenu() {}
+
+    function closeMenu() {}
+
+    function goToPage(page) {
+      if ((page === "admin" || page === "audit-logs" || page === "alert-rules" || page === "ssh-keys" || page === "file-manager") && !hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      if (page === "terminal" && !hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      currentPage = page;
+      renderPage();
+      if (page === "admin") {
+        loadUsers();
+      } else if (page === "audit-logs") {
+        loadAuditLogs();
+      } else if (page === "alert-rules") {
+        loadAlertRules();
+      } else if (page === "ssh-keys") {
+        loadSshKeys();
+      } else if (page === "file-manager") {
+        browseFiles(currentPath);
+      } else if (page === "terminal") {
+        ensureTerminalReady();
+      }
+      closeMenu();
+    }
+
+    async function apiFetch(url, options = {}, opts = {}) {
+      const res = await fetch(url, { credentials: "include", ...options });
+
+      if (res.status === 401) {
+        if (!opts.silent) {
+          showLogin("Session expired. Please log in again.");
+        }
+        throw new Error("Unauthorized");
+      }
+
+      if (res.status === 403) {
+        const err = await res.json().catch(() => ({ detail: "Forbidden" }));
+        throw new Error(err.detail || "Forbidden");
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `Request failed (${res.status})` }));
+        throw new Error(err.detail || `Request failed (${res.status})`);
+      }
+
+      return res;
+    }
+
+    async function loadCurrentUser(silent = false) {
+      try {
+        const res = await apiFetch("/auth/me", {}, { silent });
+        currentUser = await res.json();
+        showDashboard();
+        return true;
+      } catch {
+        currentUser = null;
+        if (!silent) showLogin("Login required");
+        return false;
+      }
+    }
+
+    async function performLogin() {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      if (!username || !password) {
+        document.getElementById("loginError").innerText = "Please enter username and password.";
+        return;
+      }
+
+      try {
+        await apiFetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        }, { silent: true });
+
+        document.getElementById("loginPassword").value = "";
+        await loadCurrentUser(true);
+        await refreshAll();
+
+        if (!refreshTimer) {
+          refreshTimer = setInterval(refreshAll, 3000);
+        }
+        if (!sessionTimer) {
+          sessionTimer = setInterval(() => loadCurrentUser(true), 30000);
+        }
+      } catch {
+        document.getElementById("loginError").innerText = "Invalid credentials.";
+      }
+    }
+
+    async function logout() {
+      try {
+        await apiFetch("/auth/logout", { method: "POST" }, { silent: true });
+      } catch {
+        // no-op
+      }
+
+      currentUser = null;
+      services = [];
+      todos = [];
+      closeAllTerminalTabs();
+      currentPage = "dashboard";
+      showLogin("Logged out.");
+      document.getElementById("usersBody").innerHTML = "";
+      document.getElementById("createUserMsg").innerText = "";
+      renderTodos();
+    }
+
+    async function loadUsers() {
+      const body = document.getElementById("usersBody");
+      if (!hasRole("admin")) {
+        body.innerHTML = "";
+        return;
+      }
+
+      try {
+        const res = await apiFetch("/auth/users");
+        const data = await res.json();
+        const users = data.users || [];
+
+        if (!users.length) {
+          body.innerHTML = `<tr><td colspan="3" class="muted">No users found.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = users.map((u) => {
+          const created = u.created_at ? new Date(u.created_at * 1000).toLocaleString() : "--";
+          const lastLogin = u.last_login_at ? new Date(u.last_login_at * 1000).toLocaleString() : "Never";
+          const roleOptions = ["viewer", "operator", "admin"].map((role) => (
+            `<option value="${role}" ${u.role === role ? "selected" : ""}>${role}</option>`
+          )).join("");
+
+          const isSelf = currentUser && currentUser.username === u.username;
+          const encodedUsername = encodeURIComponent(u.username);
+
+          return `
+            <tr>
+              <td>${esc(u.username)}</td>
+              <td>
+                <select class="role-select" data-username="${encodedUsername}">
+                  ${roleOptions}
+                </select>
+              </td>
+              <td>${esc(created)}</td>
+              <td>${esc(lastLogin)}</td>
+              <td>
+                <div class="actions">
+                  <button class="btn-warn" onclick="changeUserRole(this)">Change Role</button>
+                  <button class="btn-danger" ${isSelf ? "disabled" : ""} onclick="deleteUser('${encodedUsername}')">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load users.</td></tr>`;
+      }
+    }
+
+    async function createUser() {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const username = document.getElementById("newUsername").value.trim();
+      const password = document.getElementById("newPassword").value;
+      const role = document.getElementById("newUserRole").value;
+      const msg = document.getElementById("createUserMsg");
+      msg.innerText = "";
+
+      if (!username || !password || !role) {
+        msg.innerText = "Please fill username, password, and role.";
+        return;
+      }
+
+      try {
+        await apiFetch("/auth/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password, role }),
+        });
+
+        document.getElementById("newUsername").value = "";
+        document.getElementById("newPassword").value = "";
+        msg.innerText = `User ${username} created successfully.`;
+        await loadUsers();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to create user.";
+      }
+    }
+
+    async function changeUserRole(buttonEl) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const row = buttonEl.closest("tr");
+      const select = row ? row.querySelector("select.role-select") : null;
+      if (!select) return;
+
+      const encodedUsername = select.dataset.username;
+      const username = decodeURIComponent(encodedUsername || "");
+      const role = select.value;
+      const msg = document.getElementById("createUserMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch(`/auth/users/${encodeURIComponent(username)}/role`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role }),
+        });
+        msg.innerText = `Role for ${username} changed to ${role}.`;
+        await loadUsers();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to change role.";
+      }
+    }
+
+    async function deleteUser(encodedUsername) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const username = decodeURIComponent(encodedUsername || "");
+
+      if (!confirm(`Delete user '${username}'?`)) {
+        return;
+      }
+
+      const msg = document.getElementById("createUserMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch(`/auth/users/${encodeURIComponent(username)}`, {
+          method: "DELETE",
+        });
+        msg.innerText = `User ${username} deleted.`;
+        await loadUsers();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to delete user.";
+      }
+    }
+
+    function esc(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function addService() {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const name = document.getElementById("serviceName").value.trim();
+      const port = Number(document.getElementById("servicePort").value);
+      const command = document.getElementById("serviceCommand").value.trim();
+
+      if (!name || !port || !command) {
+        alert("Please enter service name, port, and command.");
+        return;
+      }
+
+      try {
+        await apiFetch("/state/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, port, command }),
+        });
+
+        document.getElementById("serviceName").value = "";
+        document.getElementById("servicePort").value = "";
+        document.getElementById("serviceCommand").value = "";
+
+        await loadServices();
+      } catch (e) {
+        alert(e.message || "Failed to save pinned service.");
+      }
+    }
+
+    async function loadServices() {
+      const body = document.getElementById("servicesBody");
+      try {
+        const res = await apiFetch("/state/services");
+        const data = await res.json();
+        services = data.services || [];
+      } catch {
+        services = [];
+      }
+
+      if (!services.length) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">No services added yet.</td></tr>`;
+        return;
+      }
+
+      const rows = await Promise.all(services.map(async (s) => {
+        let active = false;
+        try {
+          const res = await apiFetch(`/check-port/${s.port}`, {}, { silent: true });
+          const data = await res.json();
+          active = !!data.active;
+        } catch {
+          active = false;
+        }
+
+        const canOperate = hasRole("operator");
+        const isAdmin = hasRole("admin");
+
+        return `
+          <tr>
+            <td>${esc(s.name)}</td>
+            <td>${esc(s.port)}</td>
+            <td class="${active ? "status-up" : "status-down"}">
+              ${active ? "Active" : "Down"}
+            </td>
+            <td>
+              <div class="actions">
+                ${canOperate ? `<button class="btn-success" onclick="startServiceById(${s.id})">Start</button>` : ""}
+                ${canOperate ? `<button class="btn-warn" onclick="restartServiceById(${s.id})">Restart</button>` : ""}
+                ${canOperate ? `<button class="btn-danger" onclick="stopServiceById(${s.id})">Stop</button>` : ""}
+                <button class="btn-neutral" onclick="viewLogsById(${s.id})">📜 View Logs</button>
+                ${isAdmin ? `<button class="btn-danger" onclick="removeService(${s.id})">Remove</button>` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }));
+
+      body.innerHTML = rows.join("");
+    }
+
+    async function removeService(serviceId) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      try {
+        await apiFetch(`/state/services/${serviceId}`, { method: "DELETE" });
+        await loadServices();
+      } catch (e) {
+        alert(e.message || "Failed to remove pinned service.");
+      }
+    }
+
+    function getServiceById(serviceId) {
+      return services.find((s) => s.id === serviceId);
+    }
+
+    async function startServiceById(serviceId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+      const s = getServiceById(serviceId);
+      if (!s) return;
+
+      await apiFetch("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: s.name, port: s.port, command: s.command })
+      });
+
+      loadServices();
+    }
+
+    async function stopServiceById(serviceId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+      const s = getServiceById(serviceId);
+      if (!s) return;
+
+      await apiFetch("/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: s.name })
+      });
+
+      loadServices();
+    }
+
+    async function restartServiceById(serviceId) {
+      const s = getServiceById(serviceId);
+      if (!s) return;
+
+      await stopServiceById(serviceId);
+      await startServiceById(serviceId);
+      loadServices();
+    }
+
+    function viewLogsById(serviceId) {
+      const s = getServiceById(serviceId);
+      if (!s) return;
+
+      currentLogService = s.name;
+      document.getElementById("logTitle").innerText = `📜 ${s.name} Logs`;
+      document.getElementById("logModal").style.display = "block";
+      refreshLogs();
+
+      if (logTimer) clearInterval(logTimer);
+      logTimer = setInterval(refreshLogs, 2000);
+    }
+
+    function closeLogs() {
+      currentLogService = null;
+      document.getElementById("logModal").style.display = "none";
+      if (logTimer) {
+        clearInterval(logTimer);
+        logTimer = null;
+      }
+    }
+
+    async function refreshLogs() {
+      if (!currentLogService) return;
+      try {
+        const res = await apiFetch(`/logs/${encodeURIComponent(currentLogService)}?lines=100`);
+        const data = await res.json();
+        const content = document.getElementById("logContent");
+        content.textContent = (data.logs || ["No logs yet"]).join("");
+        content.scrollTop = content.scrollHeight;
+      } catch {
+        document.getElementById("logContent").textContent = "Unable to load logs.";
+      }
+    }
+
+    function renderTodos() {
+      const list = document.getElementById("todoList");
+      const meta = document.getElementById("todoMeta");
+      const canOperate = hasRole("operator");
+
+      if (!todos.length) {
+        list.innerHTML = `<li class="muted">No tasks yet. Add your first operational task above.</li>`;
+        meta.innerText = "0 total • 0 done • 0 pending";
+        return;
+      }
+
+      const doneCount = todos.filter(t => t.done).length;
+      const pendingCount = todos.length - doneCount;
+      meta.innerText = `${todos.length} total • ${doneCount} done • ${pendingCount} pending`;
+
+      list.innerHTML = todos.map((todo) => `
+        <li class="todo-item ${todo.done ? "todo-done" : ""}">
+          <div class="todo-left">
+            <input type="checkbox" ${todo.done ? "checked" : ""} ${canOperate ? "" : "disabled"} onchange="toggleTodo(${todo.id}, this.checked)" />
+            <span class="todo-text">${esc(todo.text)}</span>
+          </div>
+          ${canOperate ? `<button class="btn-danger" onclick="removeTodo(${todo.id})">Delete</button>` : ""}
+        </li>
+      `).join("");
+    }
+
+    async function loadTodos() {
+      try {
+        const res = await apiFetch("/state/todos");
+        const data = await res.json();
+        todos = data.todos || [];
+      } catch {
+        todos = [];
+      }
+      renderTodos();
+    }
+
+    async function addTodo() {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const input = document.getElementById("todoInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        await apiFetch("/state/todos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        input.value = "";
+        await loadTodos();
+      } catch (e) {
+        alert(e.message || "Failed to add todo.");
+      }
+    }
+
+    async function toggleTodo(todoId, done) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      try {
+        await apiFetch(`/state/todos/${todoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ done }),
+        });
+        await loadTodos();
+      } catch (e) {
+        alert(e.message || "Failed to update todo.");
+      }
+    }
+
+    async function removeTodo(todoId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      try {
+        await apiFetch(`/state/todos/${todoId}`, { method: "DELETE" });
+        await loadTodos();
+      } catch (e) {
+        alert(e.message || "Failed to remove todo.");
+      }
+    }
+
+    async function loadBattery() {
+      try {
+        const res = await apiFetch("/battery");
+        const data = await res.json();
+
+        if (data.percent === null || data.percent === undefined) {
+          document.getElementById("batteryValue").innerText = "N/A";
+          document.getElementById("batteryMode").innerText = "Battery info unavailable";
+          return;
+        }
+
+        document.getElementById("batteryValue").innerText = `${Number(data.percent).toFixed(1)}%`;
+        document.getElementById("batteryMode").innerText = data.plugged ? "Charging" : "On battery";
+      } catch {
+        document.getElementById("batteryValue").innerText = "--%";
+        document.getElementById("batteryMode").innerText = "Battery check failed";
+      }
+    }
+
+    async function loadSystem() {
+      try {
+        const res = await apiFetch("/system");
+        const data = await res.json();
+
+        const cpu = Number(data.cpu || 0);
+        const ram = Number(data.memory || 0);
+
+        document.getElementById("cpuValue").innerText = `${cpu.toFixed(1)}%`;
+        document.getElementById("ramValue").innerText = `${ram.toFixed(1)}%`;
+
+        const nowMs = Date.now();
+        if (nowMs - lastCpuPointAt >= CPU_SAMPLE_INTERVAL_MS) {
+          lastCpuPointAt = nowMs;
+          cpuPoints.push({ t: nowMs, v: cpu });
+        }
+
+        const cutoff = nowMs - CPU_WINDOW_MINUTES * 60 * 1000;
+        cpuPoints = cpuPoints.filter((p) => p.t >= cutoff);
+
+        cpuChart.data.labels = cpuPoints.map((p) =>
+          new Date(p.t).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit" })
+        );
+        cpuChart.data.datasets[0].data = cpuPoints.map((p) => p.v);
+        cpuChart.update();
+      } catch {
+        document.getElementById("cpuValue").innerText = "--%";
+        document.getElementById("ramValue").innerText = "--%";
+      }
+    }
+
+    async function loadPorts() {
+      const body = document.getElementById("portsBody");
+      try {
+        const res = await apiFetch("/ports");
+        const ports = await res.json();
+
+        if (!ports.length) {
+          body.innerHTML = `<tr><td colspan="3" class="muted">No open ports found.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = ports.slice(0, 20).map(p => `
+          <tr>
+            <td>${esc(p.protocol)}</td>
+            <td>${esc(p.state)}</td>
+            <td>${esc(p.local)}</td>
+          </tr>
+        `).join("");
+      } catch {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load port data.</td></tr>`;
+      }
+    }
+
+    async function loadDocker() {
+      const body = document.getElementById("dockerBody");
+      try {
+        const res = await apiFetch("/docker");
+        const containers = await res.json();
+
+        if (!containers.length) {
+          body.innerHTML = `<tr><td colspan="3" class="muted">No running containers.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = containers.map(c => `
+          <tr>
+            <td>${esc(c.name)}</td>
+            <td>${esc(c.status)}</td>
+            <td>${esc(c.ports)}</td>
+          </tr>
+        `).join("");
+      } catch {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load Docker status.</td></tr>`;
+      }
+    }
+
+    async function loadAuditLogs() {
+      const body = document.getElementById("auditLogsBody");
+      if (!hasRole("admin")) {
+        body.innerHTML = "";
+        return;
+      }
+
+      try {
+        const res = await apiFetch("/audit-logs?limit=100");
+        const data = await res.json();
+        const logs = data.logs || [];
+
+        if (!logs.length) {
+          body.innerHTML = `<tr><td colspan="4" class="muted">No audit logs found.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = logs.map((log) => {
+          const timestamp = new Date(log.timestamp * 1000).toLocaleString();
+          return `
+            <tr>
+              <td>${esc(timestamp)}</td>
+              <td>${esc(log.username)}</td>
+              <td><strong>${esc(log.action)}</strong></td>
+              <td>${esc(log.details || "-")}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">Failed to load audit logs.</td></tr>`;
+      }
+    }
+
+    async function loadAlertRules() {
+      const body = document.getElementById("alertRulesBody");
+      if (!hasRole("admin")) {
+        body.innerHTML = "";
+        return;
+      }
+
+      try {
+        const res = await apiFetch("/alert-rules");
+        const data = await res.json();
+        const rules = data.rules || [];
+
+        if (!rules.length) {
+          body.innerHTML = `<tr><td colspan="5" class="muted">No alert rules configured. Create one above.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = rules.map((rule) => {
+          const created = new Date(rule.created_at * 1000).toLocaleString();
+          const metricDisplay = rule.metric_type === "cpu" ? "CPU" : "RAM";
+          const statusDisplay = rule.enabled ? `<span class="status-up">Enabled</span>` : `<span class="status-down">Disabled</span>`;
+
+          return `
+            <tr>
+              <td>${esc(metricDisplay)}</td>
+              <td>${esc(rule.threshold)}%</td>
+              <td>${statusDisplay}</td>
+              <td>${esc(created)}</td>
+              <td>
+                <div class="actions">
+                  <button class="btn-${rule.enabled ? 'warn' : 'success'}" onclick="toggleAlertRule(${rule.id}, ${!rule.enabled})">
+                    ${rule.enabled ? 'Disable' : 'Enable'}
+                  </button>
+                  <button class="btn-danger" onclick="deleteAlertRule(${rule.id})">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="5" class="muted">Failed to load alert rules.</td></tr>`;
+      }
+    }
+
+    async function createAlertRule() {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const metric_type = document.getElementById("newAlertMetric").value;
+      const threshold = Number(document.getElementById("newAlertThreshold").value);
+      const msg = document.getElementById("createAlertMsg");
+      msg.innerText = "";
+
+      if (!threshold || threshold < 0 || threshold > 100) {
+        msg.innerText = "Please enter a valid threshold (0-100).";
+        return;
+      }
+
+      try {
+        await apiFetch("/alert-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metric_type, threshold }),
+        });
+
+        document.getElementById("newAlertThreshold").value = "";
+        const metricName = metric_type === "cpu" ? "CPU" : "RAM";
+        msg.innerText = `${metricName} alert rule created (threshold: ${threshold}%).`;
+        await loadAlertRules();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to create alert rule.";
+      }
+    }
+
+    async function toggleAlertRule(ruleId, enabled) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const msg = document.getElementById("createAlertMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch(`/alert-rules/${ruleId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        });
+
+        msg.innerText = `Alert rule ${enabled ? 'enabled' : 'disabled'}.`;
+        await loadAlertRules();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to update alert rule.";
+      }
+    }
+
+    async function deleteAlertRule(ruleId) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      if (!confirm("Delete this alert rule?")) {
+        return;
+      }
+
+      const msg = document.getElementById("createAlertMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch(`/alert-rules/${ruleId}`, {
+          method: "DELETE",
+        });
+
+        msg.innerText = "Alert rule deleted.";
+        await loadAlertRules();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to delete alert rule.";
+      }
+    }
+
+    async function loadSshKeys() {
+      const body = document.getElementById("sshKeysBody");
+      renderSshCommandSnippets();
+      if (!hasRole("admin")) {
+        body.innerHTML = "";
+        return;
+      }
+
+      try {
+        const res = await apiFetch("/ssh/keys");
+        const data = await res.json();
+        const keys = data.keys || [];
+
+        if (!keys.length) {
+          body.innerHTML = `<tr><td colspan="7" class="muted">No SSH keys configured yet.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = keys.map((item) => {
+          const created = item.created_at ? new Date(item.created_at * 1000).toLocaleString() : "--";
+          return `
+            <tr>
+              <td>${esc(item.id)}</td>
+              <td>${esc(item.ssh_user)}</td>
+              <td>${esc(item.label)}</td>
+              <td>${esc(item.key_type)}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem;">${esc(item.fingerprint_sha256)}</td>
+              <td>${esc(created)}</td>
+              <td>
+                <button class="btn-danger" onclick="deleteSshKey(${item.id}, '${esc(item.label)}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="7" class="muted">${esc(e.message || "Failed to load SSH keys.")}</td></tr>`;
+      }
+    }
+
+    async function createSshKey() {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const ssh_user = document.getElementById("newSshLinuxUser").value.trim();
+      const label = document.getElementById("newSshLabel").value.trim() || "SSH Key";
+      const public_key = document.getElementById("newSshPublicKey").value.trim();
+      const msg = document.getElementById("createSshKeyMsg");
+      msg.innerText = "";
+
+      if (!ssh_user || !public_key) {
+        msg.innerText = "Linux user and public key are required.";
+        return;
+      }
+
+      try {
+        await apiFetch("/ssh/keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ssh_user, label, public_key }),
+        });
+
+        document.getElementById("newSshPublicKey").value = "";
+        msg.innerText = `SSH key added for Linux user '${ssh_user}'.`;
+        await loadSshKeys();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to add SSH key.";
+      }
+    }
+
+    async function deleteSshKey(keyId, label) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      if (!confirm(`Delete SSH key '${label}' (ID ${keyId})?`)) {
+        return;
+      }
+
+      const msg = document.getElementById("createSshKeyMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch(`/ssh/keys/${keyId}`, { method: "DELETE" });
+        msg.innerText = `SSH key '${label}' deleted.`;
+        await loadSshKeys();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to delete SSH key.";
+      }
+    }
+
+    function renderSshCommandSnippets() {
+      const email = (document.getElementById("sshCmdEmail")?.value || "suharyaseen36@gmail.com").trim() || "suharyaseen36@gmail.com";
+      const keyPath = (document.getElementById("sshCmdKeyPath")?.value || "C:\\Users\\suhar\\.ssh\\my_custom_key").trim() || "C:\\Users\\suhar\\.ssh\\my_custom_key";
+      const remoteUser = (document.getElementById("sshCmdRemoteUser")?.value || "user").trim() || "user";
+      const remoteHost = (document.getElementById("sshCmdRemoteHost")?.value || "server_ip").trim() || "server_ip";
+
+      const keygenCmd = `ssh-keygen -t ed25519 -C "${email}" -f ${keyPath}`;
+      const connectCmd = `ssh -i ${keyPath} ${remoteUser}@${remoteHost}`;
+
+      const keygenEl = document.getElementById("sshKeygenCmd");
+      const connectEl = document.getElementById("sshConnectCmd");
+      if (keygenEl) keygenEl.value = keygenCmd;
+      if (connectEl) connectEl.value = connectCmd;
+    }
+
+    async function copySshCommand(elementId) {
+      const input = document.getElementById(elementId);
+      if (!input) return;
+
+      try {
+        await navigator.clipboard.writeText(input.value);
+        const msg = document.getElementById("createSshKeyMsg");
+        msg.innerText = "Command copied to clipboard.";
+      } catch {
+        input.select();
+        document.execCommand("copy");
+        const msg = document.getElementById("createSshKeyMsg");
+        msg.innerText = "Command copied to clipboard.";
+      }
+    }
+
+    // FILE MANAGER FUNCTIONS
+    function getFileIcon(item) {
+      if (item.is_directory) return "folder";
+      const ext = item.name.split(".").pop().toLowerCase();
+      const iconMap = {
+        "js": "file-code", "py": "file-code", "html": "file-code", "css": "palette", "json": "file-code",
+        "md": "file-text", "txt": "file-text", "log": "file-text", "sh": "terminal", "env": "lock",
+        "jpg": "image", "png": "image", "gif": "image", "svg": "palette",
+        "zip": "archive", "tar": "archive", "gz": "archive", "pdf": "file-text", "db": "database"
+      };
+      return iconMap[ext] || "file";
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+      if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+      return (bytes / 1073741824).toFixed(1) + " GB";
+    }
+
+    function renderBreadcrumb(path) {
+      const breadcrumb = document.getElementById("fileBreadcrumb");
+      const parts = path.split("/").filter(p => p);
+
+      let html = '<span class="breadcrumb-item" onclick="browseFiles(\'/\')"><i data-lucide="folder" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> root</span>';
+
+      let buildPath = "";
+      parts.forEach((part, idx) => {
+        buildPath += "/" + part;
+        const currentPath = buildPath;
+        html += '<span class="breadcrumb-separator">›</span>';
+        html += `<span class="breadcrumb-item" onclick="browseFiles('${currentPath}')">${esc(part)}</span>`;
+      });
+
+      breadcrumb.innerHTML = html;
+    }
+
+    async function browseFiles(path) {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      currentPath = path;
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        const res = await apiFetch(`/files/browse?path=${encodeURIComponent(path)}`);
+        const data = await res.json();
+
+        if (data.type === "file") {
+          // It's a file, open editor
+          await openFileEditor(path);
+          return;
+        }
+
+        // It's a directory
+        renderBreadcrumb(path);
+        renderFileList(data.items || []);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to browse directory.";
+      }
+    }
+
+    function renderFileList(items) {
+      const gridView = document.getElementById("fileGridView");
+      const listView = document.getElementById("fileListView");
+
+      if (fileView === "grid") {
+        renderGridView(items);
+        gridView.style.display = "grid";
+        listView.style.display = "none";
+      } else {
+        renderListView(items);
+        gridView.style.display = "none";
+        listView.style.display = "block";
+      }
+
+      lucide.createIcons();
+    }
+
+    function renderGridView(items) {
+      const gridView = document.getElementById("fileGridView");
+
+      if (!items.length) {
+        gridView.innerHTML = '<div class="muted" style="grid-column: 1/-1; text-align: center; padding: 40px;">Empty directory</div>';
+        return;
+      }
+
+      gridView.innerHTML = items.map(item => {
+        const icon = getFileIcon(item);
+        const size = item.is_directory ? "Folder" : formatFileSize(item.size);
+        const perms = item.permissions || "---";
+
+        const downloadAction = !item.is_directory ? `<button title="Download" onclick="downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>` : '';
+
+        return `
+          <div class="file-item" onclick="handleFileClick('${esc(item.path)}', ${item.is_directory})" ondblclick="handleFileDoubleClick('${esc(item.path)}', ${item.is_directory})">
+            <div class="file-item-actions" onclick="event.stopPropagation()">
+              ${downloadAction}
+              <button title="Permissions" onclick="openPermissionsModal('${esc(item.path)}', '${perms}')"><i data-lucide="key" style="width:14px;height:14px;"></i></button>
+              <button title="Delete" onclick="deleteFileOrFolder('${esc(item.path)}', '${esc(item.name)}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            </div>
+            <div class="file-icon"><i data-lucide="${icon}"></i></div>
+            <div class="file-name">${esc(item.name)}</div>
+            <div class="file-meta">${size} • ${perms}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderListView(items) {
+      const listView = document.getElementById("fileListView");
+
+      if (!items.length) {
+        listView.innerHTML = '<li class="muted" style="text-align: center; padding: 40px;">Empty directory</li>';
+        return;
+      }
+
+      listView.innerHTML = items.map(item => {
+        const icon = getFileIcon(item);
+        const size = item.is_directory ? "Folder" : formatFileSize(item.size);
+        const modified = new Date(item.modified * 1000).toLocaleString();
+        const perms = item.permissions || "---";
+
+        const downloadAction = !item.is_directory ? `<button class="btn-neutral" onclick="event.stopPropagation(); downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>` : '';
+
+        return `
+          <li class="file-list-item" onclick="handleFileClick('${esc(item.path)}', ${item.is_directory})" ondblclick="handleFileDoubleClick('${esc(item.path)}', ${item.is_directory})">
+            <div class="file-icon" style="font-size:1.2rem; margin:0;"><i data-lucide="${icon}"></i></div>
+            <div class="file-name">${esc(item.name)}</div>
+            <div class="file-meta">${size}</div>
+            <div class="file-meta">${modified}</div>
+            <div class="file-meta">${perms}</div>
+            <div class="actions">
+              ${downloadAction}
+              <button class="btn-neutral" onclick="event.stopPropagation(); openPermissionsModal('${esc(item.path)}', '${perms}')"><i data-lucide="key" style="width:14px;height:14px;"></i></button>
+              <button class="btn-neutral" onclick="event.stopPropagation(); ${item.is_directory ? 'browseFiles' : 'openFileEditor'}('${esc(item.path)}')">
+                ${item.is_directory ? '<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="folder-open" style="width:14px;height:14px;"></i> Open</div>' : '<div style="display:flex;align-items:center;gap:6px;"><i data-lucide="edit-2" style="width:14px;height:14px;"></i> Edit</div>'}
+              </button>
+              <button class="btn-danger" onclick="event.stopPropagation(); deleteFileOrFolder('${esc(item.path)}', '${esc(item.name)}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            </div>
+          </li>
+        `;
+      }).join("");
+    }
+
+    function handleFileClick(path, isDirectory) {
+      // Single click - just select (could add selection highlight here)
+    }
+
+    function handleFileDoubleClick(path, isDirectory) {
+      if (isDirectory) {
+        browseFiles(path);
+      } else {
+        openFileEditor(path);
+      }
+    }
+
+    function switchView(view) {
+      fileView = view;
+      document.getElementById("gridViewBtn").classList.toggle("active", view === "grid");
+      document.getElementById("listViewBtn").classList.toggle("active", view === "list");
+      browseFiles(currentPath);
+    }
+
+    function refreshCurrentDir() {
+      browseFiles(currentPath);
+    }
+
+    async function openFileEditor(path) {
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        const res = await apiFetch("/files/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path }),
+        });
+
+        const data = await res.json();
+        currentEditingFile = path;
+
+        document.getElementById("editorTitle").innerText = "Edit File";
+        document.getElementById("editorPath").innerText = path;
+        document.getElementById("fileEditorContent").value = data.content || "";
+        document.getElementById("fileEditorModal").style.display = "block";
+      } catch (e) {
+        msg.innerText = e.message || "Failed to read file.";
+      }
+    }
+
+    function closeFileEditor() {
+      document.getElementById("fileEditorModal").style.display = "none";
+      currentEditingFile = null;
+    }
+
+    async function saveFileContent() {
+      if (!currentEditingFile) {
+        alert("No file is being edited.");
+        return;
+      }
+
+      const content = document.getElementById("fileEditorContent").value;
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch("/files/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: currentEditingFile, content }),
+        });
+
+        msg.innerText = `File saved: ${currentEditingFile}`;
+        closeFileEditor();
+        browseFiles(currentPath);
+      } catch (e) {
+        alert(e.message || "Failed to save file.");
+      }
+    }
+
+    async function deleteFileOrFolder(path, name) {
+      if (!confirm(`Delete "${name}"?`)) {
+        return;
+      }
+
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch("/files/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path }),
+        });
+
+        msg.innerText = `Deleted: ${name}`;
+        browseFiles(currentPath);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to delete.";
+      }
+    }
+
+    async function createNewFile() {
+      const fileName = prompt("Enter file name:");
+      if (!fileName) return;
+
+      const newPath = currentPath + "/" + fileName;
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch("/files/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: newPath, content: "" }),
+        });
+
+        msg.innerText = `Created file: ${fileName}`;
+        browseFiles(currentPath);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to create file.";
+      }
+    }
+
+    async function createNewFolder() {
+      const folderName = prompt("Enter folder name:");
+      if (!folderName) return;
+
+      const newPath = currentPath + "/" + folderName;
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "";
+
+      try {
+        await apiFetch("/files/mkdir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: newPath }),
+        });
+
+        msg.innerText = `Created folder: ${folderName}`;
+        browseFiles(currentPath);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to create folder.";
+      }
+    }
+
+    function suggestCloneFolderName(repoUrl) {
+      const cleaned = String(repoUrl || "").trim().replace(/\/+$/g, "");
+      const tail = (cleaned.split("/").pop() || "repo-clone").replace(/\.git$/i, "");
+      const sanitized = tail.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/^[._-]+|[._-]+$/g, "");
+      return sanitized || "repo-clone";
+    }
+
+    async function gitCloneRepo() {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const repo_url = prompt("Enter repository URL (https://... or git@...):");
+      if (!repo_url || !repo_url.trim()) return;
+
+      const defaultFolder = suggestCloneFolderName(repo_url);
+      const folderPrompt = prompt("Folder name (optional):", defaultFolder);
+      if (folderPrompt === null) return;
+
+      const folder_name = folderPrompt.trim();
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = "Cloning repository... this may take a moment.";
+
+      try {
+        const res = await apiFetch("/files/git-clone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: currentPath,
+            repo_url: repo_url.trim(),
+            folder_name: folder_name || null,
+          }),
+        });
+
+        const data = await res.json();
+        msg.innerText = `Repository cloned: ${data.folder_name}`;
+        await browseFiles(currentPath);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to clone repository.";
+      }
+    }
+
+    function downloadFile(path) {
+      window.open(`/files/download?path=${encodeURIComponent(path)}`, '_blank');
+    }
+
+    async function uploadSelectedFile(event) {
+      const fileInput = event.target;
+      if (!fileInput.files.length) return;
+      
+      const file = fileInput.files[0];
+      const msg = document.getElementById("fileManagerMsg");
+      msg.innerText = `Uploading ${file.name}...`;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch(`/files/upload?path=${encodeURIComponent(currentPath)}`, {
+          method: "POST",
+          body: formData,
+          credentials: "include"
+        });
+        
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.detail || "Upload failed");
+        }
+
+        msg.innerText = `Uploaded file: ${file.name}`;
+        browseFiles(currentPath);
+      } catch (e) {
+        msg.innerText = e.message;
+      }
+
+      fileInput.value = ""; // Reset input
+    }
+
+    let currentPermsFile = null;
+
+    function openPermissionsModal(path, currentOctal) {
+      currentPermsFile = path;
+      document.getElementById("permsFilePath").innerText = path;
+      
+      // Parse octal (e.g. "644")
+      const octalStr = currentOctal && currentOctal.length === 3 ? currentOctal : "644";
+      const userStr = parseInt(octalStr[0], 8).toString(2).padStart(3, '0');
+      const groupStr = parseInt(octalStr[1], 8).toString(2).padStart(3, '0');
+      const otherStr = parseInt(octalStr[2], 8).toString(2).padStart(3, '0');
+
+      document.getElementById("perm_u_r").checked = userStr[0] === '1';
+      document.getElementById("perm_u_w").checked = userStr[1] === '1';
+      document.getElementById("perm_u_x").checked = userStr[2] === '1';
+
+      document.getElementById("perm_g_r").checked = groupStr[0] === '1';
+      document.getElementById("perm_g_w").checked = groupStr[1] === '1';
+      document.getElementById("perm_g_x").checked = groupStr[2] === '1';
+
+      document.getElementById("perm_o_r").checked = otherStr[0] === '1';
+      document.getElementById("perm_o_w").checked = otherStr[1] === '1';
+      document.getElementById("perm_o_x").checked = otherStr[2] === '1';
+
+      updatePermsPreview();
+      document.getElementById("permissionsModal").style.display = "flex";
+    }
+
+    function closePermissionsModal() {
+      document.getElementById("permissionsModal").style.display = "none";
+      currentPermsFile = null;
+    }
+
+    function updatePermsPreview() {
+      const u = (document.getElementById("perm_u_r").checked ? 4 : 0) +
+                (document.getElementById("perm_u_w").checked ? 2 : 0) +
+                (document.getElementById("perm_u_x").checked ? 1 : 0);
+      const g = (document.getElementById("perm_g_r").checked ? 4 : 0) +
+                (document.getElementById("perm_g_w").checked ? 2 : 0) +
+                (document.getElementById("perm_g_x").checked ? 1 : 0);
+      const o = (document.getElementById("perm_o_r").checked ? 4 : 0) +
+                (document.getElementById("perm_o_w").checked ? 2 : 0) +
+                (document.getElementById("perm_o_x").checked ? 1 : 0);
+      
+      document.getElementById("permsOctalPreview").innerText = `${u}${g}${o}`;
+    }
+
+    // Attach listeners to all checkboxes
+    document.querySelectorAll('#permissionsBox input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', updatePermsPreview);
+    });
+
+    async function savePermissions() {
+      if (!currentPermsFile) return;
+      const perms = document.getElementById("permsOctalPreview").innerText;
+      
+      try {
+        await apiFetch("/files/chmod", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: currentPermsFile, permissions: perms }),
+        });
+        
+        closePermissionsModal();
+        browseFiles(currentPath);
+      } catch (e) {
+        alert(e.message || "Failed to update permissions.");
+      }
+    }
+
+    function getTerminalSocketUrl() {
+      const protocol = location.protocol === "https:" ? "wss" : "ws";
+      return `${protocol}://${location.host}/ws/terminal`;
+    }
+
+    function ensureTerminalReady() {
+      if (!terminalTabs.length) {
+        createTerminalTab();
+      } else {
+        switchTerminalTab(terminalTabs[terminalTabs.length - 1].id);
+      }
+    }
+
+    function renderTerminalTabs() {
+      const tabsWrap = document.getElementById("terminalTabs");
+      tabsWrap.innerHTML = terminalTabs.map((tab) => `
+        <button class="terminal-tab ${tab.id === activeTerminalTabId ? "active" : ""}" onclick="switchTerminalTab('${tab.id}')">
+          <span>Tab ${tab.index}</span>
+          <span onclick="event.stopPropagation(); closeTerminalTab('${tab.id}')">✕</span>
+        </button>
+      `).join("");
+    }
+
+    function renderTerminalHistory() {
+      const list = document.getElementById("terminalHistoryList");
+      const tab = terminalTabs.find(t => t.id === activeTerminalTabId);
+      if (!tab || !tab.history.length) {
+        list.innerHTML = `<li class="muted">No commands yet.</li>`;
+        return;
+      }
+
+      const visible = tab.history.slice(-40).reverse();
+      list.innerHTML = visible.map((cmd) => `<li>$ ${esc(cmd)}</li>`).join("");
+    }
+
+    function switchTerminalTab(tabId) {
+      activeTerminalTabId = tabId;
+      document.querySelectorAll(".terminal-instance").forEach((node) => {
+        node.classList.remove("active");
+      });
+      const activeNode = document.getElementById(`terminal-instance-${tabId}`);
+      if (activeNode) activeNode.classList.add("active");
+
+      renderTerminalTabs();
+      renderTerminalHistory();
+
+      const tab = terminalTabs.find((t) => t.id === tabId);
+      if (tab && tab.term) {
+        tab.term.focus();
+      }
+    }
+
+    function trackTerminalInput(tab, data) {
+      if (data === "\r") {
+        const cmd = tab.inputBuffer.trim();
+        if (cmd) {
+          tab.history.push(cmd);
+          if (tab.history.length > 200) {
+            tab.history = tab.history.slice(-200);
+          }
+          renderTerminalHistory();
+        }
+        tab.inputBuffer = "";
+        return;
+      }
+
+      if (data === "\u007f") {
+        tab.inputBuffer = tab.inputBuffer.slice(0, -1);
+        return;
+      }
+
+      if (data.startsWith("\u001b")) {
+        return;
+      }
+
+      tab.inputBuffer += data.replace(/[\x00-\x1F\x7F]/g, "");
+    }
+
+    function createTerminalTab() {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const shell = document.getElementById("terminalShell");
+      if (!shell) return;
+
+      terminalTabCounter += 1;
+      const tabId = `tab-${Date.now()}-${terminalTabCounter}`;
+
+      const holder = document.createElement("div");
+      holder.id = `terminal-instance-${tabId}`;
+      holder.className = "terminal-instance";
+      shell.appendChild(holder);
+
+      const term = new Terminal({
+        cursorBlink: true,
+        convertEol: true,
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        fontSize: 14,
+        theme: {
+          background: "#020817",
+          foreground: "#d4e6ff",
+          cursor: "#60a5fa",
+          black: "#0b1222",
+          brightBlue: "#60a5fa",
+          green: "#22c55e",
+        },
+      });
+
+      term.open(holder);
+      term.write("\u001b[34mConnecting to shell...\u001b[0m\r\n");
+
+      const ws = new WebSocket(getTerminalSocketUrl());
+
+      const tab = {
+        id: tabId,
+        index: terminalTabCounter,
+        term,
+        ws,
+        history: [],
+        inputBuffer: "",
+      };
+
+      ws.onopen = () => {
+        term.write("\u001b[32mConnected. Happy hacking.\u001b[0m\r\n");
+      };
+
+      ws.onmessage = (event) => {
+        term.write(event.data || "");
+      };
+
+      ws.onclose = () => {
+        term.write("\r\n\u001b[31m[Terminal disconnected]\u001b[0m\r\n");
+      };
+
+      ws.onerror = () => {
+        term.write("\r\n\u001b[31m[Terminal connection error]\u001b[0m\r\n");
+      };
+
+      term.onData((data) => {
+        trackTerminalInput(tab, data);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+
+      terminalTabs.push(tab);
+      switchTerminalTab(tabId);
+    }
+
+    function closeTerminalTab(tabId) {
+      const index = terminalTabs.findIndex((t) => t.id === tabId);
+      if (index === -1) return;
+
+      const [tab] = terminalTabs.splice(index, 1);
+
+      try {
+        if (tab.ws && tab.ws.readyState < 2) {
+          tab.ws.close();
+        }
+      } catch (_) {}
+
+      try {
+        tab.term.dispose();
+      } catch (_) {}
+
+      const holder = document.getElementById(`terminal-instance-${tabId}`);
+      if (holder) holder.remove();
+
+      if (!terminalTabs.length) {
+        activeTerminalTabId = null;
+        renderTerminalTabs();
+        renderTerminalHistory();
+        return;
+      }
+
+      const nextTab = terminalTabs[Math.max(0, index - 1)] || terminalTabs[0];
+      switchTerminalTab(nextTab.id);
+    }
+
+    function clearTerminalHistory() {
+      const tab = terminalTabs.find((t) => t.id === activeTerminalTabId);
+      if (!tab) return;
+      tab.history = [];
+      renderTerminalHistory();
+    }
+
+    function closeAllTerminalTabs() {
+      const ids = terminalTabs.map((t) => t.id);
+      ids.forEach((id) => closeTerminalTab(id));
+      terminalTabs = [];
+      activeTerminalTabId = null;
+      renderTerminalTabs();
+      renderTerminalHistory();
+    }
+
+    async function refreshAll() {
+      await Promise.all([loadServices(), loadTodos(), loadBattery(), loadSystem(), loadPorts(), loadDocker()]);
+    }
+
+    document.getElementById("todoInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        addTodo();
+      }
+    });
+
+    document.getElementById("loginUsername").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") performLogin();
+    });
+
+    document.getElementById("loginPassword").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") performLogin();
+    });
+
+    (async () => {
+      const ok = await loadCurrentUser(true);
+      renderTodos();
+
+      if (ok) {
+        await refreshAll();
+        refreshTimer = setInterval(refreshAll, 3000);
+        sessionTimer = setInterval(() => loadCurrentUser(true), 30000);
+      } else {
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>
