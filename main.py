@@ -1266,6 +1266,83 @@ def insert_managed_cloudflared_block(config_content: str, managed_block: str) ->
     return "\n".join(output).strip("\n") + "\n"
 
 
+def remove_unmanaged_cloudflared_hostname_items(config_content: str, hostnames_to_remove):
+    targets = {
+        (hostname or "").strip().lower().rstrip(".")
+        for hostname in (hostnames_to_remove or [])
+        if (hostname or "").strip()
+    }
+    if not targets:
+        return config_content
+
+    ingress_header_pattern = re.compile(r"^\s*ingress\s*:\s*(?:#.*)?$")
+    top_level_key_pattern = re.compile(r"^[A-Za-z0-9_-]+\s*:\s*(?:#.*)?$")
+    hostname_line_pattern = re.compile(r"^\s*-\s*hostname\s*:\s*(.+?)\s*(?:#.*)?$")
+    item_start_pattern = re.compile(r"^\s*-\s+")
+
+    lines = config_content.splitlines()
+    output = []
+    in_ingress = False
+    item_buffer = []
+    item_hostname = None
+    item_indent = 0
+
+    def flush_item():
+        nonlocal item_buffer, item_hostname, item_indent
+        if not item_buffer:
+            return
+        if item_hostname not in targets:
+            output.extend(item_buffer)
+        item_buffer = []
+        item_hostname = None
+        item_indent = 0
+
+    for line in lines:
+        stripped = line.strip()
+
+        if not in_ingress:
+            output.append(line)
+            if ingress_header_pattern.match(line):
+                in_ingress = True
+            continue
+
+        if stripped and not line.startswith(" ") and top_level_key_pattern.match(line):
+            flush_item()
+            in_ingress = False
+            output.append(line)
+            continue
+
+        is_item_start = bool(item_start_pattern.match(line))
+        if is_item_start:
+            flush_item()
+            item_buffer = [line]
+            item_indent = len(line) - len(line.lstrip(" "))
+            host_match = hostname_line_pattern.match(line)
+            item_hostname = (
+                host_match.group(1).strip().strip('"').strip("'").lower().rstrip(".")
+                if host_match
+                else None
+            )
+            continue
+
+        if item_buffer:
+            if not stripped:
+                item_buffer.append(line)
+                continue
+
+            current_indent = len(line) - len(line.lstrip(" "))
+            if current_indent > item_indent:
+                item_buffer.append(line)
+                continue
+
+            flush_item()
+
+        output.append(line)
+
+    flush_item()
+    return "\n".join(output).strip("\n")
+
+
 def parse_cloudflared_tunnel_name_from_config(config_path: str) -> str | None:
     if not config_path or not os.path.exists(config_path):
         return None
@@ -1283,6 +1360,136 @@ def parse_cloudflared_tunnel_name_from_config(config_path: str) -> str | None:
         return None
 
     return None
+
+
+def get_cloudflared_candidate_config_paths(config_path: str | None = None):
+    if config_path:
+        return [os.path.abspath(config_path)]
+
+    return [
+        os.path.abspath(active_cloudflared_config_path),
+        os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+    ]
+
+
+def parse_cloudflared_config_entries(config_path: str | None = None, include_managed: bool = True):
+    candidate_paths = get_cloudflared_candidate_config_paths(config_path)
+    seen_paths = set()
+
+    ingress_header_pattern = re.compile(r"^\s*ingress\s*:\s*(?:#.*)?$")
+    top_level_key_pattern = re.compile(r"^[A-Za-z0-9_-]+\s*:\s*(?:#.*)?$")
+    hostname_line_pattern = re.compile(r"^\s*-\s*hostname\s*:\s*(.+?)\s*(?:#.*)?$")
+    service_line_pattern = re.compile(r"^\s*service\s*:\s*(.+?)\s*(?:#.*)?$")
+
+    for path in candidate_paths:
+        if not path or path in seen_paths:
+            continue
+        seen_paths.add(path)
+
+        if not os.path.exists(path):
+            continue
+
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.read().splitlines()
+        except Exception:
+            if config_path:
+                return []
+            continue
+
+        in_ingress = False
+        in_managed = False
+        current = None
+        entries = []
+
+        def _flush_current():
+            nonlocal current
+            if not current:
+                return
+            if current.get("hostname") and current.get("service"):
+                if include_managed or not current.get("managed"):
+                    entries.append(
+                        {
+                            "hostname": current["hostname"],
+                            "service": current["service"],
+                            "managed": bool(current.get("managed")),
+                            "config_path": path,
+                        }
+                    )
+            current = None
+
+        for line in lines:
+            stripped = line.strip()
+
+            if stripped == CLOUDFLARED_MANAGED_BLOCK_BEGIN:
+                in_managed = True
+                continue
+            if stripped == CLOUDFLARED_MANAGED_BLOCK_END:
+                in_managed = False
+                continue
+
+            if not in_ingress:
+                if ingress_header_pattern.match(line):
+                    in_ingress = True
+                continue
+
+            if stripped and not line.startswith(" ") and top_level_key_pattern.match(line):
+                _flush_current()
+                in_ingress = False
+                continue
+
+            host_match = hostname_line_pattern.match(line)
+            if host_match:
+                _flush_current()
+                hostname = host_match.group(1).strip().strip('"').strip("'").lower().rstrip(".")
+                current = {
+                    "hostname": hostname,
+                    "service": None,
+                    "managed": in_managed,
+                } if hostname else None
+                continue
+
+            if current:
+                service_match = service_line_pattern.match(line)
+                if service_match:
+                    service_value = service_match.group(1).strip().strip('"').strip("'")
+                    if service_value:
+                        current["service"] = service_value
+                elif stripped.startswith("- "):
+                    _flush_current()
+
+        _flush_current()
+        return entries
+
+    return []
+
+
+def list_cloudflared_config_hostnames(config_path: str | None = None):
+    entries = parse_cloudflared_config_entries(config_path=config_path, include_managed=True)
+    hostnames = []
+    seen = set()
+    for entry in entries:
+        hostname = entry.get("hostname")
+        if not hostname or hostname in seen:
+            continue
+        seen.add(hostname)
+        hostnames.append(hostname)
+    return hostnames
+
+
+def parse_cloudflared_service_target(service_value: str):
+    raw = (service_value or "").strip()
+    matched = re.match(r"^([A-Za-z][A-Za-z0-9+.-]*)://([^:/\s]+):(\d{1,5})$", raw)
+    if not matched:
+        return None
+
+    return {
+        "scheme": matched.group(1).lower(),
+        "host": matched.group(2).strip().lower(),
+        "port": int(matched.group(3)),
+        "raw": raw,
+    }
 
 
 def get_cloudflared_tunnel_name() -> str | None:
@@ -1535,7 +1742,7 @@ def ensure_cloudflared_dns_route(hostname: str):
     }
 
 
-def sync_managed_cloudflared_routes_to_path(config_path: str):
+def sync_managed_cloudflared_routes_to_path(config_path: str, cleanup_hostnames: set[str] | None = None):
     config_path = os.path.abspath(config_path)
     config_dir = os.path.dirname(config_path)
     if config_dir:
@@ -1547,6 +1754,8 @@ def sync_managed_cloudflared_routes_to_path(config_path: str):
             existing = f.read()
 
     cleaned = remove_managed_cloudflared_block(existing)
+    if cleanup_hostnames:
+        cleaned = remove_unmanaged_cloudflared_hostname_items(cleaned, cleanup_hostnames)
     normalized = normalize_cloudflared_ingress_indentation(cleaned)
     managed_block = build_managed_cloudflared_block()
     merged = insert_managed_cloudflared_block(normalized, managed_block)
@@ -1559,7 +1768,7 @@ def sync_managed_cloudflared_routes_to_path(config_path: str):
     return config_path
 
 
-def sync_managed_cloudflared_routes():
+def sync_managed_cloudflared_routes(cleanup_hostnames: set[str] | None = None):
     global active_cloudflared_config_path
 
     primary_path = os.path.abspath(CLOUDFLARED_CONFIG_PATH)
@@ -1573,7 +1782,7 @@ def sync_managed_cloudflared_routes():
 
     for candidate in candidates:
         try:
-            used_path = sync_managed_cloudflared_routes_to_path(candidate)
+            used_path = sync_managed_cloudflared_routes_to_path(candidate, cleanup_hostnames=cleanup_hostnames)
             active_cloudflared_config_path = used_path
             return used_path
         except PermissionError:
@@ -2392,8 +2601,12 @@ def remove_ssh_key(key_id: int, user=Depends(require_role("admin"))):
 def get_cloudflared_routes(user=Depends(require_role("admin"))):
     tunnel_name = get_cloudflared_tunnel_name()
     tunnel_processes = list_cloudflared_tunnel_processes(tunnel_name)
+    routes = list_cloudflared_routes()
+    config_hostnames = list_cloudflared_config_hostnames(active_cloudflared_config_path)
+    managed_hostnames = {item["hostname"] for item in routes}
+    unmanaged_config_hostnames = [hostname for hostname in config_hostnames if hostname not in managed_hostnames]
     return {
-        "routes": list_cloudflared_routes(),
+        "routes": routes,
         "config_path": active_cloudflared_config_path,
         "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
         "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
@@ -2403,6 +2616,8 @@ def get_cloudflared_routes(user=Depends(require_role("admin"))):
         "tunnel_running": len(tunnel_processes) > 0,
         "tunnel_process_count": len(tunnel_processes),
         "tunnel_pids": [item["pid"] for item in tunnel_processes],
+        "config_hostnames": config_hostnames,
+        "unmanaged_config_hostnames": unmanaged_config_hostnames,
     }
 
 
@@ -2452,6 +2667,102 @@ def restart_cloudflared_tunnel(user=Depends(require_role("admin"))):
         "processes": running_processes,
         "config_path": used_config_path,
         "log_path": started["log_path"],
+    }
+
+
+@app.post("/cloudflared/routes/import-unmanaged")
+def import_unmanaged_cloudflared_routes(user=Depends(require_role("admin"))):
+    config_entries = parse_cloudflared_config_entries(
+        config_path=active_cloudflared_config_path,
+        include_managed=False,
+    )
+    existing_routes = list_cloudflared_routes()
+    managed_hostnames = {item["hostname"] for item in existing_routes}
+
+    imported = []
+    skipped = []
+
+    for entry in config_entries:
+        hostname = (entry.get("hostname") or "").strip().lower().rstrip(".")
+        service_value = (entry.get("service") or "").strip()
+
+        if not hostname:
+            continue
+
+        if hostname in managed_hostnames:
+            skipped.append({"hostname": hostname, "reason": "Already managed"})
+            continue
+
+        parsed_service = parse_cloudflared_service_target(service_value)
+        if not parsed_service:
+            skipped.append({"hostname": hostname, "reason": f"Unsupported service format: {service_value}"})
+            continue
+
+        try:
+            normalized_hostname = normalize_cloudflared_hostname(hostname)
+            normalized_scheme = normalize_cloudflared_service_scheme(parsed_service["scheme"])
+            normalized_host = normalize_cloudflared_service_host(parsed_service["host"])
+            normalized_port = int(parsed_service["port"])
+
+            if normalized_port < 1 or normalized_port > 65535:
+                raise HTTPException(status_code=400, detail="service_port must be between 1 and 65535")
+
+            created = create_cloudflared_route_record(
+                hostname=normalized_hostname,
+                service_scheme=normalized_scheme,
+                service_host=normalized_host,
+                service_port=normalized_port,
+                created_by=user["username"],
+            )
+            imported.append(created)
+            managed_hostnames.add(normalized_hostname)
+
+            try:
+                ensure_cloudflared_dns_route(normalized_hostname)
+            except Exception:
+                # DNS errors should not block import from existing config.
+                pass
+        except sqlite3.IntegrityError:
+            skipped.append({"hostname": hostname, "reason": "Hostname already exists"})
+        except HTTPException as e:
+            detail = e.detail if isinstance(e.detail, str) else "Invalid route"
+            skipped.append({"hostname": hostname, "reason": detail})
+        except Exception as e:
+            skipped.append({"hostname": hostname, "reason": str(e)})
+
+    cleanup_targets = {item["hostname"] for item in imported}
+
+    try:
+        used_config_path = sync_managed_cloudflared_routes(cleanup_hostnames=cleanup_targets)
+    except Exception:
+        if imported:
+            for created in imported:
+                try:
+                    delete_cloudflared_route_record(created["id"])
+                except Exception:
+                    pass
+            try:
+                sync_managed_cloudflared_routes()
+            except Exception:
+                pass
+        raise
+
+    log_audit(
+        user["username"],
+        "import_cloudflared_routes",
+        (
+            f"Imported {len(imported)} unmanaged Cloudflared route(s) from config "
+            f"({', '.join(item['hostname'] for item in imported) if imported else 'none'})"
+        ),
+    )
+
+    return {
+        "status": "imported",
+        "imported_count": len(imported),
+        "imported": imported,
+        "skipped_count": len(skipped),
+        "skipped": skipped,
+        "config_path": used_config_path,
     }
 
 

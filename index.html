@@ -1251,14 +1251,17 @@
       <code id="cloudflaredConfigPath">/etc/cloudflared/config.yml</code>.
     </div>
     <div id="cloudflaredRouteInfo" class="muted" style="margin-top: 4px;"></div>
+    <div id="cloudflaredConfigHostnames" class="muted" style="margin-top: 4px;"></div>
 
     <div style="margin-top: 10px;">
       <button class="btn-neutral" onclick="loadCloudflaredRoutes()">Refresh Routes</button>
+      <button id="importCloudflaredBtn" class="btn-success" onclick="importUnmanagedCloudflaredRoutes()">Import Unmanaged Hostnames</button>
       <button id="restartCloudflaredBtn" class="btn-warn" onclick="restartCloudflaredTunnel()">Restart Tunnel</button>
     </div>
 
     <div class="stack" style="margin-top: 10px; max-width: 820px;">
-      <input id="newCloudflaredHostname" class="field" placeholder="Hostname (e.g. app.example.com)" />
+      <input id="newCloudflaredHostname" class="field" list="cloudflaredHostnameSuggestions" placeholder="Hostname (e.g. app.example.com)" />
+      <datalist id="cloudflaredHostnameSuggestions"></datalist>
       <select id="newCloudflaredScheme" class="field">
         <option value="http">http</option>
         <option value="https">https</option>
@@ -2596,9 +2599,15 @@
       const body = document.getElementById("cloudflaredRoutesBody");
       const configPathEl = document.getElementById("cloudflaredConfigPath");
       const routeInfoEl = document.getElementById("cloudflaredRouteInfo");
+      const configHostnamesEl = document.getElementById("cloudflaredConfigHostnames");
+      const hostnameSuggestionsEl = document.getElementById("cloudflaredHostnameSuggestions");
+      const importBtn = document.getElementById("importCloudflaredBtn");
 
       if (!hasRole("admin")) {
         body.innerHTML = "";
+        if (configHostnamesEl) configHostnamesEl.innerText = "";
+        if (hostnameSuggestionsEl) hostnameSuggestionsEl.innerHTML = "";
+        if (importBtn) importBtn.disabled = true;
         return;
       }
 
@@ -2607,12 +2616,41 @@
         const data = await res.json();
         const routes = data.routes || [];
         cloudflaredRoutes = routes;
+        const configHostnames = Array.isArray(data.config_hostnames) ? data.config_hostnames : [];
+        const unmanagedConfigHostnames = Array.isArray(data.unmanaged_config_hostnames)
+          ? data.unmanaged_config_hostnames
+          : [];
+
+        if (importBtn) {
+          importBtn.disabled = unmanagedConfigHostnames.length === 0;
+          importBtn.innerText = unmanagedConfigHostnames.length
+            ? `Import Unmanaged Hostnames (${unmanagedConfigHostnames.length})`
+            : "Import Unmanaged Hostnames";
+        }
         configPathEl.innerText = data.config_path || "/etc/cloudflared/config.yml";
         const tunnelName = data.tunnel_name || "(not detected)";
         const tunnelState = data.tunnel_running ? `running (${data.tunnel_process_count || 0})` : "stopped";
         const dnsMode = data.dns_auto_route ? "auto DNS ON" : "auto DNS OFF";
         const cliMode = data.cloudflared_cli_available ? "cloudflared CLI detected" : "cloudflared CLI missing";
         routeInfoEl.innerText = `Tunnel: ${tunnelName} • ${tunnelState} • ${dnsMode} • ${cliMode}`;
+
+        if (hostnameSuggestionsEl) {
+          hostnameSuggestionsEl.innerHTML = configHostnames
+            .map((hostname) => `<option value="${esc(hostname)}"></option>`)
+            .join("");
+        }
+
+        if (configHostnamesEl) {
+          if (!configHostnames.length) {
+            configHostnamesEl.innerText = "No hostname entries found in active Cloudflared config yet.";
+          } else {
+            const base = `Config hostnames (${configHostnames.length}): ${configHostnames.join(", ")}`;
+            const unmanagedNote = unmanagedConfigHostnames.length
+              ? ` • Not yet managed in dashboard: ${unmanagedConfigHostnames.join(", ")}`
+              : "";
+            configHostnamesEl.innerText = `${base}${unmanagedNote}`;
+          }
+        }
 
         if (!routes.length) {
           body.innerHTML = `<tr><td colspan="6" class="muted">No Cloudflared routes configured yet.</td></tr>`;
@@ -2638,7 +2676,40 @@
         }).join("");
       } catch (e) {
         routeInfoEl.innerText = "Unable to fetch tunnel metadata.";
+        if (configHostnamesEl) configHostnamesEl.innerText = "Unable to read hostnames from Cloudflared config.";
+        if (importBtn) {
+          importBtn.disabled = true;
+          importBtn.innerText = "Import Unmanaged Hostnames";
+        }
         body.innerHTML = `<tr><td colspan="6" class="muted">${esc(e.message || "Failed to load Cloudflared routes.")}</td></tr>`;
+      }
+    }
+
+    async function importUnmanagedCloudflaredRoutes() {
+      if (!hasRole("admin")) {
+        alert("Admin role required.");
+        return;
+      }
+
+      const msg = document.getElementById("createCloudflaredMsg");
+      const importBtn = document.getElementById("importCloudflaredBtn");
+      msg.innerText = "Importing unmanaged Cloudflared hostnames from config...";
+      if (importBtn) importBtn.disabled = true;
+
+      try {
+        const res = await apiFetch("/cloudflared/routes/import-unmanaged", { method: "POST" });
+        const data = await res.json();
+        const importedCount = Number(data.imported_count || 0);
+        const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+        const skippedSummary = skipped.length
+          ? ` • Skipped: ${skipped.slice(0, 3).map((s) => `${s.hostname} (${s.reason})`).join(", ")}${skipped.length > 3 ? "..." : ""}`
+          : "";
+        msg.innerText = `Imported ${importedCount} unmanaged route(s).${skippedSummary}`;
+        await loadCloudflaredRoutes();
+      } catch (e) {
+        msg.innerText = e.message || "Failed to import unmanaged hostnames.";
+      } finally {
+        if (importBtn) importBtn.disabled = false;
       }
     }
 
