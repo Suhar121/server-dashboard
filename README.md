@@ -7,7 +7,7 @@ It provides:
 - Role-based login/authentication (`viewer`, `operator`, `admin`)
 - Live system metrics (battery, CPU, RAM)
 - Open ports and Docker visibility
-- Managed service run/stop + logs
+- Managed service run/stop + logs.
 - To-do tracking for ops tasks
 - Audit logs and alert rules
 - Admin SSH public key manager (writes managed `authorized_keys` block)
