@@ -11,6 +11,7 @@ It provides:
 - To-do tracking for ops tasks
 - Audit logs and alert rules
 - Admin SSH public key manager (writes managed `authorized_keys` block)
+- Admin Cloudflared route manager (writes managed `ingress` block in config)
 - Admin file manager (browse/read/write/upload/download/chmod)
 - File manager Git clone action (clone repos into current folder)
 - Browser terminal via WebSocket + PTY
@@ -59,6 +60,7 @@ This project is an operational dashboard intended for local/server administratio
   - User lifecycle
   - Audit logs
   - Alert rules
+  - Cloudflared hostname-to-port routes
   - File manager APIs
 - **Terminal**
   - Browser terminal over WebSocket and PTY shell
@@ -139,7 +141,7 @@ This project is an operational dashboard intended for local/server administratio
 |----------|--------|
 | viewer   | Read dashboards, metrics, logs, ports, docker, state |
 | operator | viewer + service run/stop, todo edit, terminal, file download |
-| admin    | operator + users, audit, alert rules, file manager read/write/delete/upload/chmod, notify, docs |
+| admin    | operator + users, audit, alert rules, ssh keys, cloudflared routes, file manager read/write/delete/upload/chmod, notify, docs |
 
 ### Special behavior
 - Last admin cannot be deleted/demoted.
@@ -158,6 +160,14 @@ Defined/used in backend:
 - `USERS_DB_PATH` — SQLite DB file path (default `users.db`)
 - `ADMIN_USERNAME` — bootstrap admin username
 - `ADMIN_PASSWORD` — bootstrap admin password (min 8 chars)
+- `CLOUDFLARED_CONFIG_PATH` — Cloudflared config file path (default `/etc/cloudflared/config.yml`)
+- `CLOUDFLARED_FALLBACK_CONFIG_PATH` — writable fallback path if primary path is not writable (default `./cloudflared/config.yml`)
+- `CLOUDFLARED_TUNNEL_NAME` — tunnel name/UUID for automatic DNS routing from UI
+- `CLOUDFLARED_DNS_AUTO_ROUTE` — auto-run `cloudflared tunnel route dns` on route create (`true` by default)
+- `CLOUDFLARED_BIN_PATH` — cloudflared executable path (default `cloudflared`)
+- `CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS` — DNS command timeout (default `20`)
+
+If writing to `/etc/cloudflared/config.yml` fails (common on non-root setups), the app automatically tries the fallback path.
 
 ### Important
 Current `.env` contains real-looking credentials. Rotate them immediately before any shared/deployed usage.
@@ -258,6 +268,12 @@ Base URL: `http://127.0.0.1:8000`
 - `GET /ssh/keys`
 - `POST /ssh/keys`
 - `DELETE /ssh/keys/{key_id}`
+
+### Cloudflared route manager
+
+- `GET /cloudflared/routes`
+- `POST /cloudflared/routes`
+- `DELETE /cloudflared/routes/{route_id}`
 
 ### File manager
 
@@ -364,6 +380,15 @@ SQLite DB (`users.db`) tables:
    - `threshold`
    - `enabled`
    - `created_at`
+
+6. `cloudflared_routes`
+  - `id` (PK)
+  - `hostname` (UNIQUE)
+  - `service_scheme` (`http`/`https`/`tcp`)
+  - `service_host`
+  - `service_port`
+  - `created_by`
+  - `created_at`
 
 ---
 

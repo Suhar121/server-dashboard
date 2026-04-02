@@ -20,6 +20,7 @@ import hmac
 import re
 import base64
 import pwd
+import tempfile
 
 app = FastAPI()
 
@@ -59,6 +60,8 @@ USERS_DB_PATH = os.getenv("USERS_DB_PATH", "users.db")
 PASSWORD_ITERATIONS = 150_000
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,64}$")
 SSH_USERNAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
+CLOUDFLARED_HOSTNAME_PATTERN = re.compile(r"^(?:\*\.)?(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$")
+CLOUDFLARED_SERVICE_HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}[A-Za-z0-9]$|^[A-Za-z0-9]$")
 
 ROLE_ORDER = {
     "viewer": 1,
@@ -83,6 +86,34 @@ SUPPORTED_SSH_KEY_TYPES = {
     "sk-ecdsa-sha2-nistp256@openssh.com",
 }
 GIT_CLONE_FOLDER_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+CLOUDFLARED_CONFIG_PATH = os.getenv("CLOUDFLARED_CONFIG_PATH", "/etc/cloudflared/config.yml")
+CLOUDFLARED_FALLBACK_CONFIG_PATH = os.getenv(
+    "CLOUDFLARED_FALLBACK_CONFIG_PATH",
+    os.path.join(os.getcwd(), "cloudflared", "config.yml"),
+)
+CLOUDFLARED_MANAGED_BLOCK_BEGIN = "# >>> dashboard-managed-cloudflared-routes >>>"
+CLOUDFLARED_MANAGED_BLOCK_END = "# <<< dashboard-managed-cloudflared-routes <<<"
+SUPPORTED_CLOUDFLARED_SCHEMES = {"http", "https", "tcp"}
+active_cloudflared_config_path = os.path.abspath(CLOUDFLARED_CONFIG_PATH)
+CLOUDFLARED_BIN_PATH = (os.getenv("CLOUDFLARED_BIN_PATH", "cloudflared") or "cloudflared").strip()
+CLOUDFLARED_TUNNEL_NAME = os.getenv("CLOUDFLARED_TUNNEL_NAME", "").strip()
+CLOUDFLARED_DNS_AUTO_ROUTE = (os.getenv("CLOUDFLARED_DNS_AUTO_ROUTE", "true") or "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+try:
+    _cf_dns_timeout = int(os.getenv("CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS", "20"))
+except ValueError:
+    _cf_dns_timeout = 20
+CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS = max(5, min(120, _cf_dns_timeout))
+try:
+    _cf_tunnel_stop_timeout = int(os.getenv("CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS", "10"))
+except ValueError:
+    _cf_tunnel_stop_timeout = 10
+CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS = max(2, min(30, _cf_tunnel_stop_timeout))
+CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
 
 
 class RunServiceRequest(BaseModel):
@@ -142,6 +173,20 @@ class CreateSshKeyRequest(BaseModel):
     ssh_user: str
     label: str
     public_key: str
+
+
+class CreateCloudflaredRouteRequest(BaseModel):
+    hostname: str
+    service_port: int
+    service_host: str = "127.0.0.1"
+    service_scheme: str = "http"
+
+
+class UpdateCloudflaredRouteRequest(BaseModel):
+    hostname: str | None = None
+    service_port: int | None = None
+    service_host: str | None = None
+    service_scheme: str | None = None
 
 
 class FileReadRequest(BaseModel):
@@ -280,6 +325,19 @@ def init_user_db():
             created_by TEXT NOT NULL,
             created_at INTEGER NOT NULL,
             UNIQUE(ssh_user, fingerprint_sha256)
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cloudflared_routes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hostname TEXT NOT NULL UNIQUE,
+            service_scheme TEXT NOT NULL,
+            service_host TEXT NOT NULL,
+            service_port INTEGER NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL
         )
         """
     )
@@ -903,6 +961,641 @@ def sync_managed_ssh_keys(ssh_user: str):
     except Exception:
         # Not running as root or unsupported environment.
         pass
+
+
+def normalize_cloudflared_hostname(hostname: str) -> str:
+    normalized = (hostname or "").strip().lower().rstrip(".")
+    if not normalized or not CLOUDFLARED_HOSTNAME_PATTERN.match(normalized):
+        raise HTTPException(status_code=400, detail="Invalid hostname (example: app.example.com)")
+    return normalized
+
+
+def normalize_cloudflared_service_host(service_host: str) -> str:
+    normalized = (service_host or "").strip().lower()
+    if not normalized:
+        normalized = "127.0.0.1"
+
+    if any(ch in normalized for ch in (" ", "/", ":", "\n", "\r", "\x00")):
+        raise HTTPException(status_code=400, detail="Invalid local service host")
+
+    if not CLOUDFLARED_SERVICE_HOST_PATTERN.match(normalized):
+        raise HTTPException(status_code=400, detail="Invalid local service host")
+
+    return normalized
+
+
+def normalize_cloudflared_service_scheme(service_scheme: str) -> str:
+    normalized = (service_scheme or "http").strip().lower()
+    if normalized not in SUPPORTED_CLOUDFLARED_SCHEMES:
+        raise HTTPException(status_code=400, detail="service_scheme must be http, https, or tcp")
+    return normalized
+
+
+def list_cloudflared_routes():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, hostname, service_scheme, service_host, service_port, created_by, created_at
+        FROM cloudflared_routes
+        ORDER BY id DESC
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "hostname": row[1],
+            "service_scheme": row[2],
+            "service_host": row[3],
+            "service_port": row[4],
+            "created_by": row[5],
+            "created_at": row[6],
+        }
+        for row in rows
+    ]
+
+
+def list_cloudflared_route_rows():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, hostname, service_scheme, service_host, service_port
+        FROM cloudflared_routes
+        ORDER BY id ASC
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def get_cloudflared_route_record(route_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, hostname, service_scheme, service_host, service_port, created_by, created_at
+        FROM cloudflared_routes
+        WHERE id = ?
+        """,
+        (route_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "hostname": row[1],
+        "service_scheme": row[2],
+        "service_host": row[3],
+        "service_port": row[4],
+        "created_by": row[5],
+        "created_at": row[6],
+    }
+
+
+def create_cloudflared_route_record(
+    hostname: str,
+    service_scheme: str,
+    service_host: str,
+    service_port: int,
+    created_by: str,
+):
+    now = int(time.time())
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO cloudflared_routes(
+            hostname,
+            service_scheme,
+            service_host,
+            service_port,
+            created_by,
+            created_at
+        )
+        VALUES(?, ?, ?, ?, ?, ?)
+        """,
+        (hostname, service_scheme, service_host, service_port, created_by, now),
+    )
+    new_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": new_id,
+        "hostname": hostname,
+        "service_scheme": service_scheme,
+        "service_host": service_host,
+        "service_port": service_port,
+        "created_by": created_by,
+        "created_at": now,
+    }
+
+
+def delete_cloudflared_route_record(route_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM cloudflared_routes WHERE id = ?", (route_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return deleted > 0
+
+
+def update_cloudflared_route_record(
+    route_id: int,
+    hostname: str,
+    service_scheme: str,
+    service_host: str,
+    service_port: int,
+):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE cloudflared_routes
+        SET hostname = ?, service_scheme = ?, service_host = ?, service_port = ?
+        WHERE id = ?
+        """,
+        (hostname, service_scheme, service_host, service_port, route_id),
+    )
+    updated = cur.rowcount
+    conn.commit()
+    conn.close()
+    return updated > 0
+
+
+def restore_cloudflared_route_record(record: dict):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO cloudflared_routes(
+            id,
+            hostname,
+            service_scheme,
+            service_host,
+            service_port,
+            created_by,
+            created_at
+        )
+        VALUES(?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            record["id"],
+            record["hostname"],
+            record["service_scheme"],
+            record["service_host"],
+            record["service_port"],
+            record["created_by"],
+            record["created_at"],
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def remove_managed_cloudflared_block(content: str) -> str:
+    lines = content.splitlines()
+    cleaned_lines = []
+    inside_managed_block = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped == CLOUDFLARED_MANAGED_BLOCK_BEGIN:
+            inside_managed_block = True
+            continue
+
+        if stripped == CLOUDFLARED_MANAGED_BLOCK_END:
+            inside_managed_block = False
+            continue
+
+        if not inside_managed_block:
+            cleaned_lines.append(line)
+
+    return "\n".join(cleaned_lines).strip("\n")
+
+
+def normalize_cloudflared_ingress_indentation(config_content: str) -> str:
+    ingress_header_pattern = re.compile(r"^\s*ingress\s*:\s*(?:#.*)?$")
+    top_level_key_pattern = re.compile(r"^[A-Za-z0-9_-]+\s*:\s*(?:#.*)?$")
+
+    lines = config_content.splitlines()
+    normalized = []
+    in_ingress = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if not in_ingress:
+            normalized.append(line)
+            if ingress_header_pattern.match(line):
+                in_ingress = True
+            continue
+
+        if stripped and not line.startswith(" ") and top_level_key_pattern.match(line):
+            in_ingress = False
+            normalized.append(line)
+            continue
+
+        if not stripped:
+            normalized.append("")
+            continue
+
+        if stripped.startswith("#"):
+            normalized.append(f"  {stripped}")
+            continue
+
+        if stripped.startswith("- "):
+            normalized.append(f"  {stripped}")
+            continue
+
+        leading_spaces = len(line) - len(line.lstrip(" "))
+        if leading_spaces < 4:
+            normalized.append(f"    {stripped}")
+        else:
+            normalized.append(line)
+
+    return "\n".join(normalized).strip("\n")
+
+
+def build_managed_cloudflared_block() -> str:
+    route_rows = list_cloudflared_route_rows()
+    if not route_rows:
+        return ""
+
+    lines = [f"  {CLOUDFLARED_MANAGED_BLOCK_BEGIN}"]
+    for row in route_rows:
+        route_id, hostname, service_scheme, service_host, service_port = row
+        lines.append(f"  # dashboard-route-id:{route_id}")
+        lines.append(f"  - hostname: {hostname}")
+        lines.append(f"    service: {service_scheme}://{service_host}:{service_port}")
+    lines.append(f"  {CLOUDFLARED_MANAGED_BLOCK_END}")
+    return "\n".join(lines)
+
+
+def insert_managed_cloudflared_block(config_content: str, managed_block: str) -> str:
+    ingress_pattern = re.compile(r"^\s*ingress\s*:\s*(?:#.*)?$")
+    lines = config_content.splitlines()
+    output = []
+    inserted = False
+
+    for line in lines:
+        output.append(line)
+        if not inserted and ingress_pattern.match(line):
+            inserted = True
+            if managed_block:
+                output.append(managed_block)
+
+    if not inserted:
+        if output:
+            output.append("")
+        output.append("ingress:")
+        if managed_block:
+            output.append(managed_block)
+        output.append("  - service: http_status:404")
+
+    return "\n".join(output).strip("\n") + "\n"
+
+
+def parse_cloudflared_tunnel_name_from_config(config_path: str) -> str | None:
+    if not config_path or not os.path.exists(config_path):
+        return None
+
+    try:
+        with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("tunnel:"):
+                    value = line.split(":", 1)[1].strip().strip('"').strip("'")
+                    return value or None
+    except Exception:
+        return None
+
+    return None
+
+
+def get_cloudflared_tunnel_name() -> str | None:
+    if CLOUDFLARED_TUNNEL_NAME:
+        return CLOUDFLARED_TUNNEL_NAME
+
+    candidate_paths = [
+        active_cloudflared_config_path,
+        os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+    ]
+
+    seen = set()
+    for path in candidate_paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        tunnel_name = parse_cloudflared_tunnel_name_from_config(path)
+        if tunnel_name:
+            return tunnel_name
+
+    return None
+
+
+def is_cloudflared_cli_available() -> bool:
+    if os.path.sep in CLOUDFLARED_BIN_PATH:
+        return os.path.exists(CLOUDFLARED_BIN_PATH) and os.access(CLOUDFLARED_BIN_PATH, os.X_OK)
+    return shutil.which(CLOUDFLARED_BIN_PATH) is not None
+
+
+def _is_cloudflared_tunnel_process(cmdline: list[str], process_name: str = "") -> bool:
+    cmd_tokens = [str(token).strip().lower() for token in (cmdline or []) if str(token).strip()]
+    cmd_joined = " ".join(cmd_tokens)
+    process_name = (process_name or "").strip().lower()
+    configured_bin = os.path.basename(CLOUDFLARED_BIN_PATH).strip().lower()
+
+    is_cloudflared_binary = (
+        "cloudflared" in process_name
+        or "cloudflared" in cmd_joined
+        or (configured_bin and configured_bin in cmd_joined)
+    )
+    if not is_cloudflared_binary:
+        return False
+
+    has_tunnel_run_tokens = "tunnel" in cmd_tokens and "run" in cmd_tokens
+    has_tunnel_run_phrase = " tunnel " in f" {cmd_joined} " and " run " in f" {cmd_joined} "
+    return has_tunnel_run_tokens or has_tunnel_run_phrase
+
+
+def list_cloudflared_tunnel_processes(tunnel_name: str | None = None):
+    expected_tunnel = (tunnel_name or "").strip().lower()
+    processes = []
+
+    for proc in psutil.process_iter(["pid", "name", "cmdline", "create_time"]):
+        try:
+            info = proc.info
+            cmdline = info.get("cmdline") or []
+            process_name = info.get("name") or ""
+
+            if not _is_cloudflared_tunnel_process(cmdline, process_name):
+                continue
+
+            command = " ".join(str(part) for part in cmdline)
+            if expected_tunnel and expected_tunnel not in command.lower():
+                continue
+
+            processes.append(
+                {
+                    "pid": int(info.get("pid")),
+                    "command": command,
+                    "started_at": int(info.get("create_time") or 0),
+                }
+            )
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+        except Exception:
+            continue
+
+    processes.sort(key=lambda item: item["pid"])
+    return processes
+
+
+def stop_cloudflared_tunnel_processes(tunnel_name: str | None = None):
+    matched = list_cloudflared_tunnel_processes(tunnel_name)
+    if not matched:
+        return []
+
+    pid_to_process = {}
+    for item in matched:
+        pid = item["pid"]
+        try:
+            pid_to_process[pid] = psutil.Process(pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    for process in pid_to_process.values():
+        try:
+            process.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    gone, alive = psutil.wait_procs(
+        list(pid_to_process.values()),
+        timeout=CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS,
+    )
+
+    stopped_pids = [proc.pid for proc in gone]
+
+    for process in alive:
+        try:
+            process.kill()
+            stopped_pids.append(process.pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    return sorted(set(stopped_pids))
+
+
+def start_cloudflared_tunnel_process(tunnel_name: str, config_path: str):
+    tunnel_name = (tunnel_name or "").strip()
+    if not tunnel_name:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to determine Cloudflared tunnel name. Set CLOUDFLARED_TUNNEL_NAME "
+                "or add 'tunnel: <name-or-uuid>' in your cloudflared config file."
+            ),
+        )
+
+    if not is_cloudflared_cli_available():
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Cloudflared CLI not found. Install cloudflared or set CLOUDFLARED_BIN_PATH "
+                "to the executable path."
+            ),
+        )
+
+    active_config = os.path.abspath(config_path or active_cloudflared_config_path)
+    command = [
+        CLOUDFLARED_BIN_PATH,
+        "--config",
+        active_config,
+        "tunnel",
+        "run",
+        tunnel_name,
+    ]
+
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        with open(CLOUDFLARED_TUNNEL_LOG_PATH, "a", encoding="utf-8") as logfile:
+            logfile.write(f"\n===== CLOUDFLARED START: {tunnel_name} @ {int(time.time())} =====\n")
+            logfile.flush()
+            proc = subprocess.Popen(
+                command,
+                stdout=logfile,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                text=True,
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start Cloudflared tunnel process: {str(e)}")
+
+    return {
+        "pid": proc.pid,
+        "command": " ".join(command),
+        "log_path": os.path.abspath(CLOUDFLARED_TUNNEL_LOG_PATH),
+    }
+
+
+def ensure_cloudflared_dns_route(hostname: str):
+    if not CLOUDFLARED_DNS_AUTO_ROUTE:
+        return {
+            "dns_routed": False,
+            "dns_message": "Auto DNS route creation is disabled",
+            "tunnel_name": get_cloudflared_tunnel_name(),
+        }
+
+    if not is_cloudflared_cli_available():
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Cloudflared CLI not found. Install cloudflared or set CLOUDFLARED_BIN_PATH "
+                "to the executable path."
+            ),
+        )
+
+    tunnel_name = get_cloudflared_tunnel_name()
+    if not tunnel_name:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to determine Cloudflared tunnel name. Set CLOUDFLARED_TUNNEL_NAME "
+                "or add 'tunnel: <name-or-uuid>' in your cloudflared config file."
+            ),
+        )
+
+    tmp_config_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".yml", delete=False) as tmp_file:
+            tmp_file.write(f"tunnel: {tunnel_name}\n")
+            tmp_config_path = tmp_file.name
+
+        result = subprocess.run(
+            [
+                CLOUDFLARED_BIN_PATH,
+                "--config",
+                tmp_config_path,
+                "tunnel",
+                "route",
+                "dns",
+                tunnel_name,
+                hostname,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Timed out while creating Cloudflared DNS route")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to execute cloudflared DNS route command: {str(e)}")
+    finally:
+        if tmp_config_path:
+            try:
+                os.remove(tmp_config_path)
+            except Exception:
+                pass
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "cloudflared DNS route failed").strip()
+        if "already exists" in detail.lower():
+            return {
+                "dns_routed": True,
+                "dns_message": "DNS route already existed",
+                "tunnel_name": tunnel_name,
+            }
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Failed to create DNS route for '{hostname}' via tunnel '{tunnel_name}': "
+                f"{detail[:500]}"
+            ),
+        )
+
+    return {
+        "dns_routed": True,
+        "dns_message": "DNS route created",
+        "tunnel_name": tunnel_name,
+    }
+
+
+def sync_managed_cloudflared_routes_to_path(config_path: str):
+    config_path = os.path.abspath(config_path)
+    config_dir = os.path.dirname(config_path)
+    if config_dir:
+        os.makedirs(config_dir, mode=0o755, exist_ok=True)
+
+    existing = ""
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+            existing = f.read()
+
+    cleaned = remove_managed_cloudflared_block(existing)
+    normalized = normalize_cloudflared_ingress_indentation(cleaned)
+    managed_block = build_managed_cloudflared_block()
+    merged = insert_managed_cloudflared_block(normalized, managed_block)
+
+    tmp_path = config_path + ".tmp-dashboard"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(merged)
+
+    os.replace(tmp_path, config_path)
+    return config_path
+
+
+def sync_managed_cloudflared_routes():
+    global active_cloudflared_config_path
+
+    primary_path = os.path.abspath(CLOUDFLARED_CONFIG_PATH)
+    fallback_path = os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH)
+
+    candidates = [primary_path]
+    if fallback_path != primary_path:
+        candidates.append(fallback_path)
+
+    permission_denied_paths = []
+
+    for candidate in candidates:
+        try:
+            used_path = sync_managed_cloudflared_routes_to_path(candidate)
+            active_cloudflared_config_path = used_path
+            return used_path
+        except PermissionError:
+            permission_denied_paths.append(candidate)
+        except OSError as e:
+            if getattr(e, "errno", None) == 13:
+                permission_denied_paths.append(candidate)
+            else:
+                raise
+
+    if permission_denied_paths:
+        tried = ", ".join(permission_denied_paths)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Permission denied while writing Cloudflared config. "
+                f"Tried: {tried}. "
+                "Set CLOUDFLARED_CONFIG_PATH (or CLOUDFLARED_FALLBACK_CONFIG_PATH) to a writable path."
+            ),
+        )
+
+    raise HTTPException(status_code=500, detail="Failed to write Cloudflared config")
 
 
 def is_safe_path(path: str) -> bool:
@@ -1693,6 +2386,277 @@ def remove_ssh_key(key_id: int, user=Depends(require_role("admin"))):
     )
 
     return {"status": "deleted", "id": key_id}
+
+
+@app.get("/cloudflared/routes")
+def get_cloudflared_routes(user=Depends(require_role("admin"))):
+    tunnel_name = get_cloudflared_tunnel_name()
+    tunnel_processes = list_cloudflared_tunnel_processes(tunnel_name)
+    return {
+        "routes": list_cloudflared_routes(),
+        "config_path": active_cloudflared_config_path,
+        "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+        "tunnel_name": tunnel_name,
+        "dns_auto_route": CLOUDFLARED_DNS_AUTO_ROUTE,
+        "cloudflared_cli_available": is_cloudflared_cli_available(),
+        "tunnel_running": len(tunnel_processes) > 0,
+        "tunnel_process_count": len(tunnel_processes),
+        "tunnel_pids": [item["pid"] for item in tunnel_processes],
+    }
+
+
+@app.get("/cloudflared/tunnel/status")
+def get_cloudflared_tunnel_status(user=Depends(require_role("admin"))):
+    tunnel_name = get_cloudflared_tunnel_name()
+    tunnel_processes = list_cloudflared_tunnel_processes(tunnel_name)
+    return {
+        "tunnel_name": tunnel_name,
+        "running": len(tunnel_processes) > 0,
+        "process_count": len(tunnel_processes),
+        "processes": tunnel_processes,
+        "config_path": active_cloudflared_config_path,
+    }
+
+
+@app.post("/cloudflared/tunnel/restart")
+def restart_cloudflared_tunnel(user=Depends(require_role("admin"))):
+    tunnel_name = get_cloudflared_tunnel_name()
+    if not tunnel_name:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to determine Cloudflared tunnel name. Set CLOUDFLARED_TUNNEL_NAME "
+                "or add 'tunnel: <name-or-uuid>' in your cloudflared config file."
+            ),
+        )
+
+    used_config_path = sync_managed_cloudflared_routes()
+    stopped_pids = stop_cloudflared_tunnel_processes(tunnel_name)
+    started = start_cloudflared_tunnel_process(tunnel_name, used_config_path)
+    running_processes = list_cloudflared_tunnel_processes(tunnel_name)
+
+    log_audit(
+        user["username"],
+        "restart_cloudflared_tunnel",
+        f"Restarted Cloudflared tunnel '{tunnel_name}' (stopped={stopped_pids}, started_pid={started['pid']})",
+    )
+
+    return {
+        "status": "restarted",
+        "tunnel_name": tunnel_name,
+        "stopped_pids": stopped_pids,
+        "started_pid": started["pid"],
+        "running": len(running_processes) > 0,
+        "process_count": len(running_processes),
+        "processes": running_processes,
+        "config_path": used_config_path,
+        "log_path": started["log_path"],
+    }
+
+
+@app.post("/cloudflared/routes")
+def create_cloudflared_route(data: CreateCloudflaredRouteRequest, user=Depends(require_role("admin"))):
+    hostname = normalize_cloudflared_hostname(data.hostname)
+    service_scheme = normalize_cloudflared_service_scheme(data.service_scheme)
+    service_host = normalize_cloudflared_service_host(data.service_host)
+
+    if data.service_port < 1 or data.service_port > 65535:
+        raise HTTPException(status_code=400, detail="service_port must be between 1 and 65535")
+
+    created = None
+    used_config_path = active_cloudflared_config_path
+    dns_result = {
+        "dns_routed": False,
+        "dns_message": "DNS route step skipped",
+        "tunnel_name": get_cloudflared_tunnel_name(),
+    }
+
+    def _rollback_created_route():
+        if not created:
+            return
+        delete_cloudflared_route_record(created["id"])
+        try:
+            sync_managed_cloudflared_routes()
+        except Exception:
+            pass
+
+    try:
+        created = create_cloudflared_route_record(
+            hostname=hostname,
+            service_scheme=service_scheme,
+            service_host=service_host,
+            service_port=data.service_port,
+            created_by=user["username"],
+        )
+        used_config_path = sync_managed_cloudflared_routes()
+        dns_result = ensure_cloudflared_dns_route(hostname)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="This hostname already exists in Cloudflared routes")
+    except HTTPException as e:
+        _rollback_created_route()
+        raise e
+    except Exception as e:
+        _rollback_created_route()
+        raise HTTPException(status_code=500, detail=f"Failed to store/deploy Cloudflared route: {str(e)}")
+
+    log_audit(
+        user["username"],
+        "create_cloudflared_route",
+        f"Added Cloudflared route '{hostname}' -> {service_scheme}://{service_host}:{data.service_port}",
+    )
+
+    return {
+        "status": "created",
+        "route": created,
+        "config_path": used_config_path,
+        "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+        "dns_routed": dns_result["dns_routed"],
+        "dns_message": dns_result["dns_message"],
+        "tunnel_name": dns_result["tunnel_name"],
+        "public_url": f"https://{hostname}",
+    }
+
+
+@app.delete("/cloudflared/routes/{route_id}")
+def remove_cloudflared_route(route_id: int, user=Depends(require_role("admin"))):
+    existing = get_cloudflared_route_record(route_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Cloudflared route not found")
+
+    if not delete_cloudflared_route_record(route_id):
+        raise HTTPException(status_code=404, detail="Cloudflared route not found")
+
+    try:
+        used_config_path = sync_managed_cloudflared_routes()
+    except HTTPException as e:
+        restore_cloudflared_route_record(existing)
+        try:
+            sync_managed_cloudflared_routes()
+        except Exception:
+            pass
+        raise e
+    except Exception as e:
+        restore_cloudflared_route_record(existing)
+        try:
+            sync_managed_cloudflared_routes()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to remove route from Cloudflared config: {str(e)}")
+
+    log_audit(
+        user["username"],
+        "delete_cloudflared_route",
+        f"Deleted Cloudflared route '{existing['hostname']}' -> {existing['service_scheme']}://{existing['service_host']}:{existing['service_port']}",
+    )
+
+    return {
+        "status": "deleted",
+        "id": route_id,
+        "config_path": used_config_path,
+        "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+    }
+
+
+@app.patch("/cloudflared/routes/{route_id}")
+def update_cloudflared_route(route_id: int, data: UpdateCloudflaredRouteRequest, user=Depends(require_role("admin"))):
+    existing = get_cloudflared_route_record(route_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Cloudflared route not found")
+
+    if (
+        data.hostname is None
+        and data.service_scheme is None
+        and data.service_host is None
+        and data.service_port is None
+    ):
+        raise HTTPException(status_code=400, detail="At least one field must be provided to update")
+
+    final_hostname = normalize_cloudflared_hostname(data.hostname) if data.hostname is not None else existing["hostname"]
+    final_service_scheme = (
+        normalize_cloudflared_service_scheme(data.service_scheme)
+        if data.service_scheme is not None
+        else existing["service_scheme"]
+    )
+    final_service_host = (
+        normalize_cloudflared_service_host(data.service_host)
+        if data.service_host is not None
+        else existing["service_host"]
+    )
+
+    if data.service_port is not None:
+        if data.service_port < 1 or data.service_port > 65535:
+            raise HTTPException(status_code=400, detail="service_port must be between 1 and 65535")
+        final_service_port = data.service_port
+    else:
+        final_service_port = existing["service_port"]
+
+    try:
+        changed = update_cloudflared_route_record(
+            route_id=route_id,
+            hostname=final_hostname,
+            service_scheme=final_service_scheme,
+            service_host=final_service_host,
+            service_port=final_service_port,
+        )
+        if not changed:
+            raise HTTPException(status_code=404, detail="Cloudflared route not found")
+
+        used_config_path = sync_managed_cloudflared_routes()
+        dns_result = ensure_cloudflared_dns_route(final_hostname)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="This hostname already exists in Cloudflared routes")
+    except HTTPException as e:
+        try:
+            update_cloudflared_route_record(
+                route_id=route_id,
+                hostname=existing["hostname"],
+                service_scheme=existing["service_scheme"],
+                service_host=existing["service_host"],
+                service_port=existing["service_port"],
+            )
+            sync_managed_cloudflared_routes()
+        except Exception:
+            pass
+        raise e
+    except Exception as e:
+        try:
+            update_cloudflared_route_record(
+                route_id=route_id,
+                hostname=existing["hostname"],
+                service_scheme=existing["service_scheme"],
+                service_host=existing["service_host"],
+                service_port=existing["service_port"],
+            )
+            sync_managed_cloudflared_routes()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to update Cloudflared route: {str(e)}")
+
+    updated_record = get_cloudflared_route_record(route_id)
+
+    log_audit(
+        user["username"],
+        "update_cloudflared_route",
+        (
+            f"Updated Cloudflared route '{existing['hostname']}' -> '{final_hostname}' "
+            f"({final_service_scheme}://{final_service_host}:{final_service_port})"
+        ),
+    )
+
+    return {
+        "status": "updated",
+        "route": updated_record,
+        "config_path": used_config_path,
+        "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
+        "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
+        "dns_routed": dns_result["dns_routed"],
+        "dns_message": dns_result["dns_message"],
+        "tunnel_name": dns_result["tunnel_name"],
+        "public_url": f"https://{final_hostname}",
+    }
 
 
 @app.get("/files/browse")
