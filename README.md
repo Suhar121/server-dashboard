@@ -17,7 +17,6 @@ It provides:
 - Browser terminal via WebSocket + PTY
 - Saved command library with template variables (`{{var}}`)
 - Port change detection (newly opened / recently closed)
-- GitHub webhook-based CD trigger (`push` on selected branch)
 
 ---
 
@@ -101,13 +100,14 @@ This project is an operational dashboard intended for local/server administratio
 ├── main.py                # FastAPI app (API + auth + RBAC + terminal + files + alerts)
 ├── index.html             # Full frontend UI and client-side logic
 ├── battery.py             # Optional battery monitor script using /notify API
-├── users.db               # SQLite database (created/managed by backend)
-├── logs/                  # Service log files
-├── .env                   # Environment configuration
+├── .env.example           # Environment template (copy to .env)
+├── users.db               # SQLite database (local runtime, gitignored)
+├── logs/                  # Service log files (gitignored)
 ├── docs/screenshots/      # README UI screenshot assets
-├── test_browse.py         # Scratch/testing script
-├── patch_*.py, fix.py,
-│   sweep_emojis.py        # One-off patch helper scripts used during UI evolution
+├── cloudflared/
+│   └── config.example.yml # Optional sample cloudflared config template
+├── LICENSE                # Open-source license
+├── CONTRIBUTING.md        # Contribution guidelines
 └── venv/                  # Local Python virtual environment
 ```
 
@@ -167,17 +167,11 @@ Defined/used in backend:
 - `CLOUDFLARED_DNS_AUTO_ROUTE` — auto-run `cloudflared tunnel route dns` on route create (`true` by default)
 - `CLOUDFLARED_BIN_PATH` — cloudflared executable path (default `cloudflared`)
 - `CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS` — DNS command timeout (default `20`)
-- `DEPLOY_WEBHOOK_ENABLED` — enables webhook CD endpoint (`true` by default)
-- `DEPLOY_WEBHOOK_SECRET` — shared secret used to verify `X-Hub-Signature-256`
-- `DEPLOY_WEBHOOK_REF` — expected Git ref from GitHub webhook (default `refs/heads/main`)
-- `DEPLOY_WEBHOOK_REPO` — optional repo guard (format `owner/repo`)
-- `DEPLOY_WEBHOOK_PATH` — path to repo on server where deploy runs (default current working dir)
-- `DEPLOY_WEBHOOK_TIMEOUT_SECONDS` — per-command timeout for deploy pipeline
 
 If writing to `/etc/cloudflared/config.yml` fails (common on non-root setups), the app automatically tries the fallback path.
 
 ### Important
-Current `.env` contains real-looking credentials. Rotate them immediately before any shared/deployed usage.
+Never commit real credentials. Keep `.env` local and only share placeholder values in `.env.example`.
 
 ---
 
@@ -218,56 +212,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 python battery.py
 ```
 
-## 6) Direct Docker deployment (recommended for servers)
+## 6) Manual update flow
 
-This mode avoids SSH-based GitHub Actions deployment complexity.
+If you want to run everything manually (no CI/CD automation), use this:
 
 ```bash
-# one-time setup
-cp .env.example .env
-
-# build + run
-docker compose up -d --build
-
-# view logs
-docker compose logs -f
-
-# update after git pull
-docker compose up -d --build
+git pull
 ```
-
-For persistent runtime data, compose mounts:
-- `./data` for SQLite DB (`USERS_DB_PATH=/app/data/users.db`)
-- `./logs` for app/service logs
-- `./cloudflared` for fallback cloudflared config
-
-## 7) Webhook CD setup (simple mode)
-
-This project now includes a built-in deploy webhook endpoint:
-- `POST /deploy/webhook` (GitHub webhook target)
-- `GET /deploy/status` (admin-only status/logs)
-
-Minimal setup:
-1. Set these values in `.env` on each server:
-  - `DEPLOY_WEBHOOK_ENABLED=true`
-  - `DEPLOY_WEBHOOK_SECRET=<same-random-secret-used-in-github-webhook>`
-  - `DEPLOY_WEBHOOK_REF=refs/heads/main`
-  - `DEPLOY_WEBHOOK_REPO=<owner/repo>`
-  - `DEPLOY_WEBHOOK_PATH=/absolute/path/to/this/repo`
-2. Restart the app.
-3. In GitHub → **Settings → Webhooks → Add webhook**:
-  - **Payload URL**: `https://your-domain/deploy/webhook`
-  - **Content type**: `application/json`
-  - **Secret**: same value as `DEPLOY_WEBHOOK_SECRET`
-  - **Events**: `Just the push event`
-4. Push to your configured branch.
-
-Deploy pipeline executed by webhook:
-- `git fetch origin <branch>`
-- `git checkout <branch>`
-- `git reset --hard origin/<branch>`
-- create `.env` from `.env.example` if missing
-- `docker compose up -d --build --remove-orphans`
 
 ---
 
@@ -348,11 +299,6 @@ Base URL: `http://127.0.0.1:8000`
 ### Terminal
 
 - `WS /ws/terminal`
-
-### Deploy webhook
-
-- `POST /deploy/webhook`
-- `GET /deploy/status` (admin)
 
 ### Frontend shell
 
@@ -564,8 +510,6 @@ git push -u origin main
 ---
 
 ## Maintainer Notes
-
-Patch helper scripts (`patch_*.py`, `fix.py`, `sweep_emojis.py`) are utility scripts used during iterative UI editing and are not part of runtime backend behavior.
 
 If you want, create a `/docs` folder next and split this README into:
 - `docs/architecture.md`

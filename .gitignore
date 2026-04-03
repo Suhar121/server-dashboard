@@ -19,6 +19,8 @@ data/
 *.log
 users.db
 *.sqlite3
+cloudflared/config.yml
+cloudflared/*.log
 
 # Editor / OS
 .vscode/
@@ -38,3 +40,12 @@ build/
 
 # Local debug/extracted artifacts
 script.js
+todo.md
+patch_*.py
+fix_*.py
+add_features.py
+check_js.py
+lint_js.js
+sweep_emojis.py
+test_browse.py
+hello.py
