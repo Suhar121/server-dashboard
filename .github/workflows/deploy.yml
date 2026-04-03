@@ -31,30 +31,30 @@ jobs:
           command_timeout: 30m
           script_stop: true
           script: |
-          set -euo pipefail
-          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
-          TARGET_BRANCH="${BRANCH:-main}"
-          cd "$TARGET_PATH"
+            set -euo pipefail
+            TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+            TARGET_BRANCH="${BRANCH:-main}"
+            cd "$TARGET_PATH"
 
-          git fetch origin "$TARGET_BRANCH"
-          git checkout "$TARGET_BRANCH"
-          git reset --hard "origin/$TARGET_BRANCH"
+            git fetch origin "$TARGET_BRANCH"
+            git checkout "$TARGET_BRANCH"
+            git reset --hard "origin/$TARGET_BRANCH"
 
-          if [ ! -f .env ] && [ -f .env.example ]; then
-            cp .env.example .env
-          fi
+            if [ ! -f .env ] && [ -f .env.example ]; then
+              cp .env.example .env
+            fi
 
-          if docker info >/dev/null 2>&1; then
-            DOCKER='docker'
-          elif sudo docker info >/dev/null 2>&1; then
-            DOCKER='sudo docker'
-          else
-            echo 'ERROR: Docker daemon is not accessible for this user.'
-            exit 1
-          fi
+            if docker info >/dev/null 2>&1; then
+              DOCKER='docker'
+            elif sudo docker info >/dev/null 2>&1; then
+              DOCKER='sudo docker'
+            else
+              echo 'ERROR: Docker daemon is not accessible for this user.'
+              exit 1
+            fi
 
-          $DOCKER compose up -d --build --remove-orphans
-          $DOCKER image prune -f >/dev/null 2>&1 || true
+            $DOCKER compose up -d --build --remove-orphans
+            $DOCKER image prune -f >/dev/null 2>&1 || true
 
   deploy-server-2:
     name: Deploy on Server 2
@@ -76,27 +76,27 @@ jobs:
           command_timeout: 30m
           script_stop: true
           script: |
-          set -euo pipefail
-          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
-          TARGET_BRANCH="${BRANCH:-main}"
-          cd "$TARGET_PATH"
+            set -euo pipefail
+            TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+            TARGET_BRANCH="${BRANCH:-main}"
+            cd "$TARGET_PATH"
 
-          git fetch origin "$TARGET_BRANCH"
-          git checkout "$TARGET_BRANCH"
-          git reset --hard "origin/$TARGET_BRANCH"
+            git fetch origin "$TARGET_BRANCH"
+            git checkout "$TARGET_BRANCH"
+            git reset --hard "origin/$TARGET_BRANCH"
 
-          if [ ! -f .env ] && [ -f .env.example ]; then
-            cp .env.example .env
-          fi
+            if [ ! -f .env ] && [ -f .env.example ]; then
+              cp .env.example .env
+            fi
 
-          if docker info >/dev/null 2>&1; then
-            DOCKER='docker'
-          elif sudo docker info >/dev/null 2>&1; then
-            DOCKER='sudo docker'
-          else
-            echo 'ERROR: Docker daemon is not accessible for this user.'
-            exit 1
-          fi
+            if docker info >/dev/null 2>&1; then
+              DOCKER='docker'
+            elif sudo docker info >/dev/null 2>&1; then
+              DOCKER='sudo docker'
+            else
+              echo 'ERROR: Docker daemon is not accessible for this user.'
+              exit 1
+            fi
 
-          $DOCKER compose up -d --build --remove-orphans
-          $DOCKER image prune -f >/dev/null 2>&1 || true
+            $DOCKER compose up -d --build --remove-orphans
+            $DOCKER image prune -f >/dev/null 2>&1 || true
