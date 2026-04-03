@@ -22,6 +22,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST_1 }}
           SSH_USER: ${{ secrets.SSH_USER_1 }}
           SSH_KEY: ${{ secrets.SSH_KEY_1 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
         run: |
           set -euo pipefail
           if [[ -z "${SSH_HOST}" || -z "${SSH_USER}" || -z "${SSH_KEY}" ]]; then
@@ -30,6 +31,38 @@ jobs:
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
+
+          if [[ -z "${SSH_PORT}" ]]; then
+            SSH_PORT="22"
+          fi
+          echo "ssh_port=${SSH_PORT}" >> "$GITHUB_OUTPUT"
+
+      - name: Check SSH reachability (server 1)
+        if: steps.precheck.outputs.configured == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
+          SSH_PORT: ${{ steps.precheck.outputs.ssh_port }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import socket
+          import sys
+
+          host = os.environ["SSH_HOST"]
+          port = int(os.environ["SSH_PORT"])
+
+          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          sock.settimeout(8)
+          try:
+              sock.connect((host, port))
+              print(f"SSH port reachable on {host}:{port}")
+          except Exception as e:
+              print(f"SSH connectivity check failed for {host}:{port} -> {e}")
+              sys.exit(1)
+          finally:
+              sock.close()
+          PY
 
       - name: Deploy app via SSH on server 1
         if: steps.precheck.outputs.configured == 'true'
@@ -41,7 +74,8 @@ jobs:
           host: ${{ secrets.SSH_HOST_1 }}
           username: ${{ secrets.SSH_USER_1 }}
           key: ${{ secrets.SSH_KEY_1 }}
-          port: ${{ secrets.SSH_PORT_1 || '22' }}
+          port: ${{ steps.precheck.outputs.ssh_port }}
+          timeout: 60s
           envs: DEPLOY_PATH,BRANCH
           command_timeout: 30m
           script_stop: true
@@ -82,6 +116,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST_2 }}
           SSH_USER: ${{ secrets.SSH_USER_2 }}
           SSH_KEY: ${{ secrets.SSH_KEY_2 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
         run: |
           set -euo pipefail
           if [[ -z "${SSH_HOST}" || -z "${SSH_USER}" || -z "${SSH_KEY}" ]]; then
@@ -90,6 +125,38 @@ jobs:
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
+
+          if [[ -z "${SSH_PORT}" ]]; then
+            SSH_PORT="22"
+          fi
+          echo "ssh_port=${SSH_PORT}" >> "$GITHUB_OUTPUT"
+
+      - name: Check SSH reachability (server 2)
+        if: steps.precheck.outputs.configured == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
+          SSH_PORT: ${{ steps.precheck.outputs.ssh_port }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import socket
+          import sys
+
+          host = os.environ["SSH_HOST"]
+          port = int(os.environ["SSH_PORT"])
+
+          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          sock.settimeout(8)
+          try:
+              sock.connect((host, port))
+              print(f"SSH port reachable on {host}:{port}")
+          except Exception as e:
+              print(f"SSH connectivity check failed for {host}:{port} -> {e}")
+              sys.exit(1)
+          finally:
+              sock.close()
+          PY
 
       - name: Deploy app via SSH on server 2
         if: steps.precheck.outputs.configured == 'true'
@@ -101,7 +168,8 @@ jobs:
           host: ${{ secrets.SSH_HOST_2 }}
           username: ${{ secrets.SSH_USER_2 }}
           key: ${{ secrets.SSH_KEY_2 }}
-          port: ${{ secrets.SSH_PORT_2 || '22' }}
+          port: ${{ steps.precheck.outputs.ssh_port }}
+          timeout: 60s
           envs: DEPLOY_PATH,BRANCH
           command_timeout: 30m
           script_stop: true
