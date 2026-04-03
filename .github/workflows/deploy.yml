@@ -1,6 +1,9 @@
 name: Deploy
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -16,110 +19,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies + syntax guard
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m py_compile main.py
-
-      - name: Prepare SSH key
+      - name: Deploy app on server 1
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_1 }}
-          SSH_KEY_PASSPHRASE: ${{ secrets.SSH_KEY_PASSPHRASE_1 }}
+          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
+          SSH_USER: ${{ secrets.SSH_USER_1 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_1 }}
         run: |
-          set -e
+          set -euo pipefail
+          PORT="${SSH_PORT:-22}"
+          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_1
           chmod 600 ~/.ssh/deploy_key_1
 
-          if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
-            if [ -z "${SSH_KEY_PASSPHRASE:-}" ]; then
-              echo "ERROR: SSH_PRIVATE_KEY_1 is passphrase-protected."
-              echo "Set secret SSH_KEY_PASSPHRASE_1 (or use a no-passphrase deploy key)."
-              exit 1
-            fi
+          ssh-keyscan -T 10 -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-            if ! ssh-keygen -y -P "$SSH_KEY_PASSPHRASE" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
-              echo "ERROR: SSH_KEY_PASSPHRASE_1 is incorrect for SSH_PRIVATE_KEY_1."
-              echo "Fix the passphrase secret or replace with a no-passphrase deploy key."
-              exit 1
-            fi
-
-            ssh-keygen -p -P "$SSH_KEY_PASSPHRASE" -N "" -f ~/.ssh/deploy_key_1 >/dev/null
-
-            if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
-              echo "ERROR: Failed to unlock SSH_PRIVATE_KEY_1 with SSH_KEY_PASSPHRASE_1."
-              exit 1
-            fi
-          fi
-
-      - name: Add server to known_hosts
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
-        run: |
-          set -e
-          PORT="${SSH_PORT:-22}"
-          HOST="${SSH_HOST:-}"
-
-          if [ -z "$HOST" ]; then
-            echo "ERROR: SSH_HOST_1 is empty."
-            exit 1
-          fi
-
-          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
-            echo "WARN: SSH_PORT_1 is invalid ('$PORT'). Falling back to 22."
-            PORT="22"
-          fi
-
-          mkdir -p ~/.ssh
-          touch ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-          if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
-            echo "WARN: ssh-keyscan failed for $HOST:$PORT."
-            echo "Proceeding with StrictHostKeyChecking=accept-new during SSH connect."
-          fi
-
-      - name: Deploy via SSH
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
-          SSH_USER: ${{ secrets.SSH_USER_1 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_1 }}
-          APP_PORT: ${{ secrets.APP_PORT_1 }}
-          SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME_1 }}
-        run: |
-          set -e
-
-          PORT="${SSH_PORT:-22}"
-          HOST="${SSH_HOST:-}"
-          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
-          TARGET_APP_PORT="${APP_PORT:-8000}"
-
-          echo "Preflight: resolving host '$HOST'..."
-          if ! getent hosts "$HOST" >/dev/null 2>&1; then
-            echo "ERROR: Unable to resolve SSH_HOST_1 ('$HOST') from GitHub runner."
-            exit 1
-          fi
-
-          echo "Preflight: checking TCP connectivity to $HOST:$PORT ..."
-          if ! timeout 10 bash -c "</dev/tcp/$HOST/$PORT" 2>/dev/null; then
-            echo "ERROR: Cannot reach $HOST:$PORT from GitHub runner."
-            echo "Check server firewall/security-group/router NAT and ensure SSH port is public."
-            exit 1
-          fi
-
-          ssh -i "$HOME/.ssh/deploy_key_1" -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_1" -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
@@ -127,23 +46,21 @@ jobs:
             git checkout main
             git reset --hard origin/main
 
-            if [ ! -d venv ]; then
-              python3 -m venv venv
+            if [ ! -f .env ] && [ -f .env.example ]; then
+              cp .env.example .env
             fi
 
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            python -m py_compile main.py
-            mkdir -p logs
-
-            if [ -n '$SERVICE_NAME' ] && command -v systemctl >/dev/null 2>&1; then
-              sudo systemctl restart '$SERVICE_NAME'
-              sudo systemctl --no-pager --full status '$SERVICE_NAME' | head -n 40 || true
+            if docker info >/dev/null 2>&1; then
+              DOCKER='docker'
+            elif sudo docker info >/dev/null 2>&1; then
+              DOCKER='sudo docker'
             else
-              pkill -f 'uvicorn main:app' || true
-              nohup venv/bin/uvicorn main:app --host 0.0.0.0 --port '$TARGET_APP_PORT' > logs/uvicorn.log 2>&1 &
+              echo 'ERROR: Docker daemon is not accessible for this user.'
+              exit 1
             fi
+
+            \$DOCKER compose up -d --build --remove-orphans
+            \$DOCKER image prune -f >/dev/null 2>&1 || true
           "
 
   deploy-server-2:
@@ -151,110 +68,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies + syntax guard
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m py_compile main.py
-
-      - name: Prepare SSH key
+      - name: Deploy app on server 2
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_2 }}
-          SSH_KEY_PASSPHRASE: ${{ secrets.SSH_KEY_PASSPHRASE_2 }}
+          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
+          SSH_USER: ${{ secrets.SSH_USER_2 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_2 }}
         run: |
-          set -e
+          set -euo pipefail
+          PORT="${SSH_PORT:-22}"
+          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_2
           chmod 600 ~/.ssh/deploy_key_2
 
-          if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
-            if [ -z "${SSH_KEY_PASSPHRASE:-}" ]; then
-              echo "ERROR: SSH_PRIVATE_KEY_2 is passphrase-protected."
-              echo "Set secret SSH_KEY_PASSPHRASE_2 (or use a no-passphrase deploy key)."
-              exit 1
-            fi
+          ssh-keyscan -T 10 -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-            if ! ssh-keygen -y -P "$SSH_KEY_PASSPHRASE" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
-              echo "ERROR: SSH_KEY_PASSPHRASE_2 is incorrect for SSH_PRIVATE_KEY_2."
-              echo "Fix the passphrase secret or replace with a no-passphrase deploy key."
-              exit 1
-            fi
-
-            ssh-keygen -p -P "$SSH_KEY_PASSPHRASE" -N "" -f ~/.ssh/deploy_key_2 >/dev/null
-
-            if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
-              echo "ERROR: Failed to unlock SSH_PRIVATE_KEY_2 with SSH_KEY_PASSPHRASE_2."
-              exit 1
-            fi
-          fi
-
-      - name: Add server to known_hosts
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
-        run: |
-          set -e
-          PORT="${SSH_PORT:-22}"
-          HOST="${SSH_HOST:-}"
-
-          if [ -z "$HOST" ]; then
-            echo "ERROR: SSH_HOST_2 is empty."
-            exit 1
-          fi
-
-          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
-            echo "WARN: SSH_PORT_2 is invalid ('$PORT'). Falling back to 22."
-            PORT="22"
-          fi
-
-          mkdir -p ~/.ssh
-          touch ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
-          if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
-            echo "WARN: ssh-keyscan failed for $HOST:$PORT."
-            echo "Proceeding with StrictHostKeyChecking=accept-new during SSH connect."
-          fi
-
-      - name: Deploy via SSH
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
-          SSH_USER: ${{ secrets.SSH_USER_2 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_2 }}
-          APP_PORT: ${{ secrets.APP_PORT_2 }}
-          SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME_2 }}
-        run: |
-          set -e
-
-          PORT="${SSH_PORT:-22}"
-          HOST="${SSH_HOST:-}"
-          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
-          TARGET_APP_PORT="${APP_PORT:-8000}"
-
-          echo "Preflight: resolving host '$HOST'..."
-          if ! getent hosts "$HOST" >/dev/null 2>&1; then
-            echo "ERROR: Unable to resolve SSH_HOST_2 ('$HOST') from GitHub runner."
-            exit 1
-          fi
-
-          echo "Preflight: checking TCP connectivity to $HOST:$PORT ..."
-          if ! timeout 10 bash -c "</dev/tcp/$HOST/$PORT" 2>/dev/null; then
-            echo "ERROR: Cannot reach $HOST:$PORT from GitHub runner."
-            echo "Check server firewall/security-group/router NAT and ensure SSH port is public."
-            exit 1
-          fi
-
-          ssh -i "$HOME/.ssh/deploy_key_2" -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_2" -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
@@ -262,21 +95,19 @@ jobs:
             git checkout main
             git reset --hard origin/main
 
-            if [ ! -d venv ]; then
-              python3 -m venv venv
+            if [ ! -f .env ] && [ -f .env.example ]; then
+              cp .env.example .env
             fi
 
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            python -m py_compile main.py
-            mkdir -p logs
-
-            if [ -n '$SERVICE_NAME' ] && command -v systemctl >/dev/null 2>&1; then
-              sudo systemctl restart '$SERVICE_NAME'
-              sudo systemctl --no-pager --full status '$SERVICE_NAME' | head -n 40 || true
+            if docker info >/dev/null 2>&1; then
+              DOCKER='docker'
+            elif sudo docker info >/dev/null 2>&1; then
+              DOCKER='sudo docker'
             else
-              pkill -f 'uvicorn main:app' || true
-              nohup venv/bin/uvicorn main:app --host 0.0.0.0 --port '$TARGET_APP_PORT' > logs/uvicorn.log 2>&1 &
+              echo 'ERROR: Docker daemon is not accessible for this user.'
+              exit 1
             fi
+
+            \$DOCKER compose up -d --build --remove-orphans
+            \$DOCKER image prune -f >/dev/null 2>&1 || true
           "
