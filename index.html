@@ -1879,28 +1879,41 @@
         body.innerHTML = containers.map((c) => {
           const id = String(c.id || "");
           const isRunning = String(c.state || "").toLowerCase() === "running";
-          const statusClass = isRunning ? "status-up" : "status-down";
+          
+          const statusBadgeClass = isRunning ? "docker-status-badge docker-status-up" : "docker-status-badge docker-status-down";
+          const statusText = isRunning ? "running" : (c.state || "stopped");
+
+          const portsRaw = String(c.ports || "").split(",").map(p => p.trim()).filter(Boolean);
+          const portsHtml = portsRaw.length > 0 
+            ? portsRaw.map(p => `<span class="docker-port-badge"><i data-lucide="zap" style="width:10px;height:10px;margin-right:4px;"></i>${esc(p)}</span>`).join("")
+            : `<span class="muted" style="font-size:0.8rem;">No exposed ports</span>`;
+
           const idShort = id ? esc(id.substring(0, 12)) : "--";
 
           const actionButtons = id
             ? (isRunning
-              ? `<button class="btn-warn" onclick="dockerAction('${esc(id)}', 'restart')"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i> Restart</button>
-                 <button class="btn-danger" onclick="dockerAction('${esc(id)}', 'stop')"><i data-lucide="square" style="width:14px;height:14px;"></i> Stop</button>`
-              : `<button class="btn-success" onclick="dockerAction('${esc(id)}', 'start')"><i data-lucide="play" style="width:14px;height:14px;"></i> Start</button>`)
+              ? `<button class="btn-warn" onclick="dockerAction('${esc(id)}', 'restart')" title="Restart"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i></button>
+                 <button class="btn-danger" onclick="dockerAction('${esc(id)}', 'stop')" title="Stop"><i data-lucide="square" style="width:14px;height:14px;"></i></button>`
+              : `<button class="btn-success" onclick="dockerAction('${esc(id)}', 'start')" title="Start"><i data-lucide="play" style="width:14px;height:14px;"></i></button>`)
             : "";
 
           return `
             <tr>
-              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem;">${idShort}</td>
-              <td style="font-weight: 600;">${esc(c.name || "--")}</td>
-              <td><span class="cloudflared-pill">${esc(c.image || "--")}</span></td>
-              <td class="${statusClass}">${esc(c.status || "--")}</td>
-              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem;">${esc(c.ports || "--")}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.8rem; color: var(--text-damped);">${idShort}</td>
+              <td style="font-weight: 600; color: var(--text);">${esc(c.name || "--")}</td>
+              <td><span class="cloudflared-pill" style="font-size:0.75rem;">${esc(c.image || "--")}</span></td>
               <td>
-                <div class="actions">
+                <div style="display:flex; flex-direction:column; gap:4px; max-width: max-content;">
+                  <span class="${statusBadgeClass}">${esc(statusText)}</span>
+                  <span style="font-size:0.7rem; color:var(--text-damped);">${esc(c.status || "--")}</span>
+                </div>
+              </td>
+              <td><div style="display:flex; flex-wrap:wrap; gap:6px;">${portsHtml}</div></td>
+              <td>
+                <div class="actions" style="gap:6px;">
                   ${actionButtons}
-                  ${id ? `<button class="btn-neutral" onclick="dockerLogs('${esc(id)}')"><i data-lucide="file-text" style="width:14px;height:14px;"></i> Logs</button>` : ""}
-                  ${isRunning && id ? `<button class="btn-neutral" onclick="dockerExec('${esc(id)}')"><i data-lucide="terminal" style="width:14px;height:14px;"></i> Exec</button>` : ""}
+                  ${id ? `<button class="btn-neutral" onclick="dockerLogs('${esc(id)}')" title="Logs"><i data-lucide="file-text" style="width:14px;height:14px;"></i></button>` : ""}
+                  ${isRunning && id ? `<button class="btn-neutral" onclick="dockerExec('${esc(id)}')" title="Console"><i data-lucide="terminal" style="width:14px;height:14px;"></i></button>` : ""}
                 </div>
               </td>
             </tr>
