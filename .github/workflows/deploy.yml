@@ -105,10 +105,24 @@ jobs:
           set -e
 
           PORT="${SSH_PORT:-22}"
+          HOST="${SSH_HOST:-}"
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -i "$HOME/.ssh/deploy_key_1" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          echo "Preflight: resolving host '$HOST'..."
+          if ! getent hosts "$HOST" >/dev/null 2>&1; then
+            echo "ERROR: Unable to resolve SSH_HOST_1 ('$HOST') from GitHub runner."
+            exit 1
+          fi
+
+          echo "Preflight: checking TCP connectivity to $HOST:$PORT ..."
+          if ! timeout 10 bash -c "</dev/tcp/$HOST/$PORT" 2>/dev/null; then
+            echo "ERROR: Cannot reach $HOST:$PORT from GitHub runner."
+            echo "Check server firewall/security-group/router NAT and ensure SSH port is public."
+            exit 1
+          fi
+
+          ssh -i "$HOME/.ssh/deploy_key_1" -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
@@ -226,10 +240,24 @@ jobs:
           set -e
 
           PORT="${SSH_PORT:-22}"
+          HOST="${SSH_HOST:-}"
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -i "$HOME/.ssh/deploy_key_2" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          echo "Preflight: resolving host '$HOST'..."
+          if ! getent hosts "$HOST" >/dev/null 2>&1; then
+            echo "ERROR: Unable to resolve SSH_HOST_2 ('$HOST') from GitHub runner."
+            exit 1
+          fi
+
+          echo "Preflight: checking TCP connectivity to $HOST:$PORT ..."
+          if ! timeout 10 bash -c "</dev/tcp/$HOST/$PORT" 2>/dev/null; then
+            echo "ERROR: Cannot reach $HOST:$PORT from GitHub runner."
+            echo "Check server firewall/security-group/router NAT and ensure SSH port is public."
+            exit 1
+          fi
+
+          ssh -i "$HOME/.ssh/deploy_key_2" -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
