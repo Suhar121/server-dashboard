@@ -1492,6 +1492,99 @@ def parse_cloudflared_service_target(service_value: str):
     }
 
 
+def resolve_cloudflared_active_config_path(config_path: str | None = None) -> str:
+    global active_cloudflared_config_path
+
+    candidates = get_cloudflared_candidate_config_paths(config_path)
+    seen = set()
+
+    for candidate in candidates:
+        abs_path = os.path.abspath(candidate)
+        if abs_path in seen:
+            continue
+        seen.add(abs_path)
+        if os.path.exists(abs_path):
+            active_cloudflared_config_path = abs_path
+            return abs_path
+
+    fallback = os.path.abspath(config_path) if config_path else os.path.abspath(CLOUDFLARED_CONFIG_PATH)
+    active_cloudflared_config_path = fallback
+    return fallback
+
+
+def sync_existing_cloudflared_routes_from_config(config_path: str | None = None):
+    active_path = resolve_cloudflared_active_config_path(config_path)
+    config_entries = parse_cloudflared_config_entries(config_path=active_path, include_managed=True)
+    if not config_entries:
+        return {
+            "config_path": active_path,
+            "checked": 0,
+            "updated": 0,
+        }
+
+    existing_routes = list_cloudflared_routes()
+    routes_by_hostname = {
+        (item.get("hostname") or "").strip().lower().rstrip("."): item
+        for item in existing_routes
+        if item.get("hostname")
+    }
+
+    checked_count = 0
+    updated_count = 0
+
+    for entry in config_entries:
+        hostname = (entry.get("hostname") or "").strip().lower().rstrip(".")
+        service_value = (entry.get("service") or "").strip()
+
+        if not hostname or hostname not in routes_by_hostname:
+            continue
+
+        parsed_service = parse_cloudflared_service_target(service_value)
+        if not parsed_service:
+            continue
+
+        try:
+            normalized_scheme = normalize_cloudflared_service_scheme(parsed_service["scheme"])
+            normalized_host = normalize_cloudflared_service_host(parsed_service["host"])
+            normalized_port = int(parsed_service["port"])
+        except HTTPException:
+            continue
+        except Exception:
+            continue
+
+        if normalized_port < 1 or normalized_port > 65535:
+            continue
+
+        current = routes_by_hostname[hostname]
+        checked_count += 1
+
+        if (
+            current["service_scheme"] == normalized_scheme
+            and current["service_host"] == normalized_host
+            and int(current["service_port"]) == normalized_port
+        ):
+            continue
+
+        changed = update_cloudflared_route_record(
+            route_id=current["id"],
+            hostname=current["hostname"],
+            service_scheme=normalized_scheme,
+            service_host=normalized_host,
+            service_port=normalized_port,
+        )
+        if changed:
+            current["service_scheme"] = normalized_scheme
+            current["service_host"] = normalized_host
+            current["service_port"] = normalized_port
+            updated_count += 1
+
+    return {
+        "config_path": active_path,
+        "checked": checked_count,
+        "updated": updated_count,
+    }
+
+
 def get_cloudflared_tunnel_name() -> str | None:
     if CLOUDFLARED_TUNNEL_NAME:
         return CLOUDFLARED_TUNNEL_NAME
@@ -2599,15 +2692,17 @@ def remove_ssh_key(key_id: int, user=Depends(require_role("admin"))):
 
 @app.get("/cloudflared/routes")
 def get_cloudflared_routes(user=Depends(require_role("admin"))):
+    sync_result = sync_existing_cloudflared_routes_from_config()
+    active_path = sync_result["config_path"]
     tunnel_name = get_cloudflared_tunnel_name()
     tunnel_processes = list_cloudflared_tunnel_processes(tunnel_name)
     routes = list_cloudflared_routes()
-    config_hostnames = list_cloudflared_config_hostnames(active_cloudflared_config_path)
+    config_hostnames = list_cloudflared_config_hostnames(active_path)
     managed_hostnames = {item["hostname"] for item in routes}
     unmanaged_config_hostnames = [hostname for hostname in config_hostnames if hostname not in managed_hostnames]
     return {
         "routes": routes,
-        "config_path": active_cloudflared_config_path,
+        "config_path": active_path,
         "configured_config_path": os.path.abspath(CLOUDFLARED_CONFIG_PATH),
         "fallback_config_path": os.path.abspath(CLOUDFLARED_FALLBACK_CONFIG_PATH),
         "tunnel_name": tunnel_name,
@@ -2618,11 +2713,14 @@ def get_cloudflared_routes(user=Depends(require_role("admin"))):
         "tunnel_pids": [item["pid"] for item in tunnel_processes],
         "config_hostnames": config_hostnames,
         "unmanaged_config_hostnames": unmanaged_config_hostnames,
+        "config_sync_checked": sync_result["checked"],
+        "config_sync_updated": sync_result["updated"],
     }
 
 
 @app.get("/cloudflared/tunnel/status")
 def get_cloudflared_tunnel_status(user=Depends(require_role("admin"))):
+    active_path = resolve_cloudflared_active_config_path()
     tunnel_name = get_cloudflared_tunnel_name()
     tunnel_processes = list_cloudflared_tunnel_processes(tunnel_name)
     return {
@@ -2630,7 +2728,7 @@ def get_cloudflared_tunnel_status(user=Depends(require_role("admin"))):
         "running": len(tunnel_processes) > 0,
         "process_count": len(tunnel_processes),
         "processes": tunnel_processes,
-        "config_path": active_cloudflared_config_path,
+        "config_path": active_path,
     }
 
 

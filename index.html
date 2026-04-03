@@ -458,6 +458,39 @@
     .status-up { color: var(--ok); font-weight: 700; }
     .status-down { color: var(--bad); font-weight: 700; }
 
+    .tunnel-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 8px;
+      background: var(--card-soft);
+    }
+
+    .tunnel-indicator-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+    }
+
+    .tunnel-indicator.active .tunnel-indicator-dot {
+      background: var(--ok);
+    }
+
+    .tunnel-indicator.inactive .tunnel-indicator-dot {
+      background: var(--bad);
+    }
+
+    .tunnel-indicator.unknown .tunnel-indicator-dot {
+      background: var(--muted);
+    }
+
     #logModal {
       position: fixed;
       inset: 0;
@@ -1249,6 +1282,10 @@
     <div class="muted" style="margin-top: 6px;">
       Add hostname routes directly from UI. DNS route is created automatically. Managed routes are written into a controlled block inside
       <code id="cloudflaredConfigPath">/etc/cloudflared/config.yml</code>.
+    </div>
+    <div id="cloudflaredTunnelIndicator" class="tunnel-indicator unknown" aria-live="polite">
+      <span class="tunnel-indicator-dot" aria-hidden="true"></span>
+      <span id="cloudflaredTunnelIndicatorText">Tunnel status: unknown</span>
     </div>
     <div id="cloudflaredRouteInfo" class="muted" style="margin-top: 4px;"></div>
     <div id="cloudflaredConfigHostnames" class="muted" style="margin-top: 4px;"></div>
@@ -2602,12 +2639,22 @@
       const configHostnamesEl = document.getElementById("cloudflaredConfigHostnames");
       const hostnameSuggestionsEl = document.getElementById("cloudflaredHostnameSuggestions");
       const importBtn = document.getElementById("importCloudflaredBtn");
+      const tunnelIndicator = document.getElementById("cloudflaredTunnelIndicator");
+      const tunnelIndicatorText = document.getElementById("cloudflaredTunnelIndicatorText");
+
+      function setTunnelIndicator(state, text) {
+        if (!tunnelIndicator || !tunnelIndicatorText) return;
+        tunnelIndicator.classList.remove("active", "inactive", "unknown");
+        tunnelIndicator.classList.add(state);
+        tunnelIndicatorText.innerText = text;
+      }
 
       if (!hasRole("admin")) {
         body.innerHTML = "";
         if (configHostnamesEl) configHostnamesEl.innerText = "";
         if (hostnameSuggestionsEl) hostnameSuggestionsEl.innerHTML = "";
         if (importBtn) importBtn.disabled = true;
+        setTunnelIndicator("unknown", "Tunnel status: unavailable");
         return;
       }
 
@@ -2632,7 +2679,17 @@
         const tunnelState = data.tunnel_running ? `running (${data.tunnel_process_count || 0})` : "stopped";
         const dnsMode = data.dns_auto_route ? "auto DNS ON" : "auto DNS OFF";
         const cliMode = data.cloudflared_cli_available ? "cloudflared CLI detected" : "cloudflared CLI missing";
-        routeInfoEl.innerText = `Tunnel: ${tunnelName} • ${tunnelState} • ${dnsMode} • ${cliMode}`;
+        const syncedCount = Number(data.config_sync_updated || 0);
+        const syncNote = syncedCount > 0 ? ` • synced from config: ${syncedCount}` : "";
+        routeInfoEl.innerText = `Tunnel: ${tunnelName} • ${tunnelState} • ${dnsMode} • ${cliMode}${syncNote}`;
+
+        if (data.tunnel_running) {
+          setTunnelIndicator("active", `Tunnel status: ACTIVE (${data.tunnel_process_count || 0} process)`);
+        } else if (data.cloudflared_cli_available) {
+          setTunnelIndicator("inactive", "Tunnel status: INACTIVE (not running)");
+        } else {
+          setTunnelIndicator("unknown", "Tunnel status: UNKNOWN (cloudflared CLI missing)");
+        }
 
         if (hostnameSuggestionsEl) {
           hostnameSuggestionsEl.innerHTML = configHostnames
@@ -2677,6 +2734,7 @@
       } catch (e) {
         routeInfoEl.innerText = "Unable to fetch tunnel metadata.";
         if (configHostnamesEl) configHostnamesEl.innerText = "Unable to read hostnames from Cloudflared config.";
+        setTunnelIndicator("unknown", "Tunnel status: error while checking");
         if (importBtn) {
           importBtn.disabled = true;
           importBtn.innerText = "Import Unmanaged Hostnames";
