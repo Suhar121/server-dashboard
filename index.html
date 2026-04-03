@@ -11,237 +11,394 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
   <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
   <style>
+    
     :root {
+      --sidebar-width: 260px;
       --bg: #f8fafc;
-      --bg-grad: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 50%, #e2e8f0 100%);
-      --card: rgba(255, 255, 255, 0.85);
+      --bg-grad: #f8fafc;
+      --sidebar-bg: #ffffff;
+      --card: #ffffff;
       --card-soft: #f8fafc;
       --glass-bg: rgba(255, 255, 255, 0.65);
       --glass-strong: rgba(255, 255, 255, 0.95);
-      --nav-bg: rgba(255, 255, 255, 0.6);
-      --nav-hover: rgba(37, 99, 235, 0.1);
+      --nav-bg: transparent;
+      --nav-hover: rgba(37, 99, 235, 0.05);
       --text: #0f172a;
       --muted: #64748b;
       --ok: #10b981;
       --bad: #ef4444;
       --brand: #2563eb;
-      --brand-soft: rgba(37, 99, 235, 0.15);
-      --border: rgba(37, 99, 235, 0.2);
-      --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.08);
-      --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.12);
+      --brand-soft: rgba(37, 99, 235, 0.1);
+      --border: #e2e8f0;
+      --sidebar-border: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
       --radius-lg: 16px;
+      --radius-md: 12px;
     }
-
 
     :root[data-theme="dark"] {
-      --bg: #09090b;
-      --bg-grad: linear-gradient(135deg, #18181b 0%, #09090b 50%, #000000 100%);
-      --card: rgba(24, 24, 27, 0.85);
-      --card-soft: #1f1f22;
-      --glass-bg: rgba(24, 24, 27, 0.7);
-      --glass-strong: rgba(24, 24, 27, 0.98);
-      --nav-bg: rgba(255, 255, 255, 0.05);
-      --nav-hover: rgba(59, 130, 246, 0.15);
+      --bg: #0b0f19;
+      --bg-grad: #0b0f19;
+      --sidebar-bg: #111827;
+      --card: #111827;
+      --card-soft: #1f2937;
+      --nav-hover: rgba(255, 255, 255, 0.05);
       --text: #f8fafc;
       --muted: #94a3b8;
-      --ok: #10b981;
-      --bad: #ef4444;
       --brand: #3b82f6;
-      --brand-soft: rgba(59, 130, 246, 0.2);
-      --border: rgba(255, 255, 255, 0.12);
-      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
-      --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+      --brand-soft: rgba(59, 130, 246, 0.15);
+      --border: #1f2937;
+      --sidebar-border: #1f2937;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     }
 
+    
     :root[data-theme="car"] {
       --bg: #111317;
-      --bg-grad: linear-gradient(135deg, #252a34 0%, #111317 50%, #0d0f13 100%);
-      --card: rgba(22, 25, 30, 0.85);
-      --card-soft: #1e242d;
-      --glass-bg: rgba(22, 25, 30, 0.7);
-      --glass-strong: rgba(22, 25, 30, 0.95);
-      --nav-bg: rgba(239, 68, 68, 0.1);
-      --nav-hover: rgba(239, 68, 68, 0.25);
+      --bg-grad: #111317;
+      --sidebar-bg: #16191e;
+      --card: #1e242d;
+      --card-soft: #252a34;
       --text: #f3f4f6;
       --muted: #9ca3af;
-      --ok: #10b981;
-      --bad: #ef4444;
-      --brand: #ef4444; /* Racing Red */
+      --brand: #ef4444; 
       --brand-soft: rgba(239, 68, 68, 0.15);
-      --border: rgba(239, 68, 68, 0.4);
-      --shadow-sm: 0 4px 12px rgba(239, 68, 68, 0.2);
-      --shadow-md: 0 8px 30px rgba(239, 68, 68, 0.3);
+      --border: #2d3340;
+      --sidebar-border: #2d3340;
     }
 
     :root[data-theme="batman"] {
       --bg: #09090b;
-      --bg-grad: radial-gradient(circle at top right, #1a1a24 0%, #09090b 60%, #000000 100%);
-      --card: rgba(18, 18, 24, 0.85);
-      --card-soft: #171a23;
-      --glass-bg: rgba(18, 18, 24, 0.75);
-      --glass-strong: rgba(18, 18, 24, 0.98);
-      --nav-bg: rgba(250, 204, 21, 0.08);
-      --nav-hover: rgba(250, 204, 21, 0.2);
+      --bg-grad: #09090b;
+      --sidebar-bg: #121218;
+      --card: #171a23;
+      --card-soft: #1e212b;
       --text: #fefce8;
       --muted: #a1a1aa;
-      --ok: #84cc16;
-      --bad: #e11d48;
-      --brand: #eab308; /* Bat Yellow */
+      --brand: #eab308;
       --brand-soft: rgba(234, 179, 8, 0.15);
-      --border: rgba(234, 179, 8, 0.3);
-      --shadow-sm: 0 4px 15px rgba(234, 179, 8, 0.15);
-      --shadow-md: 0 10px 35px rgba(234, 179, 8, 0.25);
+      --border: #272733;
+      --sidebar-border: #272733;
     }
 
     :root[data-theme="builder"] {
       --bg: #fffbf0;
-      --bg-grad: linear-gradient(120deg, #fef0cd 0%, #fffbf0 50%, #fef5d8 100%);
-      --card: rgba(255, 255, 255, 0.9);
+      --bg-grad: #fffbf0;
+      --sidebar-bg: #fdf5df;
+      --card: #ffffff;
       --card-soft: #fbf5e6;
-      --glass-bg: rgba(255, 255, 255, 0.7);
-      --glass-strong: rgba(255, 255, 255, 0.98);
-      --nav-bg: rgba(245, 158, 11, 0.1);
-      --nav-hover: rgba(245, 158, 11, 0.2);
       --text: #451a03;
       --muted: #78350f;
-      --ok: #65a30d;
-      --bad: #dc2626;
-      --brand: #d97706; /* Construction Orange/Amber */
+      --brand: #d97706;
       --brand-soft: rgba(217, 119, 6, 0.15);
-      --border: rgba(217, 119, 6, 0.35);
-      --shadow-sm: 0 4px 12px rgba(217, 119, 6, 0.15);
-      --shadow-md: 0 12px 32px rgba(217, 119, 6, 0.2);
+      --border: #f3dbb7;
+      --sidebar-border: #f3dbb7;
     }
 
     :root[data-theme="coding"] {
       --bg: #0d1117;
-      --bg-grad: linear-gradient(to bottom right, #161b22, #0d1117, #010409);
-      --card: rgba(22, 27, 34, 0.85);
-      --card-soft: #121b28;
-      --glass-bg: rgba(22, 27, 34, 0.7);
-      --glass-strong: rgba(22, 27, 34, 0.95);
-      --nav-bg: rgba(88, 166, 255, 0.1);
-      --nav-hover: rgba(88, 166, 255, 0.2);
+      --bg-grad: #0d1117;
+      --sidebar-bg: #161b22;
+      --card: #121b28;
+      --card-soft: #1c2534;
       --text: #c9d1d9;
       --muted: #8b949e;
-      --ok: #2ea043;
-      --bad: #f85149;
-      --brand: #58a6ff; /* Terminal Blue */
+      --brand: #58a6ff;
       --brand-soft: rgba(88, 166, 255, 0.15);
-      --border: rgba(88, 166, 255, 0.3);
-      --shadow-sm: 0 4px 12px rgba(88, 166, 255, 0.2);
-      --shadow-md: 0 8px 30px rgba(88, 166, 255, 0.3);
+      --border: #30363d;
+      --sidebar-border: #30363d;
     }
 
     :root[data-theme="networking"] {
       --bg: #f8fafc;
-      --bg-grad: radial-gradient(circle at 50% 0%, #e0f2fe 0%, #f8fafc 60%, #f1f5f9 100%);
-      --card: rgba(255, 255, 255, 0.85);
+      --bg-grad: #f8fafc;
+      --sidebar-bg: #f0f6fc;
+      --card: #ffffff;
       --card-soft: #f1f5f9;
-      --glass-bg: rgba(255, 255, 255, 0.7);
-      --glass-strong: rgba(255, 255, 255, 0.95);
-      --nav-bg: rgba(14, 165, 233, 0.1);
-      --nav-hover: rgba(14, 165, 233, 0.2);
       --text: #0f172a;
       --muted: #64748b;
-      --ok: #10b981;
-      --bad: #ef4444;
-      --brand: #0ea5e9; /* Sky Blue */
+      --brand: #0ea5e9;
       --brand-soft: rgba(14, 165, 233, 0.15);
-      --border: rgba(14, 165, 233, 0.3);
-      --shadow-sm: 0 4px 15px rgba(14, 165, 233, 0.15);
-      --shadow-md: 0 10px 35px rgba(14, 165, 233, 0.25);
+      --border: #e2e8f0;
+      --sidebar-border: #e2e8f0;
     }
 
-    * { box-sizing: border-box; }
+    @media (max-width: 1024px) {
+          * { box-sizing: border-box; }
+
+    body {
+        flex-direction: column;
+        overflow: auto;
+      }
+      .app-sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 20px;
+        border-right: none;
+        border-bottom: 1px solid var(--sidebar-border);
+      }
+      .sidebar-header {
+        padding: 0;
+      }
+      .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0;
+        margin-left: 20px;
+      }
+      .top-nav-item {
+        width: auto;
+        white-space: nowrap;
+      }
+      .sidebar-footer {
+        display: none; /* Hide complex footer on mobile for fitting */
+      }
+      .app-content-wrapper {
+        padding: 20px 16px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .kpi, .panel-wide, .panel-side, .panel-half, .panel-full {
+        grid-column: span 1 !important;
+      }
+    }
+
+    /* We will keep the default styles but transition to an app layout */
+        * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 20px;
-      font-family: Inter, Arial, sans-serif;
-      background: var(--bg-grad);
+      padding: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        radial-gradient(600px 200px at 20% -5%, rgba(59, 130, 246, 0.15), transparent 70%),
-        radial-gradient(540px 180px at 90% 10%, rgba(14, 165, 233, 0.12), transparent 70%);
-      z-index: -1;
-    }
-
-    h1, h2, h3 {
-      margin: 0;
-      letter-spacing: -0.02em;
-    }
-
-    .topbar {
+      height: 100vh;
+      overflow: hidden;
       display: flex;
-      justify-content: space-between;
+    }
+
+    body::before { display: none; }
+
+    
+    /* Premium SaaS layout */
+    .app-sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 100;
+      flex-shrink: 0;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .app-sidebar.collapsed {
+      width: 80px;
+    }
+
+    .app-sidebar.collapsed .title,
+    .app-sidebar.collapsed .top-nav-item span,
+    .app-sidebar.collapsed .auth-badge div:not(:first-child),
+    .app-sidebar.collapsed .theme-select,
+    .app-sidebar.collapsed #logoutBtn span {
+      display: none;
+    }
+    
+    .app-sidebar.collapsed .sidebar-header {
+      justify-content: center;
+    }
+
+    .app-sidebar.collapsed .top-nav-item {
+      justify-content: center;
+      padding: 10px;
+    }
+    
+    .app-sidebar.collapsed .top-nav-item i {
+      margin: 0;
+    }
+    
+    .app-sidebar.collapsed .auth-badge {
+      justify-content: center;
+      padding: 12px 0;
+    }
+
+    .toggle-sidebar-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    
+    .toggle-sidebar-btn:hover {
+      background: var(--nav-hover);
+      color: var(--text);
+    }
+    
+    .app-sidebar.collapsed .toggle-sidebar-btn i {
+      transform: rotate(180deg);
+    }
+.app-main {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-content-wrapper {
+      padding: 32px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px;
+      display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 18px;
-      background: var(--glass-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 10px 12px;
-      box-shadow: var(--shadow-sm);
-      backdrop-filter: blur(8px);
-      position: sticky;
-      top: 8px;
-      z-index: 150;
     }
 
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .topbar-center {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
+    .sidebar-nav {
       flex: 1;
+      padding: 0 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .sidebar-footer {
+      padding: 20px;
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1, h2, h3, h4 {
+      margin: 0;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+    }
+
+    .title {
+      font-family: "Space Grotesk", Inter, sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--brand) 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .top-nav-item {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--nav-bg);
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: none;
+      background: transparent;
       color: var(--text);
-      font-size: 0.86rem;
-      box-shadow: none;
+      font-size: 0.95rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
+      width: 100%;
+      text-align: left;
+    }
+
+    .top-nav-item i {
+      color: var(--muted);
+      transition: color 0.2s ease;
     }
 
     .top-nav-item:hover {
-      border-color: var(--brand);
       background: var(--nav-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px var(--brand-soft);
     }
 
     .top-nav-item.active {
-      background: var(--brand);
-      color: #ffffff;
-      border-color: var(--brand);
-      box-shadow: 0 8px 16px var(--brand-soft);
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-weight: 600;
     }
 
-    .menu-btn {
+    .top-nav-item.active i {
+      color: var(--brand);
+    }
+
+    .topbar {
+      display: none; /* replaced by sidebar */
+    }
+
+    .header-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .page-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      min-height: 90px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .kpi { 
+      grid-column: span 4; 
+    }
+    .kpi .value {
+      margin-top: 12px;
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: -0.04em;
+    }
+.menu-btn {
       width: 40px;
       height: 40px;
       border-radius: 10px;
@@ -249,11 +406,7 @@
       background: linear-gradient(180deg, #2f6df3 0%, #2456d9 100%);
     }
 
-    .title {
-      font-family: "Space Grotesk", Inter, sans-serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-    }
+
 
     .auth-badge {
       display: flex;
@@ -630,13 +783,13 @@
       color: var(--text);
     }
 
-    .admin-page {
+        .admin-page {
       display: none;
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      background: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.76) 100%);
+      background: var(--card);
       box-shadow: var(--shadow-md);
-      padding: 16px;
+      padding: 24px;
     }
 
     .file-manager-wrapper {
@@ -1021,27 +1174,162 @@
         display: none;
       }
     }
+  
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+      
+      .app-sidebar {
+        width: 100% !important;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 16px;
+        border-right: none;
+        border-bottom: 1px solid var(--sidebar-border);
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        background: var(--sidebar-bg);
+      }
+
+      .app-sidebar.collapsed {
+        height: auto;
+      }
+
+      .toggle-sidebar-btn {
+        display: none !important; /* hide collapse button on mobile */
+      }
+
+      .sidebar-header {
+        padding: 0;
+        flex-shrink: 0;
+      }
+      
+      .sidebar-header .title {
+        display: none !important; /* Hide text, just show icon on mobile */
+      }
+      
+      .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0;
+        margin: 0 0 0 16px;
+        gap: 8px;
+        /* hide scrollbar */
+        -ms-overflow-style: none;  
+        scrollbar-width: none;  
+      }
+      .sidebar-nav::-webkit-scrollbar { 
+        display: none; 
+      }
+      
+      .top-nav-item {
+        width: auto;
+        white-space: nowrap;
+        padding: 8px 12px;
+      }
+      
+      .top-nav-item span {
+        display: none; /* Hide text, just show icons on mobile for space */
+      }
+      
+      .app-main {
+        height: calc(100vh - 60px);
+      }
+
+      .app-content-wrapper {
+        padding: 16px 12px;
+        gap: 16px;
+      }
+      
+      .page-title {
+        font-size: 1.4rem;
+      }
+
+      .card {
+        padding: 16px;
+      }
+      
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      
+      .kpi, .panel-wide, .panel-side, .panel-half, .panel-full {
+        grid-column: span 1 !important;
+      }
+
+      /* Make tables scroll horizontally rather than breaking out */
+      .services-table, .data-table, .cloudflared-table-wrap {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Inputs and buttons better touch targets */
+      .field, select, button {
+        min-height: 44px; /* Touch friendly */
+      }
+      
+      .cloudflared-grid-2 {
+        grid-template-columns: 1fr;
+      }
+      
+      .auth-badge, .sidebar-footer {
+        display: none !important; /* Save space on mobile */
+      }
+      
+      /* Mobile modal adjustments */
+      #cloudflaredEditBox, #fileEditorBox, #permissionsBox, #loginBox {
+        width: 95%;
+        padding: 16px;
+      }
+    }
+
   </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-  <div class="topbar">
-    <div class="topbar-left">
-      <h1 class="title">DevOps Control Panel</h1>
+  
+<div class="app-sidebar">
+  <div class="sidebar-header">
+    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--brand) 0%, #8b5cf6 100%); display: flex; align-items: center; justify-content: center; color: white;">
+      <i data-lucide="command"></i>
     </div>
-    <nav class="topbar-center" aria-label="Page navigation">
-      <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem"><i data-lucide="layout-dashboard"></i> Dashboard</button>
-      <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')"><i data-lucide="terminal-square"></i> Terminal</button>
-      <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')"><i data-lucide="users"></i> Admin Users</button>
-      <button id="auditLogsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('audit-logs')"><i data-lucide="clipboard-list"></i> Audit Logs</button>
-      <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> Alert Rules</button>
-      <button id="sshKeysMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('ssh-keys')"><i data-lucide="key-round"></i> SSH Keys</button>
-      <button id="cloudflaredMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('cloudflared')"><i data-lucide="cloud"></i> Cloudflared</button>
-      <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> File Manager</button>
-    </nav>
-    <div class="auth-badge">
-      <i data-lucide="palette" id="themeIcon"></i>
-      <select id="themeSelect" class="theme-select" onchange="setTheme(this.value)">
+    <div class="title" style="flex: 1;">Devops Dashboard</div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></button>
+  </div>
+  
+  <nav class="sidebar-nav" aria-label="Page navigation">
+    <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')"><i data-lucide="terminal-square"></i> <span>Terminal</span></button>
+        <button id="dockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker')"><i data-lucide="box"></i> <span>Docker Manager</span></button>
+    <button id="secretsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('secrets')"><i data-lucide="shield-check"></i> <span>Secrets Vault</span></button>
+    <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')"><i data-lucide="users"></i> <span>Team</span></button>
+    <button id="auditLogsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('audit-logs')"><i data-lucide="clipboard-list"></i> <span>Audit Logs</span></button>
+    <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> <span>Alert Rules</span></button>
+    <button id="sshKeysMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('ssh-keys')"><i data-lucide="key-round"></i> <span>SSH Keys</span></button>
+    <button id="cloudflaredMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('cloudflared')"><i data-lucide="cloud"></i> <span>Cloudflared</span></button>
+    <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> <span>File Manager</span></button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="auth-badge" style="background: var(--card-soft); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 12px; width: 100%;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--brand-soft); display: flex; align-items: center; justify-content: center; color: var(--brand);">
+        <i data-lucide="user"></i>
+      </div>
+      <div style="flex: 1; min-width: 0; display:flex; flex-direction: column;">
+        <span id="authInfo" style="font-weight: 600; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Not logged in</span>
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 8px;">
+      
+      <select id="themeSelect" class="theme-select" style="flex: 1;" onchange="setTheme(this.value)">
         <option value="light">Light</option>
         <option value="dark">Dark</option>
         <option value="car">Car Theme</option>
@@ -1050,10 +1338,20 @@
         <option value="coding">Coding Theme</option>
         <option value="networking">Networking Theme</option>
       </select>
-      <span id="authInfo">Not logged in</span>
-      <button id="logoutBtn" class="btn-neutral" onclick="logout()" style="display:none;">Logout</button>
+      <button id="logoutBtn" class="btn-neutral" style="display:none; padding: 6px 10px;" onclick="logout()"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i></button>
     </div>
   </div>
+</div>
+
+<main class="app-main">
+  <div class="app-content-wrapper">
+    <header class="header-area">
+      <div>
+        <h2 class="page-title" id="pageTitleH2">Dashboard Overview</h2>
+        <div class="page-subtitle" id="pageSubtitleDiv">Monitor infrastructure, services, and live metrics.</div>
+      </div>
+    </header>
+
 
   <div class="grid" id="dashboardContent" style="display:none;">
     <section class="card kpi">
@@ -1141,6 +1439,80 @@
     </section>
 
   </div>
+
+  
+  <section class="card admin-page" id="dockerPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="box"></i> Docker Orchestration</h3>
+    <div class="muted" style="margin-top: 6px;">Manage containers, images, and observe live logs.</div>
+    
+    <div class="cloudflared-kpis" style="margin-top: 16px;">
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Containers</div>
+        <div class="cloudflared-kpi-value" id="dockerKpiTotal">0</div>
+        <div class="cloudflared-kpi-note" id="dockerKpiRunning">0 running</div>
+      </div>
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Images</div>
+        <div class="cloudflared-kpi-value" id="dockerKpiImages">0</div>
+        <div class="cloudflared-kpi-note">Local cached images</div>
+      </div>
+      <div class="cloudflared-kpi" style="border-color: var(--brand); background: var(--brand-soft); align-items:flex-start; justify-content: center; cursor: pointer;" onclick="pruneDocker()">
+        <div style="font-weight: 600; color: var(--brand); display: flex; align-items: center; gap: 6px;"><i data-lucide="trash-2" style="width:20px;height:20px;"></i> System Prune</div>
+        <div class="cloudflared-kpi-note" style="margin-top:4px; color: var(--brand);">Reclaim disk space</div>
+      </div>
+    </div>
+
+    <div class="cloudflared-panel" style="margin-top: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h4><i data-lucide="server"></i> Active Containers</h4>
+        <button class="btn-neutral" onclick="loadDockerContainers()"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Refresh</button>
+      </div>
+      <div class="cloudflared-table-wrap">
+        <table class="data-table" id="dockerFullTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Image</th>
+              <th>Status</th>
+              <th>Ports</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="dockerFullBody">
+             <tr><td colspan="6" class="muted">Loading containers...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card admin-page" id="secretsPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield-check"></i> Secrets & Environment Vault</h3>
+    <div class="muted" style="margin-top: 6px;">Securely manage .env files across different projects. Values are masked by default.</div>
+    
+    <div style="display:flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+      <select id="envProjectSelect" class="field" style="max-width: 300px;" onchange="loadEnvVault()">
+        <option value="">-- Select Project / Env File --</option>
+        <option value="/home/user/test/.env">/home/user/test/.env</option>
+        <option value="/var/www/app/.env">/var/www/app/.env</option>
+        <option value="/etc/cloudflared/.env">/etc/cloudflared/.env</option>
+      </select>
+      <button class="btn-neutral" onclick="loadEnvVault()"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Load</button>
+      <button class="btn-success" onclick="saveEnvVault()"><i data-lucide="save" style="width:16px;height:16px;"></i> Save Changes</button>
+    </div>
+
+    <div class="cloudflared-panel" style="margin-top: 16px; min-height: 200px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h4><i data-lucide="key"></i> Environment Variables</h4>
+        <button class="btn-neutral" onclick="addEnvVariableRow()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Add Variable</button>
+      </div>
+      
+      <div id="envVaultEditor" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="muted">Select an environment file to manage its secrets.</div>
+      </div>
+    </div>
+  </section>
 
   <section class="card admin-page" id="adminPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield"></i> Admin User Management</h3>
@@ -1278,7 +1650,7 @@
   </section>
 
   <section class="card admin-page" id="cloudflaredPage">
-    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="cloud"></i> Cloudflared Routes</h3>
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="cloud"></i> <span>Cloudflared</span> Routes</h3>
     <div class="muted" style="margin-top: 6px;">
       Add hostname routes directly from UI. DNS route is created automatically. Managed routes are written into a controlled block inside
       <code id="cloudflaredConfigPath">/etc/cloudflared/config.yml</code>.
@@ -1452,6 +1824,154 @@
 
   
   <script>
+    
+    // --- Docker Manager logic ---
+    async function loadDockerContainers() {
+      const body = document.getElementById("dockerFullBody");
+      if (!body) return;
+      try {
+        const res = await apiFetch("/dashboard/docker"); // Fallback to existing endpoint
+        const data = await res.json();
+        const containers = data.containers || [];
+        
+        document.getElementById("dockerKpiTotal").innerText = containers.length;
+        document.getElementById("dockerKpiRunning").innerText = containers.filter(c => c.state === 'running').length + " running";
+        // mock image count approximation
+        document.getElementById("dockerKpiImages").innerText = Math.floor(containers.length * 1.5) + 2;
+
+        if (containers.length === 0) {
+          body.innerHTML = `<tr><td colspan="6" class="muted">No containers running or stopped.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = containers.map(c => {
+          const statusClass = c.state === 'running' ? 'status-up' : 'status-down';
+          return `
+            <tr>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem;">${esc(c.id).substring(0, 12)}</td>
+              <td style="font-weight: 600;">${esc(c.name)}</td>
+              <td><span class="cloudflared-pill">${esc(c.image)}</span></td>
+              <td class="${statusClass}">${esc(c.status)}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem; white-space: nowrap;">${esc(c.ports || '--')}</td>
+              <td>
+                <div class="actions">
+                  ${c.state === 'running' 
+                    ? `<button class="btn-warn" onclick="dockerAction('${c.id}', 'restart')"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i> Restart</button>
+                       <button class="btn-danger" onclick="dockerAction('${c.id}', 'stop')"><i data-lucide="square" style="width:14px;height:14px;"></i> Stop</button>`
+                    : `<button class="btn-success" onclick="dockerAction('${c.id}', 'start')"><i data-lucide="play" style="width:14px;height:14px;"></i> Start</button>`
+                  }
+                  <button class="btn-neutral" onclick="dockerLogs('${c.id}')"><i data-lucide="file-text" style="width:14px;height:14px;"></i> Logs</button>
+                  ${c.state === 'running' ? `<button class="btn-neutral" onclick="dockerExec('${c.id}')"><i data-lucide="terminal" style="width:14px;height:14px;"></i> Exec</button>` : ''}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+        lucide.createIcons();
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="6" class="error-text">Failed to load docker list: ${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    async function dockerAction(id, action) {
+      alert(`[MOCK UI] Requesting docker ${action} for container ${id.substring(0,8)}...\n(Requires backend shell implementation)`);
+      setTimeout(() => loadDockerContainers(), 1000);
+    }
+    function dockerLogs(id) {
+      alert(`[MOCK UI] Streaming logs for container ${id.substring(0,8)}\nWe will inject these straight to the Web Terminal!`);
+    }
+    function dockerExec(id) {
+      goToPage('terminal');
+      alert(`[MOCK UI] Connecting shell: docker exec -it ${id.substring(0,8)} /bin/sh`);
+    }
+    function pruneDocker() {
+      if(confirm('Are you sure you want to run `docker system prune -f`? This safely reclaims disk space by removing unused data.')) {
+         alert('[MOCK UI] Docker system prune executed.');
+      }
+    }
+
+    // --- Secrets Vault logic ---
+    let currentEnvVars = [];
+    
+    function loadEnvVault() {
+      const file = document.getElementById("envProjectSelect").value;
+      const editor = document.getElementById("envVaultEditor");
+      
+      if (!file) {
+        editor.innerHTML = '<div class="muted">Select an environment file to manage its secrets.</div>';
+        return;
+      }
+      
+      // Load mock secure environment file
+      currentEnvVars = [
+        { key: "DATABASE_URL", value: "postgresql://user:pass@localhost:5432/main_db" },
+        { key: "API_KEY", value: "dummy_api_key_12345" },
+        { key: "DEBUG", value: "false" }
+      ];
+      
+      renderEnvVault();
+    }
+    
+    function renderEnvVault() {
+      const editor = document.getElementById("envVaultEditor");
+      if (currentEnvVars.length === 0) {
+        editor.innerHTML = '<div class="muted">No variables in this file. Add one to start.</div>';
+        return;
+      }
+      
+      editor.innerHTML = currentEnvVars.map((item, idx) => `
+        <div style="display: flex; gap: 8px; align-items: center; background: var(--card-soft); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
+          <input type="text" class="field" style="width: 240px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;" value="${esc(item.key)}" oninput="updateEnvKey(${idx}, this.value)" placeholder="KEY_NAME" />
+          <span style="color: var(--muted);">=</span>
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="env_val_${idx}" class="field" style="width: 100%; padding-right: 48px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;" value="${esc(item.value)}" oninput="updateEnvVal(${idx}, this.value)" placeholder="Secret value..." />
+            <button class="btn-neutral" style="position: absolute; right: 6px; top: 6px; padding: 6px; min-height: 0; box-shadow: none; background: transparent;" onclick="toggleEnvVisible('env_val_${idx}')">
+              <i data-lucide="eye" style="width: 18px; height: 18px; color: var(--muted);"></i>
+            </button>
+          </div>
+          <button class="btn-danger" style="padding: 10px;" onclick="removeEnvRow(${idx})"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+    
+    function toggleEnvVisible(id) {
+      const el = document.getElementById(id);
+      if(el) {
+        if(el.type === 'password') {
+          el.type = 'text';
+          el.nextElementSibling.querySelector('i').setAttribute('data-lucide', 'eye-off');
+        } else {
+          el.type = 'password';
+          el.nextElementSibling.querySelector('i').setAttribute('data-lucide', 'eye');
+        }
+        lucide.createIcons();
+      }
+    }
+    
+    function updateEnvKey(idx, val) { currentEnvVars[idx].key = val; }
+    function updateEnvVal(idx, val) { currentEnvVars[idx].value = val; }
+    
+    function addEnvVariableRow() {
+      const file = document.getElementById("envProjectSelect").value;
+      if (!file) return alert("Please select an environment file to edit first.");
+      currentEnvVars.push({ key: "", value: "" });
+      renderEnvVault();
+    }
+
+    function removeEnvRow(idx) {
+      if(confirm('Delete this key-value pair?')) {
+        currentEnvVars.splice(idx, 1);
+        renderEnvVault();
+      }
+    }
+    
+    function saveEnvVault() {
+      const file = document.getElementById("envProjectSelect").value;
+      if (!file) return;
+      alert(`[MOCK UI] Successfully encrypted and saved ${currentEnvVars.length} variables to:\n${file}\n\n(Will require backend fs logic to write actual .env strings)`);
+    }
+
     // Theme setup
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1484,6 +2004,12 @@
       }
 
       lucide.createIcons();
+    }
+
+    
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.app-sidebar');
+      sidebar.classList.toggle('collapsed');
     }
 
     function toggleTheme() {
@@ -1575,13 +2101,21 @@
 
     function showLogin(message = "") {
       document.getElementById("loginModal").style.display = "flex";
+      
       document.getElementById("dashboardContent").style.display = "none";
+      document.getElementById("dockerPage").style.display = "none";
+      document.getElementById("secretsPage").style.display = "none";
+      
+      document.getElementById("dockerPage").style.display = "none";
+      document.getElementById("secretsPage").style.display = "none";
       document.getElementById("adminPage").style.display = "none";
       document.getElementById("auditLogsPage").style.display = "none";
       document.getElementById("alertRulesPage").style.display = "none";
       document.getElementById("sshKeysPage").style.display = "none";
       document.getElementById("cloudflaredPage").style.display = "none";
       document.getElementById("fileManagerPage").style.display = "none";
+      document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
+      document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("terminalPage").style.display = "none";
       document.getElementById("loginError").innerText = message;
       document.getElementById("logoutBtn").style.display = "none";
@@ -1609,6 +2143,8 @@
       document.getElementById("alertRulesMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("sshKeysMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("cloudflaredMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("dockerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("secretsMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
 
@@ -1632,6 +2168,8 @@
         "alert-rules": "alertRulesMenuItem",
         "ssh-keys": "sshKeysMenuItem",
         "cloudflared": "cloudflaredMenuItem",
+        "docker": "dockerMenuItem",
+        "secrets": "secretsMenuItem",
         "file-manager": "fileManagerMenuItem",
       };
 
@@ -1648,6 +2186,8 @@
       const showSshKeys = currentPage === "ssh-keys" && hasRole("admin");
       const showCloudflared = currentPage === "cloudflared" && hasRole("admin");
       const showFileManager = currentPage === "file-manager" && hasRole("admin");
+      const showDocker = currentPage === "docker" && hasRole("admin");
+      const showSecrets = currentPage === "secrets" && hasRole("admin");
       const showTerminal = currentPage === "terminal" && hasRole("operator");
       const showDash = currentPage === "dashboard";
 
@@ -1658,6 +2198,8 @@
       document.getElementById("sshKeysPage").style.display = showSshKeys ? "block" : "none";
       document.getElementById("cloudflaredPage").style.display = showCloudflared ? "block" : "none";
       document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
+      document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
+      document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
       updateHeaderNav();
     }
@@ -1667,7 +2209,7 @@
     function closeMenu() {}
 
     function goToPage(page) {
-      if ((page === "admin" || page === "audit-logs" || page === "alert-rules" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager") && !hasRole("admin")) {
+      if ((page === "admin" || page === "audit-logs" || page === "alert-rules" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "secrets") && !hasRole("admin")) {
         alert("Admin role required.");
         return;
       }
@@ -1687,7 +2229,11 @@
         loadAlertRules();
       } else if (page === "ssh-keys") {
         loadSshKeys();
-      } else if (page === "cloudflared") {
+      } else if (page === "docker") {
+        loadDockerContainers();
+      } else if (page === "secrets") {
+        // sync state if needed
+        } else if (page === "cloudflared") {
         loadCloudflaredRoutes();
       } else if (page === "file-manager") {
         browseFiles(currentPath);
