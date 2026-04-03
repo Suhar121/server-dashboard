@@ -15,99 +15,73 @@ env:
 
 jobs:
   deploy-server-1:
-    name: Deploy to Server 1
-    runs-on: ubuntu-latest
+    name: Deploy on Server 1
+    runs-on:
+      - self-hosted
+      - linux
+      - server-1
 
     steps:
-      - name: Deploy app on server 1
+      - name: Deploy app locally on server 1 runner
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_1 }}
-          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
-          SSH_USER: ${{ secrets.SSH_USER_1 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_1 }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH_1 }}
         run: |
           set -euo pipefail
-          PORT="${SSH_PORT:-22}"
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+          cd "$TARGET_PATH"
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_1
-          chmod 600 ~/.ssh/deploy_key_1
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
 
-          ssh-keyscan -T 10 -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
 
-          ssh -i "$HOME/.ssh/deploy_key_1" -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$PORT" "$SSH_USER@$SSH_HOST" "
-            set -e
-            cd '$TARGET_PATH'
+          if docker info >/dev/null 2>&1; then
+            DOCKER='docker'
+          elif sudo docker info >/dev/null 2>&1; then
+            DOCKER='sudo docker'
+          else
+            echo 'ERROR: Docker daemon is not accessible for this user.'
+            exit 1
+          fi
 
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
-
-            if [ ! -f .env ] && [ -f .env.example ]; then
-              cp .env.example .env
-            fi
-
-            if docker info >/dev/null 2>&1; then
-              DOCKER='docker'
-            elif sudo docker info >/dev/null 2>&1; then
-              DOCKER='sudo docker'
-            else
-              echo 'ERROR: Docker daemon is not accessible for this user.'
-              exit 1
-            fi
-
-            \$DOCKER compose up -d --build --remove-orphans
-            \$DOCKER image prune -f >/dev/null 2>&1 || true
-          "
+          $DOCKER compose up -d --build --remove-orphans
+          $DOCKER image prune -f >/dev/null 2>&1 || true
 
   deploy-server-2:
-    name: Deploy to Server 2
-    runs-on: ubuntu-latest
+    name: Deploy on Server 2
+    runs-on:
+      - self-hosted
+      - linux
+      - server-2
 
     steps:
-      - name: Deploy app on server 2
+      - name: Deploy app locally on server 2 runner
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_2 }}
-          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
-          SSH_USER: ${{ secrets.SSH_USER_2 }}
-          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_2 }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH_2 }}
         run: |
           set -euo pipefail
-          PORT="${SSH_PORT:-22}"
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+          cd "$TARGET_PATH"
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_2
-          chmod 600 ~/.ssh/deploy_key_2
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
 
-          ssh-keyscan -T 10 -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
 
-          ssh -i "$HOME/.ssh/deploy_key_2" -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -p "$PORT" "$SSH_USER@$SSH_HOST" "
-            set -e
-            cd '$TARGET_PATH'
+          if docker info >/dev/null 2>&1; then
+            DOCKER='docker'
+          elif sudo docker info >/dev/null 2>&1; then
+            DOCKER='sudo docker'
+          else
+            echo 'ERROR: Docker daemon is not accessible for this user.'
+            exit 1
+          fi
 
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
-
-            if [ ! -f .env ] && [ -f .env.example ]; then
-              cp .env.example .env
-            fi
-
-            if docker info >/dev/null 2>&1; then
-              DOCKER='docker'
-            elif sudo docker info >/dev/null 2>&1; then
-              DOCKER='sudo docker'
-            else
-              echo 'ERROR: Docker daemon is not accessible for this user.'
-              exit 1
-            fi
-
-            \$DOCKER compose up -d --build --remove-orphans
-            \$DOCKER image prune -f >/dev/null 2>&1 || true
-          "
+          $DOCKER compose up -d --build --remove-orphans
+          $DOCKER image prune -f >/dev/null 2>&1 || true
