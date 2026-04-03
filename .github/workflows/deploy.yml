@@ -36,6 +36,7 @@ jobs:
       - name: Prepare SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_1 }}
+          SSH_KEY_PASSPHRASE: ${{ secrets.SSH_KEY_PASSPHRASE_1 }}
         run: |
           set -e
           mkdir -p ~/.ssh
@@ -44,9 +45,18 @@ jobs:
           chmod 600 ~/.ssh/deploy_key_1
 
           if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
-            echo "ERROR: SSH_PRIVATE_KEY_1 is passphrase-protected."
-            echo "Use a deploy key without passphrase for GitHub Actions automation."
-            exit 1
+            if [ -z "${SSH_KEY_PASSPHRASE:-}" ]; then
+              echo "ERROR: SSH_PRIVATE_KEY_1 is passphrase-protected."
+              echo "Set secret SSH_KEY_PASSPHRASE_1 (or use a no-passphrase deploy key)."
+              exit 1
+            fi
+
+            ssh-keygen -p -P "$SSH_KEY_PASSPHRASE" -N "" -f ~/.ssh/deploy_key_1 >/dev/null
+
+            if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
+              echo "ERROR: Failed to unlock SSH_PRIVATE_KEY_1 with SSH_KEY_PASSPHRASE_1."
+              exit 1
+            fi
           fi
 
       - name: Add server to known_hosts
@@ -123,6 +133,7 @@ jobs:
       - name: Prepare SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_2 }}
+          SSH_KEY_PASSPHRASE: ${{ secrets.SSH_KEY_PASSPHRASE_2 }}
         run: |
           set -e
           mkdir -p ~/.ssh
@@ -131,9 +142,18 @@ jobs:
           chmod 600 ~/.ssh/deploy_key_2
 
           if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
-            echo "ERROR: SSH_PRIVATE_KEY_2 is passphrase-protected."
-            echo "Use a deploy key without passphrase for GitHub Actions automation."
-            exit 1
+            if [ -z "${SSH_KEY_PASSPHRASE:-}" ]; then
+              echo "ERROR: SSH_PRIVATE_KEY_2 is passphrase-protected."
+              echo "Set secret SSH_KEY_PASSPHRASE_2 (or use a no-passphrase deploy key)."
+              exit 1
+            fi
+
+            ssh-keygen -p -P "$SSH_KEY_PASSPHRASE" -N "" -f ~/.ssh/deploy_key_2 >/dev/null
+
+            if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
+              echo "ERROR: Failed to unlock SSH_PRIVATE_KEY_2 with SSH_KEY_PASSPHRASE_2."
+              exit 1
+            fi
           fi
 
       - name: Add server to known_hosts
