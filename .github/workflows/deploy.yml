@@ -10,6 +10,9 @@ concurrency:
   group: deploy-main
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   deploy-server-1:
     name: Deploy to Server 1
@@ -17,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -30,10 +33,21 @@ jobs:
           pip install -r requirements.txt
           python -m py_compile main.py
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_1 }}
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_1 }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_1
+          chmod 600 ~/.ssh/deploy_key_1
+
+          if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
+            echo "ERROR: SSH_PRIVATE_KEY_1 is passphrase-protected."
+            echo "Use a deploy key without passphrase for GitHub Actions automation."
+            exit 1
+          fi
 
       - name: Add server to known_hosts
         env:
@@ -60,7 +74,7 @@ jobs:
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_1" -o IdentitiesOnly=yes -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
@@ -93,10 +107,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -106,10 +120,21 @@ jobs:
           pip install -r requirements.txt
           python -m py_compile main.py
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_2 }}
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_2 }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key_2
+          chmod 600 ~/.ssh/deploy_key_2
+
+          if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
+            echo "ERROR: SSH_PRIVATE_KEY_2 is passphrase-protected."
+            echo "Use a deploy key without passphrase for GitHub Actions automation."
+            exit 1
+          fi
 
       - name: Add server to known_hosts
         env:
@@ -136,7 +161,7 @@ jobs:
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_2" -o IdentitiesOnly=yes -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
