@@ -62,6 +62,7 @@ USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,64}$")
 SSH_USERNAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 CLOUDFLARED_HOSTNAME_PATTERN = re.compile(r"^(?:\*\.)?(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$")
 CLOUDFLARED_SERVICE_HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}[A-Za-z0-9]$|^[A-Za-z0-9]$")
+DOCKER_CONTAINER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 
 ROLE_ORDER = {
     "viewer": 1,
@@ -189,6 +190,11 @@ class UpdateCloudflaredRouteRequest(BaseModel):
     service_scheme: str | None = None
 
 
+class DockerActionRequest(BaseModel):
+    container_id: str
+    action: str
+
+
 class FileReadRequest(BaseModel):
     path: str
 
@@ -221,6 +227,52 @@ def normalize_service_name(name: str) -> str:
     allowed = "-_"
     cleaned = "".join(ch for ch in name if ch.isalnum() or ch in allowed).strip("-_")
     return cleaned or "service"
+
+
+def run_docker_command(args: list[str], timeout: int = 60):
+    commands = [
+        ["docker", *args],
+        ["sudo", "docker", *args],
+    ]
+    last_error = ""
+
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+        if result.returncode == 0:
+            return result
+
+        stderr_text = (result.stderr or "").strip()
+        stdout_text = (result.stdout or "").strip()
+        lowered = f"{stderr_text}\n{stdout_text}".lower()
+
+        if command[0] == "docker" and (
+            "permission denied" in lowered
+            or "cannot connect to the docker daemon" in lowered
+        ):
+            last_error = stderr_text or stdout_text
+            continue
+
+        raise HTTPException(
+            status_code=500,
+            detail=(stderr_text or stdout_text or "Docker command failed")[:500],
+        )
+
+    raise HTTPException(
+        status_code=500,
+        detail=(last_error or "Docker is not accessible for this user")[:500],
+    )
 
 
 def is_process_running(proc: subprocess.Popen | None) -> bool:
@@ -2507,17 +2559,29 @@ def ports(user=Depends(require_role("viewer"))):
 @app.get("/docker")
 def docker(user=Depends(require_role("viewer"))):
     try:
-        output = subprocess.check_output(
-            "docker ps --format '{{.Names}}|{{.Status}}|{{.Ports}}'",
-            shell=True
-        ).decode().strip().split("\n")
+        result = run_docker_command(
+            [
+                "ps",
+                "-a",
+                "--format",
+                "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}",
+            ],
+            timeout=30,
+        )
+        output = (result.stdout or "").strip().split("\n")
 
         containers = []
         for line in output:
             if line:
-                name, status, ports = line.split("|")
+                parts = line.split("|", 5)
+                if len(parts) < 6:
+                    continue
+                container_id, name, image, state, status, ports = parts
                 containers.append({
+                    "id": container_id,
                     "name": name,
+                    "image": image,
+                    "state": state,
                     "status": status,
                     "ports": ports
                 })
@@ -2525,6 +2589,39 @@ def docker(user=Depends(require_role("viewer"))):
         return containers
     except:
         return []
+
+
+@app.post("/docker/action")
+def docker_action(data: DockerActionRequest, user=Depends(require_role("operator"))):
+    container_id = (data.container_id or "").strip()
+    action = (data.action or "").strip().lower()
+
+    if action not in {"start", "stop", "restart"}:
+        raise HTTPException(status_code=400, detail="action must be start, stop, or restart")
+
+    if not DOCKER_CONTAINER_ID_PATTERN.match(container_id):
+        raise HTTPException(status_code=400, detail="Invalid container identifier")
+
+    result = run_docker_command([action, container_id], timeout=60)
+    details = (result.stdout or result.stderr or "").strip()
+    log_audit(user["username"], "docker_action", f"{action} container '{container_id}'")
+    return {"status": "ok", "action": action, "container_id": container_id, "details": details}
+
+
+@app.get("/docker/logs/{container_id}")
+def docker_logs(container_id: str, lines: int = Query(100, ge=1, le=2000), user=Depends(require_role("viewer"))):
+    target = (container_id or "").strip()
+    if not DOCKER_CONTAINER_ID_PATTERN.match(target):
+        raise HTTPException(status_code=400, detail="Invalid container identifier")
+
+    result = run_docker_command(["logs", "--tail", str(lines), target], timeout=60)
+    combined = ""
+    if result.stdout:
+        combined += result.stdout
+    if result.stderr:
+        combined += result.stderr
+
+    return {"logs": combined.splitlines(keepends=True)}
 
 
 @app.get("/check-port/{port}")

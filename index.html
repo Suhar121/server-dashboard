@@ -305,6 +305,7 @@
       font-size: 1.25rem;
       font-weight: 700;
       background: linear-gradient(135deg, var(--brand) 0%, #8b5cf6 100%);
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -886,8 +887,6 @@
       background: var(--brand);
       color: #fff;
       border-color: var(--brand);
-    }
-      background: var(--brand);
     }
 
     .file-icon {
@@ -1494,13 +1493,13 @@
     <div style="display:flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
       <select id="envProjectSelect" class="field" style="max-width: 300px;" onchange="loadEnvVault()">
         <option value="">-- Select Project / Env File --</option>
-        <option value="/home/user/test/.env">/home/user/test/.env</option>
-        <option value="/var/www/app/.env">/var/www/app/.env</option>
-        <option value="/etc/cloudflared/.env">/etc/cloudflared/.env</option>
+        <option value=".env">.env (project root)</option>
+        <option value=".env.example">.env.example (project root)</option>
       </select>
       <button class="btn-neutral" onclick="loadEnvVault()"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Load</button>
       <button class="btn-success" onclick="saveEnvVault()"><i data-lucide="save" style="width:16px;height:16px;"></i> Save Changes</button>
     </div>
+    <div id="envVaultMsg" class="info-text" style="margin-top: 8px;"></div>
 
     <div class="cloudflared-panel" style="margin-top: 16px; min-height: 200px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -1829,44 +1828,55 @@
     async function loadDockerContainers() {
       const body = document.getElementById("dockerFullBody");
       if (!body) return;
-      try {
-        const res = await apiFetch("/dashboard/docker"); // Fallback to existing endpoint
-        const data = await res.json();
-        const containers = data.containers || [];
-        
-        document.getElementById("dockerKpiTotal").innerText = containers.length;
-        document.getElementById("dockerKpiRunning").innerText = containers.filter(c => c.state === 'running').length + " running";
-        // mock image count approximation
-        document.getElementById("dockerKpiImages").innerText = Math.floor(containers.length * 1.5) + 2;
 
-        if (containers.length === 0) {
-          body.innerHTML = `<tr><td colspan="6" class="muted">No containers running or stopped.</td></tr>`;
+      try {
+        const res = await apiFetch("/docker");
+        const data = await res.json();
+        const containers = Array.isArray(data) ? data : (data.containers || []);
+
+        const runningCount = containers.filter((c) => String(c.state || "").toLowerCase() === "running").length;
+        const imageCount = new Set(containers.map((c) => String(c.image || "")).filter(Boolean)).size;
+
+        document.getElementById("dockerKpiTotal").innerText = containers.length;
+        document.getElementById("dockerKpiRunning").innerText = `${runningCount} running`;
+        document.getElementById("dockerKpiImages").innerText = imageCount;
+
+        if (!containers.length) {
+          body.innerHTML = `<tr><td colspan="6" class="muted">No containers found.</td></tr>`;
           return;
         }
 
-        body.innerHTML = containers.map(c => {
-          const statusClass = c.state === 'running' ? 'status-up' : 'status-down';
+        body.innerHTML = containers.map((c) => {
+          const id = String(c.id || "");
+          const isRunning = String(c.state || "").toLowerCase() === "running";
+          const statusClass = isRunning ? "status-up" : "status-down";
+          const idShort = id ? esc(id.substring(0, 12)) : "--";
+
+          const actionButtons = id
+            ? (isRunning
+              ? `<button class="btn-warn" onclick="dockerAction('${esc(id)}', 'restart')"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i> Restart</button>
+                 <button class="btn-danger" onclick="dockerAction('${esc(id)}', 'stop')"><i data-lucide="square" style="width:14px;height:14px;"></i> Stop</button>`
+              : `<button class="btn-success" onclick="dockerAction('${esc(id)}', 'start')"><i data-lucide="play" style="width:14px;height:14px;"></i> Start</button>`)
+            : "";
+
           return `
             <tr>
-              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem;">${esc(c.id).substring(0, 12)}</td>
-              <td style="font-weight: 600;">${esc(c.name)}</td>
-              <td><span class="cloudflared-pill">${esc(c.image)}</span></td>
-              <td class="${statusClass}">${esc(c.status)}</td>
-              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem; white-space: nowrap;">${esc(c.ports || '--')}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem;">${idShort}</td>
+              <td style="font-weight: 600;">${esc(c.name || "--")}</td>
+              <td><span class="cloudflared-pill">${esc(c.image || "--")}</span></td>
+              <td class="${statusClass}">${esc(c.status || "--")}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem; white-space: nowrap;">${esc(c.ports || "--")}</td>
               <td>
                 <div class="actions">
-                  ${c.state === 'running' 
-                    ? `<button class="btn-warn" onclick="dockerAction('${c.id}', 'restart')"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i> Restart</button>
-                       <button class="btn-danger" onclick="dockerAction('${c.id}', 'stop')"><i data-lucide="square" style="width:14px;height:14px;"></i> Stop</button>`
-                    : `<button class="btn-success" onclick="dockerAction('${c.id}', 'start')"><i data-lucide="play" style="width:14px;height:14px;"></i> Start</button>`
-                  }
-                  <button class="btn-neutral" onclick="dockerLogs('${c.id}')"><i data-lucide="file-text" style="width:14px;height:14px;"></i> Logs</button>
-                  ${c.state === 'running' ? `<button class="btn-neutral" onclick="dockerExec('${c.id}')"><i data-lucide="terminal" style="width:14px;height:14px;"></i> Exec</button>` : ''}
+                  ${actionButtons}
+                  ${id ? `<button class="btn-neutral" onclick="dockerLogs('${esc(id)}')"><i data-lucide="file-text" style="width:14px;height:14px;"></i> Logs</button>` : ""}
+                  ${isRunning && id ? `<button class="btn-neutral" onclick="dockerExec('${esc(id)}')"><i data-lucide="terminal" style="width:14px;height:14px;"></i> Exec</button>` : ""}
                 </div>
               </td>
             </tr>
           `;
         }).join("");
+
         lucide.createIcons();
       } catch (e) {
         body.innerHTML = `<tr><td colspan="6" class="error-text">Failed to load docker list: ${esc(e.message)}</td></tr>`;
@@ -1874,51 +1884,131 @@
     }
 
     async function dockerAction(id, action) {
-      alert(`[MOCK UI] Requesting docker ${action} for container ${id.substring(0,8)}...\n(Requires backend shell implementation)`);
-      setTimeout(() => loadDockerContainers(), 1000);
-    }
-    function dockerLogs(id) {
-      alert(`[MOCK UI] Streaming logs for container ${id.substring(0,8)}\nWe will inject these straight to the Web Terminal!`);
-    }
-    function dockerExec(id) {
-      goToPage('terminal');
-      alert(`[MOCK UI] Connecting shell: docker exec -it ${id.substring(0,8)} /bin/sh`);
-    }
-    function pruneDocker() {
-      if(confirm('Are you sure you want to run `docker system prune -f`? This safely reclaims disk space by removing unused data.')) {
-         alert('[MOCK UI] Docker system prune executed.');
+      try {
+        await apiFetch("/docker/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ container_id: id, action }),
+        });
+        await loadDockerContainers();
+        await loadDocker();
+      } catch (e) {
+        alert(e.message || `Failed to ${action} container.`);
       }
+    }
+
+    async function dockerLogs(id) {
+      try {
+        const res = await apiFetch(`/docker/logs/${encodeURIComponent(id)}?lines=200`);
+        const data = await res.json();
+        const lines = Array.isArray(data.logs) ? data.logs : [];
+        if (logTimer) {
+          clearInterval(logTimer);
+          logTimer = null;
+        }
+        currentLogService = null;
+        document.getElementById("logTitle").innerText = `📜 Docker Logs (${id.substring(0, 12)})`;
+        document.getElementById("logModal").style.display = "block";
+        document.getElementById("logContent").textContent = lines.length ? lines.join("") : "No logs.";
+      } catch (e) {
+        alert(e.message || "Failed to load Docker logs.");
+      }
+    }
+
+    function dockerExec(id) {
+      goToPage("terminal");
+      alert(`Use terminal command: docker exec -it ${id.substring(0, 12)} /bin/sh`);
+    }
+
+    function pruneDocker() {
+      alert("Manual mode: run this in your terminal -> docker image prune -f");
     }
 
     // --- Secrets Vault logic ---
     let currentEnvVars = [];
-    
-    function loadEnvVault() {
-      const file = document.getElementById("envProjectSelect").value;
+    let currentEnvPath = "";
+
+    function setEnvVaultMsg(message = "", isError = false) {
+      const el = document.getElementById("envVaultMsg");
+      if (!el) return;
+      el.className = isError ? "error-text" : "info-text";
+      el.innerText = message;
+    }
+
+    function parseEnvContent(content) {
+      const parsed = [];
+      const lines = String(content || "").split(/\r?\n/);
+
+      for (const rawLine of lines) {
+        const trimmed = rawLine.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+
+        const normalized = trimmed.startsWith("export ") ? trimmed.slice(7).trim() : trimmed;
+        const idx = normalized.indexOf("=");
+        if (idx <= 0) continue;
+
+        const key = normalized.slice(0, idx).trim();
+        if (!key) continue;
+
+        let value = normalized.slice(idx + 1);
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+
+        parsed.push({ key, value });
+      }
+
+      return parsed;
+    }
+
+    function serializeEnvValue(value) {
+      const text = String(value ?? "");
+      if (text === "") return "";
+      if (/^[A-Za-z0-9_./:@+-]+$/.test(text)) return text;
+      return JSON.stringify(text);
+    }
+
+    async function loadEnvVault() {
+      const file = (document.getElementById("envProjectSelect")?.value || "").trim();
       const editor = document.getElementById("envVaultEditor");
-      
+
       if (!file) {
+        currentEnvPath = "";
+        currentEnvVars = [];
         editor.innerHTML = '<div class="muted">Select an environment file to manage its secrets.</div>';
+        setEnvVaultMsg("");
         return;
       }
-      
-      // Load mock secure environment file
-      currentEnvVars = [
-        { key: "DATABASE_URL", value: "postgresql://user:pass@localhost:5432/main_db" },
-        { key: "API_KEY", value: "dummy_api_key_12345" },
-        { key: "DEBUG", value: "false" }
-      ];
-      
-      renderEnvVault();
+
+      try {
+        const res = await apiFetch("/files/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: file }),
+        });
+        const data = await res.json();
+        currentEnvPath = file;
+        currentEnvVars = parseEnvContent(data.content || "");
+        renderEnvVault();
+        setEnvVaultMsg(`Loaded ${currentEnvVars.length} variables from ${file}`);
+      } catch (e) {
+        currentEnvPath = file;
+        currentEnvVars = [];
+        renderEnvVault();
+        setEnvVaultMsg(e.message || "Failed to load environment file.", true);
+      }
     }
-    
+
     function renderEnvVault() {
       const editor = document.getElementById("envVaultEditor");
-      if (currentEnvVars.length === 0) {
-        editor.innerHTML = '<div class="muted">No variables in this file. Add one to start.</div>';
+      if (!currentEnvVars.length) {
+        editor.innerHTML = '<div class="muted">No valid KEY=VALUE entries found. You can add new variables below.</div>';
         return;
       }
-      
+
       editor.innerHTML = currentEnvVars.map((item, idx) => `
         <div style="display: flex; gap: 8px; align-items: center; background: var(--card-soft); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
           <input type="text" class="field" style="width: 240px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;" value="${esc(item.key)}" oninput="updateEnvKey(${idx}, this.value)" placeholder="KEY_NAME" />
@@ -1934,42 +2024,71 @@
       `).join("");
       lucide.createIcons();
     }
-    
+
     function toggleEnvVisible(id) {
       const el = document.getElementById(id);
-      if(el) {
-        if(el.type === 'password') {
-          el.type = 'text';
-          el.nextElementSibling.querySelector('i').setAttribute('data-lucide', 'eye-off');
+      if (el) {
+        if (el.type === "password") {
+          el.type = "text";
+          el.nextElementSibling.querySelector("i").setAttribute("data-lucide", "eye-off");
         } else {
-          el.type = 'password';
-          el.nextElementSibling.querySelector('i').setAttribute('data-lucide', 'eye');
+          el.type = "password";
+          el.nextElementSibling.querySelector("i").setAttribute("data-lucide", "eye");
         }
         lucide.createIcons();
       }
     }
-    
+
     function updateEnvKey(idx, val) { currentEnvVars[idx].key = val; }
     function updateEnvVal(idx, val) { currentEnvVars[idx].value = val; }
-    
+
     function addEnvVariableRow() {
-      const file = document.getElementById("envProjectSelect").value;
-      if (!file) return alert("Please select an environment file to edit first.");
+      const file = (document.getElementById("envProjectSelect")?.value || "").trim();
+      if (!file) return alert("Please select an environment file first.");
+      currentEnvPath = file;
       currentEnvVars.push({ key: "", value: "" });
       renderEnvVault();
     }
 
     function removeEnvRow(idx) {
-      if(confirm('Delete this key-value pair?')) {
+      if (confirm("Delete this key-value pair?")) {
         currentEnvVars.splice(idx, 1);
         renderEnvVault();
       }
     }
-    
-    function saveEnvVault() {
-      const file = document.getElementById("envProjectSelect").value;
-      if (!file) return;
-      alert(`[MOCK UI] Successfully encrypted and saved ${currentEnvVars.length} variables to:\n${file}\n\n(Will require backend fs logic to write actual .env strings)`);
+
+    async function saveEnvVault() {
+      const file = currentEnvPath || (document.getElementById("envProjectSelect")?.value || "").trim();
+      if (!file) {
+        setEnvVaultMsg("Select an environment file first.", true);
+        return;
+      }
+
+      const keyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+      const lines = [];
+
+      for (const row of currentEnvVars) {
+        const key = String(row.key || "").trim();
+        if (!key) continue;
+        if (!keyPattern.test(key)) {
+          setEnvVaultMsg(`Invalid env key: ${key}`, true);
+          return;
+        }
+        lines.push(`${key}=${serializeEnvValue(row.value)}`);
+      }
+
+      const content = lines.length ? `${lines.join("\n")}\n` : "";
+
+      try {
+        await apiFetch("/files/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: file, content }),
+        });
+        setEnvVaultMsg(`Saved ${lines.length} variables to ${file}`);
+      } catch (e) {
+        setEnvVaultMsg(e.message || "Failed to save environment file.", true);
+      }
     }
 
     // Theme setup
@@ -2105,17 +2224,12 @@
       document.getElementById("dashboardContent").style.display = "none";
       document.getElementById("dockerPage").style.display = "none";
       document.getElementById("secretsPage").style.display = "none";
-      
-      document.getElementById("dockerPage").style.display = "none";
-      document.getElementById("secretsPage").style.display = "none";
       document.getElementById("adminPage").style.display = "none";
       document.getElementById("auditLogsPage").style.display = "none";
       document.getElementById("alertRulesPage").style.display = "none";
       document.getElementById("sshKeysPage").style.display = "none";
       document.getElementById("cloudflaredPage").style.display = "none";
       document.getElementById("fileManagerPage").style.display = "none";
-      document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
-      document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("terminalPage").style.display = "none";
       document.getElementById("loginError").innerText = message;
       document.getElementById("logoutBtn").style.display = "none";
