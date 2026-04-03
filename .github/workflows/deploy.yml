@@ -72,8 +72,26 @@ jobs:
         run: |
           set -e
           PORT="${SSH_PORT:-22}"
+          HOST="${SSH_HOST:-}"
+
+          if [ -z "$HOST" ]; then
+            echo "ERROR: SSH_HOST_1 is empty."
+            exit 1
+          fi
+
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            echo "WARN: SSH_PORT_1 is invalid ('$PORT'). Falling back to 22."
+            PORT="22"
+          fi
+
           mkdir -p ~/.ssh
-          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "WARN: ssh-keyscan failed for $HOST:$PORT."
+            echo "Proceeding with StrictHostKeyChecking=accept-new during SSH connect."
+          fi
 
       - name: Deploy via SSH
         env:
@@ -90,7 +108,7 @@ jobs:
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -i "$HOME/.ssh/deploy_key_1" -o IdentitiesOnly=yes -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_1" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
@@ -175,8 +193,26 @@ jobs:
         run: |
           set -e
           PORT="${SSH_PORT:-22}"
+          HOST="${SSH_HOST:-}"
+
+          if [ -z "$HOST" ]; then
+            echo "ERROR: SSH_HOST_2 is empty."
+            exit 1
+          fi
+
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+            echo "WARN: SSH_PORT_2 is invalid ('$PORT'). Falling back to 22."
+            PORT="22"
+          fi
+
           mkdir -p ~/.ssh
-          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "WARN: ssh-keyscan failed for $HOST:$PORT."
+            echo "Proceeding with StrictHostKeyChecking=accept-new during SSH connect."
+          fi
 
       - name: Deploy via SSH
         env:
@@ -193,7 +229,7 @@ jobs:
           TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
           TARGET_APP_PORT="${APP_PORT:-8000}"
 
-          ssh -i "$HOME/.ssh/deploy_key_2" -o IdentitiesOnly=yes -p "$PORT" "$SSH_USER@$SSH_HOST" "
+          ssh -i "$HOME/.ssh/deploy_key_2" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "$PORT" "$SSH_USER@$SSH_HOST" "
             set -e
             cd '$TARGET_PATH'
 
