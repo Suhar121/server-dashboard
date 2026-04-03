@@ -255,6 +255,7 @@
       flex: 1;
       height: 100%;
       overflow-y: auto;
+  overflow-x: hidden;
       background: var(--bg);
       display: flex;
       flex-direction: column;
@@ -606,6 +607,35 @@
     .data-table thead {
       background: var(--nav-bg);
       border-bottom: 2px solid var(--border);
+    }
+
+    .cloudflared-table-wrap {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #dockerPage {
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    #dockerPage .cloudflared-panel {
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    #dockerFullTable {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    #dockerFullTable th,
+    #dockerFullTable td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      white-space: normal;
     }
 
     .actions { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1865,7 +1895,7 @@
               <td style="font-weight: 600;">${esc(c.name || "--")}</td>
               <td><span class="cloudflared-pill">${esc(c.image || "--")}</span></td>
               <td class="${statusClass}">${esc(c.status || "--")}</td>
-              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem; white-space: nowrap;">${esc(c.ports || "--")}</td>
+              <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.8rem;">${esc(c.ports || "--")}</td>
               <td>
                 <div class="actions">
                   ${actionButtons}
