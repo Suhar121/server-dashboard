@@ -1,0 +1,164 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy-server-1:
+    name: Deploy to Server 1
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies + syntax guard
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m py_compile main.py
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_1 }}
+
+      - name: Add server to known_hosts
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
+        run: |
+          set -e
+          PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_1 }}
+          SSH_USER: ${{ secrets.SSH_USER_1 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_1 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_1 }}
+          APP_PORT: ${{ secrets.APP_PORT_1 }}
+          SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME_1 }}
+        run: |
+          set -e
+
+          PORT="${SSH_PORT:-22}"
+          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+          TARGET_APP_PORT="${APP_PORT:-8000}"
+
+          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            cd '$TARGET_PATH'
+
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            if [ ! -d venv ]; then
+              python3 -m venv venv
+            fi
+
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            python -m py_compile main.py
+            mkdir -p logs
+
+            if [ -n '$SERVICE_NAME' ] && command -v systemctl >/dev/null 2>&1; then
+              sudo systemctl restart '$SERVICE_NAME'
+              sudo systemctl --no-pager --full status '$SERVICE_NAME' | head -n 40 || true
+            else
+              pkill -f 'uvicorn main:app' || true
+              nohup venv/bin/uvicorn main:app --host 0.0.0.0 --port '$TARGET_APP_PORT' > logs/uvicorn.log 2>&1 &
+            fi
+          "
+
+  deploy-server-2:
+    name: Deploy to Server 2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies + syntax guard
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m py_compile main.py
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_2 }}
+
+      - name: Add server to known_hosts
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
+        run: |
+          set -e
+          PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_2 }}
+          SSH_USER: ${{ secrets.SSH_USER_2 }}
+          SSH_PORT: ${{ secrets.SSH_PORT_2 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_2 }}
+          APP_PORT: ${{ secrets.APP_PORT_2 }}
+          SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME_2 }}
+        run: |
+          set -e
+
+          PORT="${SSH_PORT:-22}"
+          TARGET_PATH="${DEPLOY_PATH:-/home/user/test}"
+          TARGET_APP_PORT="${APP_PORT:-8000}"
+
+          ssh -p "$PORT" "$SSH_USER@$SSH_HOST" "
+            set -e
+            cd '$TARGET_PATH'
+
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            if [ ! -d venv ]; then
+              python3 -m venv venv
+            fi
+
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            python -m py_compile main.py
+            mkdir -p logs
+
+            if [ -n '$SERVICE_NAME' ] && command -v systemctl >/dev/null 2>&1; then
+              sudo systemctl restart '$SERVICE_NAME'
+              sudo systemctl --no-pager --full status '$SERVICE_NAME' | head -n 40 || true
+            else
+              pkill -f 'uvicorn main:app' || true
+              nohup venv/bin/uvicorn main:app --host 0.0.0.0 --port '$TARGET_APP_PORT' > logs/uvicorn.log 2>&1 &
+            fi
+          "

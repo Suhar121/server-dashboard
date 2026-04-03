@@ -34,3 +34,6 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Local debug/extracted artifacts
+script.js
