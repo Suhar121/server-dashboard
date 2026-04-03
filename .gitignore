@@ -15,6 +15,7 @@ env/
 
 # Local runtime data
 logs/
+data/
 *.log
 users.db
 *.sqlite3

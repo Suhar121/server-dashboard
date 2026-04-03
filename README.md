@@ -211,6 +211,29 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 python battery.py
 ```
 
+## 6) Direct Docker deployment (recommended for servers)
+
+This mode avoids SSH-based GitHub Actions deployment complexity.
+
+```bash
+# one-time setup
+cp .env.example .env
+
+# build + run
+docker compose up -d --build
+
+# view logs
+docker compose logs -f
+
+# update after git pull
+docker compose up -d --build
+```
+
+For persistent runtime data, compose mounts:
+- `./data` for SQLite DB (`USERS_DB_PATH=/app/data/users.db`)
+- `./logs` for app/service logs
+- `./cloudflared` for fallback cloudflared config
+
 ---
 
 ## API Reference
