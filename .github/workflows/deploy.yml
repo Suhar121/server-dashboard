@@ -51,6 +51,12 @@ jobs:
               exit 1
             fi
 
+            if ! ssh-keygen -y -P "$SSH_KEY_PASSPHRASE" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
+              echo "ERROR: SSH_KEY_PASSPHRASE_1 is incorrect for SSH_PRIVATE_KEY_1."
+              echo "Fix the passphrase secret or replace with a no-passphrase deploy key."
+              exit 1
+            fi
+
             ssh-keygen -p -P "$SSH_KEY_PASSPHRASE" -N "" -f ~/.ssh/deploy_key_1 >/dev/null
 
             if ! ssh-keygen -y -P "" -f ~/.ssh/deploy_key_1 >/dev/null 2>&1; then
@@ -145,6 +151,12 @@ jobs:
             if [ -z "${SSH_KEY_PASSPHRASE:-}" ]; then
               echo "ERROR: SSH_PRIVATE_KEY_2 is passphrase-protected."
               echo "Set secret SSH_KEY_PASSPHRASE_2 (or use a no-passphrase deploy key)."
+              exit 1
+            fi
+
+            if ! ssh-keygen -y -P "$SSH_KEY_PASSPHRASE" -f ~/.ssh/deploy_key_2 >/dev/null 2>&1; then
+              echo "ERROR: SSH_KEY_PASSPHRASE_2 is incorrect for SSH_PRIVATE_KEY_2."
+              echo "Fix the passphrase secret or replace with a no-passphrase deploy key."
               exit 1
             fi
 
