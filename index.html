@@ -1435,6 +1435,125 @@
       color: var(--text-damped);
       margin-top: 8px;
     }
+
+    /* --- Access & Tunnels premium hub --- */
+    .access-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 6px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-soft);
+    }
+
+    .access-tab-btn {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      font-size: 0.86rem;
+      box-shadow: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .access-tab-btn:hover {
+      transform: none;
+      border-color: var(--brand);
+      background: var(--brand-soft);
+      box-shadow: none;
+    }
+
+    .access-tab-btn.active {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+
+    .access-tab-badge {
+      min-width: 26px;
+      height: 20px;
+      border-radius: 999px;
+      padding: 0 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .access-tab-btn.active .access-tab-badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .access-hub-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .access-stat-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card-soft);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .access-stat-title {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      font-weight: 700;
+    }
+
+    .access-stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .hub-tunnel-state {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .hub-tunnel-state.active {
+      color: var(--ok);
+      border-color: rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .hub-tunnel-state.inactive {
+      color: var(--bad);
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .hub-tunnel-state.unknown {
+      color: var(--muted);
+      border-color: var(--border);
+      background: transparent;
+    }
   </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -1453,12 +1572,9 @@
     <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
     <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')"><i data-lucide="terminal-square"></i> <span>Terminal</span></button>
         <button id="dockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker')"><i data-lucide="box"></i> <span>Docker Manager</span></button>
-    <button id="secretsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('secrets')"><i data-lucide="shield-check"></i> <span>Secrets Vault</span></button>
     <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')"><i data-lucide="users"></i> <span>Team</span></button>
-    <button id="auditLogsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('audit-logs')"><i data-lucide="clipboard-list"></i> <span>Audit Logs</span></button>
     <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> <span>Alert Rules</span></button>
-    <button id="sshKeysMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('ssh-keys')"><i data-lucide="key-round"></i> <span>SSH Keys</span></button>
-    <button id="cloudflaredMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('cloudflared')"><i data-lucide="cloud"></i> <span>Cloudflared</span></button>
+    <button id="accessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub')"><i data-lucide="waypoints"></i> <span>Access & Tunnels</span></button>
     <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> <span>File Manager</span></button>
   </nav>
 
@@ -1518,8 +1634,8 @@
     </section>
 
     <section class="card panel-wide">
-      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="activity"></i> CPU Trend</h3>
-      <div class="muted" style="margin-top: 4px;">Window: last 30 minutes</div>
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="activity"></i> System Trend (Last 3 Hours)</h3>
+      <div class="muted" style="margin-top: 4px;">Window: last 3 hours • CPU, RAM, and Battery</div>
       <canvas id="cpuChart" height="110"></canvas>
     </section>
 
@@ -1689,24 +1805,7 @@
     </table>
   </section>
 
-  <section class="card admin-page" id="auditLogsPage">
-    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="scroll-text"></i> Audit Logs</h3>
-    <div class="muted" style="margin-top: 6px;">Track all user actions and system events</div>
-    <div style="margin-top: 10px;">
-      <button class="btn-neutral" onclick="loadAuditLogs()">Refresh Logs</button>
-    </div>
-    <table class="data-table" style="margin-top: 12px;">
-      <thead>
-        <tr>
-          <th>Timestamp</th>
-          <th>User</th>
-          <th>Action</th>
-          <th>Details</th>
-        </tr>
-      </thead>
-      <tbody id="auditLogsBody"></tbody>
-    </table>
-  </section>
+
 
   <section class="card admin-page" id="alertRulesPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="bell-ring"></i> Alert Rules</h3>
@@ -1735,11 +1834,118 @@
       </thead>
       <tbody id="alertRulesBody"></tbody>
     </table>
+
+    <details style="margin-top: 24px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;" ontoggle="if(this.open) loadAuditLogs()">
+      <summary style="font-weight: 600; display: flex; align-items: center; gap: 8px; outline: none; user-select: none;">
+        <i data-lucide="scroll-text" style="width:18px;height:18px;"></i> View Audit Logs
+      </summary>
+      <div style="margin-top: 16px; cursor: default;" onclick="event.stopPropagation()">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="muted">Track all user actions and system events.</span>
+          <button class="btn-neutral" onclick="loadAuditLogs()"><i data-lucide="refresh-cw" style="width:14px;height:14px;margin-right:6px;"></i> Refresh Logs</button>
+        </div>
+        <div class="cloudflared-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card admin-page" id="accessHubPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="waypoints"></i> Access & Tunnels Hub</h3>
+    <div class="muted" style="margin-top: 6px;">Manage SSH keys and Cloudflared routes from one place. Pick a module below.</div>
+
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
+    </div>
+
+    <div class="access-hub-stats">
+      <div class="access-stat-card">
+        <div class="access-stat-title">SSH Keys</div>
+        <div class="access-stat-value hub-ssh-count">--</div>
+        <div class="muted">Authorized keys currently managed</div>
+      </div>
+      <div class="access-stat-card">
+        <div class="access-stat-title">Cloudflared Routes</div>
+        <div class="access-stat-value hub-route-count">--</div>
+        <div class="muted">Hostname routes in dashboard control</div>
+      </div>
+      <div class="access-stat-card">
+        <div class="access-stat-title">Tunnel Status</div>
+        <div class="hub-tunnel-state unknown">Unknown</div>
+        <div class="muted">Live state from Cloudflared process check</div>
+      </div>
+    </div>
+
+    <div class="cloudflared-kpis" style="margin-top: 16px;">
+      <div class="cloudflared-kpi" style="gap: 10px;">
+        <div class="cloudflared-kpi-label">Secure Access</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px;">
+          <i data-lucide="key-round" style="width:18px;height:18px;"></i>
+          SSH Key Manager
+        </div>
+        <div class="cloudflared-kpi-note">Add, review, and remove authorized SSH public keys safely.</div>
+        <div class="actions" style="margin-top: 6px;">
+          <button class="btn-success" onclick="goToPage('ssh-keys')"><i data-lucide="arrow-right" style="width:14px;height:14px;"></i> Open SSH Keys</button>
+        </div>
+      </div>
+
+      <div class="cloudflared-kpi" style="gap: 10px;">
+        <div class="cloudflared-kpi-label">Ingress & Routing</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px;">
+          <i data-lucide="cloud" style="width:18px;height:18px;"></i>
+          Cloudflared Routes
+        </div>
+        <div class="cloudflared-kpi-note">Configure hostnames, services, and tunnel lifecycle in one workflow.</div>
+        <div class="actions" style="margin-top: 6px;">
+          <button class="btn-success" onclick="goToPage('cloudflared')"><i data-lucide="arrow-right" style="width:14px;height:14px;"></i> Open Cloudflared</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="card admin-page" id="sshKeysPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key-round"></i> SSH Key Manager</h3>
     <div class="muted" style="margin-top: 6px;">Add public keys for Linux users. Keys are deployed to <code>~/.ssh/authorized_keys</code> automatically.</div>
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
+    </div>
     <div style="margin-top: 10px;">
       <button class="btn-neutral" onclick="loadSshKeys()">Refresh Keys</button>
     </div>
@@ -1799,6 +2005,22 @@
     <div class="muted" style="margin-top: 6px;">
       Add hostname routes directly from UI. DNS route is created automatically. Managed routes are written into a controlled block inside
       <code id="cloudflaredConfigPath">/etc/cloudflared/config.yml</code>.
+    </div>
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
     </div>
     <div id="cloudflaredTunnelIndicator" class="tunnel-indicator unknown" aria-live="polite">
       <span class="tunnel-indicator-dot" aria-hidden="true"></span>
@@ -1869,6 +2091,31 @@
     <div class="file-manager-wrapper">
       <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="hard-drive"></i> File Manager</h3>
       <div class="muted" style="margin-top: 6px;">Browse and edit server files</div>
+
+      <details class="cmd-card" style="margin-top: 12px;" id="fmSecretsDetails" ontoggle="if(this.open){loadFileManagerEnvVault();}">
+        <summary style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;user-select:none;list-style:none;">
+          <i data-lucide="shield-check" style="width:16px;height:16px;"></i>
+          Secrets Vault (Quick Edit)
+        </summary>
+        <div class="muted" style="margin-top: 8px;">Manage <code>.env</code> files directly inside File Manager without switching pages.</div>
+
+        <div style="display:flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+          <select id="fmEnvProjectSelect" class="field" style="max-width: 280px;" onchange="loadFileManagerEnvVault()">
+            <option value="">-- Select Env File --</option>
+            <option value=".env">.env (project root)</option>
+            <option value=".env.example">.env.example (project root)</option>
+          </select>
+          <button class="btn-neutral" onclick="loadFileManagerEnvVault()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Load</button>
+          <button class="btn-success" onclick="saveFileManagerEnvVault()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save</button>
+          <button class="btn-neutral" onclick="addFileManagerEnvVariableRow()"><i data-lucide="plus" style="width:14px;height:14px;"></i> Add Variable</button>
+          <button class="btn-neutral" onclick="goToPage('secrets')"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Open Full Vault</button>
+        </div>
+
+        <div id="fmEnvVaultMsg" class="info-text" style="margin-top: 8px;"></div>
+        <div id="fmEnvVaultEditor" style="display:flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <div class="muted">Select an environment file to manage its secrets.</div>
+        </div>
+      </details>
 
       <div class="breadcrumb" id="fileBreadcrumb">
         <span class="breadcrumb-item" onclick="browseFiles('/')"><i data-lucide="folder" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> root</span>
@@ -2086,6 +2333,8 @@
     // --- Secrets Vault logic ---
     let currentEnvVars = [];
     let currentEnvPath = "";
+    let fileManagerEnvVars = [];
+    let fileManagerEnvPath = "";
 
     function setEnvVaultMsg(message = "", isError = false) {
       const el = document.getElementById("envVaultMsg");
@@ -2250,6 +2499,132 @@
       }
     }
 
+    function setFileManagerEnvVaultMsg(message = "", isError = false) {
+      const el = document.getElementById("fmEnvVaultMsg");
+      if (!el) return;
+      el.className = isError ? "error-text" : "info-text";
+      el.innerText = message;
+    }
+
+    function updateFileManagerEnvKey(idx, val) {
+      if (!fileManagerEnvVars[idx]) return;
+      fileManagerEnvVars[idx].key = val;
+    }
+
+    function updateFileManagerEnvVal(idx, val) {
+      if (!fileManagerEnvVars[idx]) return;
+      fileManagerEnvVars[idx].value = val;
+    }
+
+    function addFileManagerEnvVariableRow() {
+      const file = (document.getElementById("fmEnvProjectSelect")?.value || "").trim();
+      if (!file) return alert("Please select an environment file first.");
+      fileManagerEnvPath = file;
+      fileManagerEnvVars.push({ key: "", value: "" });
+      renderFileManagerEnvVault();
+    }
+
+    function removeFileManagerEnvRow(idx) {
+      if (confirm("Delete this key-value pair?")) {
+        fileManagerEnvVars.splice(idx, 1);
+        renderFileManagerEnvVault();
+      }
+    }
+
+    function renderFileManagerEnvVault() {
+      const editor = document.getElementById("fmEnvVaultEditor");
+      if (!editor) return;
+
+      if (!fileManagerEnvVars.length) {
+        editor.innerHTML = '<div class="muted">No valid KEY=VALUE entries found. You can add new variables below.</div>';
+        return;
+      }
+
+      editor.innerHTML = fileManagerEnvVars.map((item, idx) => `
+        <div style="display: flex; gap: 8px; align-items: center; background: var(--card-soft); padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
+          <input type="text" class="field" style="width: 230px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;" value="${esc(item.key)}" oninput="updateFileManagerEnvKey(${idx}, this.value)" placeholder="KEY_NAME" />
+          <span style="color: var(--muted);">=</span>
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="fm_env_val_${idx}" class="field" style="width: 100%; padding-right: 48px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;" value="${esc(item.value)}" oninput="updateFileManagerEnvVal(${idx}, this.value)" placeholder="Secret value..." />
+            <button class="btn-neutral" style="position: absolute; right: 6px; top: 6px; padding: 6px; min-height: 0; box-shadow: none; background: transparent;" onclick="toggleEnvVisible('fm_env_val_${idx}')">
+              <i data-lucide="eye" style="width: 18px; height: 18px; color: var(--muted);"></i>
+            </button>
+          </div>
+          <button class="btn-danger" style="padding: 8px;" onclick="removeFileManagerEnvRow(${idx})"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+        </div>
+      `).join("");
+
+      lucide.createIcons();
+    }
+
+    async function loadFileManagerEnvVault() {
+      const file = (document.getElementById("fmEnvProjectSelect")?.value || "").trim();
+      const editor = document.getElementById("fmEnvVaultEditor");
+      if (!editor) return;
+
+      if (!file) {
+        fileManagerEnvPath = "";
+        fileManagerEnvVars = [];
+        editor.innerHTML = '<div class="muted">Select an environment file to manage its secrets.</div>';
+        setFileManagerEnvVaultMsg("");
+        return;
+      }
+
+      try {
+        const res = await apiFetch("/files/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: file }),
+        });
+
+        const data = await res.json();
+        fileManagerEnvPath = file;
+        fileManagerEnvVars = parseEnvContent(data.content || "");
+        renderFileManagerEnvVault();
+        setFileManagerEnvVaultMsg(`Loaded ${fileManagerEnvVars.length} variables from ${file}`);
+      } catch (e) {
+        fileManagerEnvPath = file;
+        fileManagerEnvVars = [];
+        renderFileManagerEnvVault();
+        setFileManagerEnvVaultMsg(e.message || "Failed to load environment file.", true);
+      }
+    }
+
+    async function saveFileManagerEnvVault() {
+      const file = fileManagerEnvPath || (document.getElementById("fmEnvProjectSelect")?.value || "").trim();
+      if (!file) {
+        setFileManagerEnvVaultMsg("Select an environment file first.", true);
+        return;
+      }
+
+      const keyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+      const lines = [];
+
+      for (const row of fileManagerEnvVars) {
+        const key = String(row.key || "").trim();
+        if (!key) continue;
+        if (!keyPattern.test(key)) {
+          setFileManagerEnvVaultMsg(`Invalid env key: ${key}`, true);
+          return;
+        }
+        lines.push(`${key}=${serializeEnvValue(row.value)}`);
+      }
+
+      const content = lines.length ? `${lines.join("\n")}\n` : "";
+
+      try {
+        await apiFetch("/files/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: file, content }),
+        });
+
+        setFileManagerEnvVaultMsg(`Saved ${lines.length} variables to ${file}`);
+      } catch (e) {
+        setFileManagerEnvVaultMsg(e.message || "Failed to save environment file.", true);
+      }
+    }
+
     // Theme setup
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -2258,13 +2633,76 @@
 
     function getThemeChartPalette(theme) {
       const palette = {
-        light: { tick: "#5b6b86", grid: "rgba(15,23,42,0.06)", legend: "#0f172a", border: "#2563eb", bg: "rgba(37,99,235,0.18)" },
-        dark: { tick: "#94a3b8", grid: "rgba(255,255,255,0.06)", legend: "#e2e8f0", border: "#3b82f6", bg: "rgba(59,130,246,0.18)" },
-        car: { tick: "#d1d5db", grid: "rgba(255,255,255,0.08)", legend: "#f3f4f6", border: "#ef4444", bg: "rgba(239,68,68,0.2)" },
-        batman: { tick: "#d4d4c3", grid: "rgba(250,204,21,0.12)", legend: "#f8f7e3", border: "#facc15", bg: "rgba(250,204,21,0.2)" },
-        builder: { tick: "#7a6b57", grid: "rgba(122,107,87,0.12)", legend: "#2f2618", border: "#f59e0b", bg: "rgba(245,158,11,0.2)" },
-        coding: { tick: "#9fb0c3", grid: "rgba(88,166,255,0.12)", legend: "#e6edf3", border: "#58a6ff", bg: "rgba(88,166,255,0.2)" },
-        networking: { tick: "#486581", grid: "rgba(14,165,233,0.12)", legend: "#102a43", border: "#0ea5e9", bg: "rgba(14,165,233,0.2)" },
+        light: {
+          tick: "#5b6b86",
+          grid: "rgba(15,23,42,0.06)",
+          legend: "#0f172a",
+          metrics: {
+            cpu: { border: "#2563eb", bg: "rgba(37,99,235,0.15)" },
+            ram: { border: "#059669", bg: "rgba(5,150,105,0.15)" },
+            battery: { border: "#d97706", bg: "rgba(217,119,6,0.15)" },
+          }
+        },
+        dark: {
+          tick: "#94a3b8",
+          grid: "rgba(255,255,255,0.06)",
+          legend: "#e2e8f0",
+          metrics: {
+            cpu: { border: "#60a5fa", bg: "rgba(96,165,250,0.16)" },
+            ram: { border: "#34d399", bg: "rgba(52,211,153,0.16)" },
+            battery: { border: "#fbbf24", bg: "rgba(251,191,36,0.16)" },
+          }
+        },
+        car: {
+          tick: "#d1d5db",
+          grid: "rgba(255,255,255,0.08)",
+          legend: "#f3f4f6",
+          metrics: {
+            cpu: { border: "#ef4444", bg: "rgba(239,68,68,0.18)" },
+            ram: { border: "#22c55e", bg: "rgba(34,197,94,0.16)" },
+            battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.18)" },
+          }
+        },
+        batman: {
+          tick: "#d4d4c3",
+          grid: "rgba(250,204,21,0.12)",
+          legend: "#f8f7e3",
+          metrics: {
+            cpu: { border: "#facc15", bg: "rgba(250,204,21,0.16)" },
+            ram: { border: "#84cc16", bg: "rgba(132,204,22,0.16)" },
+            battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.16)" },
+          }
+        },
+        builder: {
+          tick: "#7a6b57",
+          grid: "rgba(122,107,87,0.12)",
+          legend: "#2f2618",
+          metrics: {
+            cpu: { border: "#f59e0b", bg: "rgba(245,158,11,0.17)" },
+            ram: { border: "#16a34a", bg: "rgba(22,163,74,0.17)" },
+            battery: { border: "#b45309", bg: "rgba(180,83,9,0.17)" },
+          }
+        },
+        coding: {
+          tick: "#9fb0c3",
+          grid: "rgba(88,166,255,0.12)",
+          legend: "#e6edf3",
+          metrics: {
+            cpu: { border: "#58a6ff", bg: "rgba(88,166,255,0.17)" },
+            ram: { border: "#3fb950", bg: "rgba(63,185,80,0.17)" },
+            battery: { border: "#d29922", bg: "rgba(210,153,34,0.17)" },
+          }
+        },
+        networking: {
+          tick: "#486581",
+          grid: "rgba(14,165,233,0.12)",
+          legend: "#102a43",
+          metrics: {
+            cpu: { border: "#0ea5e9", bg: "rgba(14,165,233,0.17)" },
+            ram: { border: "#10b981", bg: "rgba(16,185,129,0.17)" },
+            battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.17)" },
+          }
+        },
       };
       return palette[theme] || palette.light;
     }
@@ -2311,10 +2749,11 @@
     let sessionTimer = null;
     let currentUser = null;
     let currentPage = "dashboard";
-    let cpuPoints = [];
-    let lastCpuPointAt = 0;
-    const CPU_WINDOW_MINUTES = 30;
-    const CPU_SAMPLE_INTERVAL_MS = 30000;
+    let trendPoints = [];
+    let lastTrendPointAt = 0;
+    let lastBatteryPercent = null;
+    const TREND_WINDOW_MINUTES = 180;
+    const TREND_SAMPLE_INTERVAL_MS = 60000;
 
     let currentPath = "/";
     let fileView = "grid"; // "grid" or "list"
@@ -2330,12 +2769,85 @@
       return (ROLE_ORDER[currentUser.role] || 0) >= (ROLE_ORDER[minRole] || 0);
     }
 
+    function updateAccessTabs() {
+      document.querySelectorAll(".access-tab-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.page === currentPage);
+      });
+    }
+
+    function setAccessHubCount(selector, value) {
+      const text = value === null || value === undefined ? "--" : String(value);
+      document.querySelectorAll(selector).forEach((el) => {
+        el.innerText = text;
+      });
+    }
+
+    function setAccessHubTunnelState(running) {
+      let label = "Unknown";
+      let cls = "unknown";
+
+      if (running === true) {
+        label = "Active";
+        cls = "active";
+      } else if (running === false) {
+        label = "Inactive";
+        cls = "inactive";
+      }
+
+      document.querySelectorAll(".hub-tunnel-state").forEach((el) => {
+        el.classList.remove("active", "inactive", "unknown");
+        el.classList.add(cls);
+        el.innerText = label;
+      });
+    }
+
+    async function loadAccessHubStats() {
+      if (!hasRole("admin")) {
+        setAccessHubCount(".hub-ssh-count", "--");
+        setAccessHubCount(".hub-route-count", "--");
+        setAccessHubTunnelState(null);
+        return;
+      }
+
+      try {
+        const [sshRes, cloudRes] = await Promise.all([
+          apiFetch("/ssh/keys"),
+          apiFetch("/cloudflared/routes"),
+        ]);
+
+        const sshData = await sshRes.json();
+        const cloudData = await cloudRes.json();
+
+        const keyCount = Array.isArray(sshData.keys) ? sshData.keys.length : 0;
+        const routeCount = Array.isArray(cloudData.routes) ? cloudData.routes.length : 0;
+
+        setAccessHubCount(".hub-ssh-count", keyCount);
+        setAccessHubCount(".hub-route-count", routeCount);
+        setAccessHubTunnelState(cloudData.tunnel_running === true ? true : (cloudData.tunnel_running === false ? false : null));
+      } catch {
+        setAccessHubCount(".hub-ssh-count", "--");
+        setAccessHubCount(".hub-route-count", "--");
+        setAccessHubTunnelState(null);
+      }
+    }
+
     function updateChartColors(theme) {
       if (!cpuChart) return;
       const palette = getThemeChartPalette(theme);
+      const datasets = cpuChart.data.datasets || [];
 
-      cpuChart.data.datasets[0].borderColor = palette.border;
-      cpuChart.data.datasets[0].backgroundColor = palette.bg;
+      if (datasets[0]) {
+        datasets[0].borderColor = palette.metrics.cpu.border;
+        datasets[0].backgroundColor = palette.metrics.cpu.bg;
+      }
+      if (datasets[1]) {
+        datasets[1].borderColor = palette.metrics.ram.border;
+        datasets[1].backgroundColor = palette.metrics.ram.bg;
+      }
+      if (datasets[2]) {
+        datasets[2].borderColor = palette.metrics.battery.border;
+        datasets[2].backgroundColor = palette.metrics.battery.bg;
+      }
       
       cpuChart.options.scales.x.ticks.color = palette.tick;
       cpuChart.options.scales.x.grid.color = palette.grid;
@@ -2352,15 +2864,35 @@
       type: "line",
       data: {
         labels: [],
-        datasets: [{
-          label: "CPU %",
-          data: [],
-          borderColor: "#4db7ff",
-          backgroundColor: "rgba(77,183,255,0.18)",
-          fill: true,
-          tension: 0.28,
-          pointRadius: 2
-        }]
+        datasets: [
+          {
+            label: "CPU %",
+            data: [],
+            borderColor: "#4db7ff",
+            backgroundColor: "rgba(77,183,255,0.18)",
+            fill: false,
+            tension: 0.28,
+            pointRadius: 1.8,
+          },
+          {
+            label: "RAM %",
+            data: [],
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34,197,94,0.16)",
+            fill: false,
+            tension: 0.28,
+            pointRadius: 1.8,
+          },
+          {
+            label: "Battery %",
+            data: [],
+            borderColor: "#f59e0b",
+            backgroundColor: "rgba(245,158,11,0.16)",
+            fill: false,
+            tension: 0.28,
+            pointRadius: 1.8,
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -2384,8 +2916,8 @@
       document.getElementById("dockerPage").style.display = "none";
       document.getElementById("secretsPage").style.display = "none";
       document.getElementById("adminPage").style.display = "none";
-      document.getElementById("auditLogsPage").style.display = "none";
       document.getElementById("alertRulesPage").style.display = "none";
+      document.getElementById("accessHubPage").style.display = "none";
       document.getElementById("sshKeysPage").style.display = "none";
       document.getElementById("cloudflaredPage").style.display = "none";
       document.getElementById("fileManagerPage").style.display = "none";
@@ -2412,12 +2944,9 @@
       document.getElementById("addTodoBtn").disabled = !canOperate;
       document.getElementById("todoComposer").style.display = canOperate ? "grid" : "none";
       document.getElementById("adminMenuItem").style.display = isAdmin ? "inline-flex" : "none";
-      document.getElementById("auditLogsMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("alertRulesMenuItem").style.display = isAdmin ? "inline-flex" : "none";
-      document.getElementById("sshKeysMenuItem").style.display = isAdmin ? "inline-flex" : "none";
-      document.getElementById("cloudflaredMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("accessHubMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("dockerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
-      document.getElementById("secretsMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
 
@@ -2425,11 +2954,19 @@
         currentPage = "dashboard";
       }
 
-      if (!isAdmin && (currentPage === "admin" || currentPage === "audit-logs" || currentPage === "alert-rules" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager")) {
+      if (!isAdmin && (currentPage === "admin" || currentPage === "alert-rules" || currentPage === "access-hub" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager")) {
         currentPage = "dashboard";
       }
 
+      if (currentPage === "audit-logs") {
+        currentPage = "alert-rules";
+      }
+
       renderPage();
+
+      if (isAdmin) {
+        loadAccessHubStats();
+      }
     }
 
     function updateHeaderNav() {
@@ -2437,12 +2974,12 @@
         "dashboard": "dashboardNavItem",
         "terminal": "terminalMenuItem",
         "admin": "adminMenuItem",
-        "audit-logs": "auditLogsMenuItem",
         "alert-rules": "alertRulesMenuItem",
-        "ssh-keys": "sshKeysMenuItem",
-        "cloudflared": "cloudflaredMenuItem",
+        "access-hub": "accessHubMenuItem",
+        "ssh-keys": "accessHubMenuItem",
+        "cloudflared": "accessHubMenuItem",
         "docker": "dockerMenuItem",
-        "secrets": "secretsMenuItem",
+        "secrets": "fileManagerMenuItem",
         "file-manager": "fileManagerMenuItem",
       };
 
@@ -2454,8 +2991,8 @@
 
     function renderPage() {
       const showAdmin = currentPage === "admin" && hasRole("admin");
-      const showAuditLogs = currentPage === "audit-logs" && hasRole("admin");
       const showAlertRules = currentPage === "alert-rules" && hasRole("admin");
+      const showAccessHub = currentPage === "access-hub" && hasRole("admin");
       const showSshKeys = currentPage === "ssh-keys" && hasRole("admin");
       const showCloudflared = currentPage === "cloudflared" && hasRole("admin");
       const showFileManager = currentPage === "file-manager" && hasRole("admin");
@@ -2466,8 +3003,8 @@
 
       document.getElementById("dashboardContent").style.display = showDash ? "grid" : "none";
       document.getElementById("adminPage").style.display = showAdmin ? "block" : "none";
-      document.getElementById("auditLogsPage").style.display = showAuditLogs ? "block" : "none";
       document.getElementById("alertRulesPage").style.display = showAlertRules ? "block" : "none";
+      document.getElementById("accessHubPage").style.display = showAccessHub ? "block" : "none";
       document.getElementById("sshKeysPage").style.display = showSshKeys ? "block" : "none";
       document.getElementById("cloudflaredPage").style.display = showCloudflared ? "block" : "none";
       document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
@@ -2475,6 +3012,7 @@
       document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
       updateHeaderNav();
+      updateAccessTabs();
     }
 
     function openMenu() {}
@@ -2482,7 +3020,11 @@
     function closeMenu() {}
 
     function goToPage(page) {
-      if ((page === "admin" || page === "audit-logs" || page === "alert-rules" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "secrets") && !hasRole("admin")) {
+      if (page === "audit-logs") {
+        page = "alert-rules";
+      }
+
+      if ((page === "admin" || page === "alert-rules" || page === "access-hub" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "secrets") && !hasRole("admin")) {
         alert("Admin role required.");
         return;
       }
@@ -2496,10 +3038,10 @@
       renderPage();
       if (page === "admin") {
         loadUsers();
-      } else if (page === "audit-logs") {
-        loadAuditLogs();
       } else if (page === "alert-rules") {
         loadAlertRules();
+      } else if (page === "access-hub") {
+        loadAccessHubStats();
       } else if (page === "ssh-keys") {
         loadSshKeys();
       } else if (page === "docker") {
@@ -3080,14 +3622,17 @@
         const data = await res.json();
 
         if (data.percent === null || data.percent === undefined) {
+          lastBatteryPercent = null;
           document.getElementById("batteryValue").innerText = "N/A";
           document.getElementById("batteryMode").innerText = "Battery info unavailable";
           return;
         }
 
-        document.getElementById("batteryValue").innerText = `${Number(data.percent).toFixed(1)}%`;
+        lastBatteryPercent = Number(data.percent);
+        document.getElementById("batteryValue").innerText = `${lastBatteryPercent.toFixed(1)}%`;
         document.getElementById("batteryMode").innerText = data.plugged ? "Charging" : "On battery";
       } catch {
+        lastBatteryPercent = null;
         document.getElementById("batteryValue").innerText = "--%";
         document.getElementById("batteryMode").innerText = "Battery check failed";
       }
@@ -3105,18 +3650,25 @@
         document.getElementById("ramValue").innerText = `${ram.toFixed(1)}%`;
 
         const nowMs = Date.now();
-        if (nowMs - lastCpuPointAt >= CPU_SAMPLE_INTERVAL_MS) {
-          lastCpuPointAt = nowMs;
-          cpuPoints.push({ t: nowMs, v: cpu });
+        if (nowMs - lastTrendPointAt >= TREND_SAMPLE_INTERVAL_MS) {
+          lastTrendPointAt = nowMs;
+          trendPoints.push({
+            t: nowMs,
+            cpu,
+            ram,
+            battery: Number.isFinite(lastBatteryPercent) ? lastBatteryPercent : null,
+          });
         }
 
-        const cutoff = nowMs - CPU_WINDOW_MINUTES * 60 * 1000;
-        cpuPoints = cpuPoints.filter((p) => p.t >= cutoff);
+        const cutoff = nowMs - TREND_WINDOW_MINUTES * 60 * 1000;
+        trendPoints = trendPoints.filter((p) => p.t >= cutoff);
 
-        cpuChart.data.labels = cpuPoints.map((p) =>
+        cpuChart.data.labels = trendPoints.map((p) =>
           new Date(p.t).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit" })
         );
-        cpuChart.data.datasets[0].data = cpuPoints.map((p) => p.v);
+        cpuChart.data.datasets[0].data = trendPoints.map((p) => p.cpu);
+        cpuChart.data.datasets[1].data = trendPoints.map((p) => p.ram);
+        cpuChart.data.datasets[2].data = trendPoints.map((p) => p.battery);
         cpuChart.update();
       } catch {
         document.getElementById("cpuValue").innerText = "--%";
@@ -3332,6 +3884,7 @@
       renderSshCommandSnippets();
       if (!hasRole("admin")) {
         body.innerHTML = "";
+        setAccessHubCount(".hub-ssh-count", "--");
         return;
       }
 
@@ -3339,6 +3892,7 @@
         const res = await apiFetch("/ssh/keys");
         const data = await res.json();
         const keys = data.keys || [];
+        setAccessHubCount(".hub-ssh-count", keys.length);
 
         if (!keys.length) {
           body.innerHTML = `<tr><td colspan="7" class="muted">No SSH keys configured yet.</td></tr>`;
@@ -3362,6 +3916,7 @@
           `;
         }).join("");
       } catch (e) {
+        setAccessHubCount(".hub-ssh-count", "--");
         body.innerHTML = `<tr><td colspan="7" class="muted">${esc(e.message || "Failed to load SSH keys.")}</td></tr>`;
       }
     }
@@ -3474,6 +4029,8 @@
         if (hostnameSuggestionsEl) hostnameSuggestionsEl.innerHTML = "";
         if (importBtn) importBtn.disabled = true;
         setTunnelIndicator("unknown", "Tunnel status: unavailable");
+        setAccessHubCount(".hub-route-count", "--");
+        setAccessHubTunnelState(null);
         return;
       }
 
@@ -3481,6 +4038,8 @@
         const res = await apiFetch("/cloudflared/routes");
         const data = await res.json();
         const routes = data.routes || [];
+        setAccessHubCount(".hub-route-count", routes.length);
+        setAccessHubTunnelState(data.tunnel_running === true ? true : (data.tunnel_running === false ? false : null));
         cloudflaredRoutes = routes;
         const configHostnames = Array.isArray(data.config_hostnames) ? data.config_hostnames : [];
         const unmanagedConfigHostnames = Array.isArray(data.unmanaged_config_hostnames)
@@ -3551,6 +4110,8 @@
           `;
         }).join("");
       } catch (e) {
+        setAccessHubCount(".hub-route-count", "--");
+        setAccessHubTunnelState(null);
         routeInfoEl.innerText = "Unable to fetch tunnel metadata.";
         if (configHostnamesEl) configHostnamesEl.innerText = "Unable to read hostnames from Cloudflared config.";
         setTunnelIndicator("unknown", "Tunnel status: error while checking");
@@ -3583,6 +4144,7 @@
           : "";
         msg.innerText = `Imported ${importedCount} unmanaged route(s).${skippedSummary}`;
         await loadCloudflaredRoutes();
+        await loadAccessHubStats();
       } catch (e) {
         msg.innerText = e.message || "Failed to import unmanaged hostnames.";
       } finally {
@@ -3642,6 +4204,7 @@
         const dnsLabel = data.dns_routed ? "DNS route updated" : `DNS note: ${data.dns_message || "not configured"}`;
         msg.innerText = `Cloudflared route updated: ${data.route.hostname} -> ${data.route.service_scheme}://${data.route.service_host}:${data.route.service_port} • ${dnsLabel}`;
         await loadCloudflaredRoutes();
+        await loadAccessHubStats();
       } catch (e) {
         msg.innerText = e.message || "Failed to update Cloudflared route.";
       }
@@ -3665,6 +4228,7 @@
         const pidLabel = activePids.length ? activePids.join(", ") : (data.started_pid || "--");
         msg.innerText = `Cloudflared tunnel restarted (${data.tunnel_name || "unknown"}). Active PID(s): ${pidLabel}`;
         await loadCloudflaredRoutes();
+        await loadAccessHubStats();
       } catch (e) {
         msg.innerText = e.message || "Failed to restart Cloudflared tunnel.";
       } finally {
@@ -3703,6 +4267,7 @@
         const dnsLabel = data.dns_routed ? "DNS route created" : `DNS note: ${data.dns_message || "not configured"}`;
         msg.innerText = `Cloudflared route added: ${hostname} -> ${service_scheme}://${service_host}:${service_port} • ${dnsLabel} • ${data.public_url || `https://${hostname}`}`;
         await loadCloudflaredRoutes();
+        await loadAccessHubStats();
       } catch (e) {
         msg.innerText = e.message || "Failed to add Cloudflared route.";
       }
@@ -3725,6 +4290,7 @@
         await apiFetch(`/cloudflared/routes/${routeId}`, { method: "DELETE" });
         msg.innerText = `Cloudflared route '${hostname}' deleted.`;
         await loadCloudflaredRoutes();
+        await loadAccessHubStats();
       } catch (e) {
         msg.innerText = e.message || "Failed to delete Cloudflared route.";
       }
@@ -4367,7 +4933,8 @@
     }
 
     async function refreshAll() {
-      await Promise.all([loadServices(), loadTodos(), loadBattery(), loadSystem(), loadPorts(), loadDocker()]);
+      await loadBattery();
+      await Promise.all([loadServices(), loadTodos(), loadSystem(), loadPorts(), loadDocker()]);
     }
 
     document.getElementById("todoInput").addEventListener("keydown", (e) => {
