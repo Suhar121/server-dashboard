@@ -1319,6 +1319,122 @@
       }
     }
 
+    /* --- Custom Global Scrollbar --- */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--surface); 
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(150, 150, 150, 0.4); 
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(150, 150, 150, 0.6); 
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    /* --- Portainer-like Docker UI --- */
+    .docker-port-badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(33, 150, 243, 0.15);
+      color: #64b5f6;
+      border: 1px solid rgba(100, 181, 246, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: nowrap;
+    }
+    .docker-status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .docker-status-up {
+      background: rgba(76, 175, 80, 0.15);
+      color: #81c784;
+      border: 1px solid rgba(129, 199, 132, 0.3);
+    }
+    .docker-status-down {
+      background: rgba(244, 67, 54, 0.15);
+      color: #e57373;
+      border: 1px solid rgba(229, 115, 115, 0.3);
+    }
+    #dockerFullTable th {
+      background: var(--surface);
+      color: var(--text-damped);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+    #dockerFullTable td {
+      padding: 12px 14px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border);
+    }
+    #dockerFullTable tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    #dockerFullTable .actions button {
+      padding: 6px;
+      border-radius: 6px;
+    }
+    #dockerFullTable .actions i {
+      margin-right: 0 !important;
+    }
+
+    /* --- Docker KPIs --- */
+    .cloudflared-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .cloudflared-kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      transition: border-color 0.2s;
+    }
+    .cloudflared-kpi:hover {
+      border-color: var(--border-hover);
+    }
+    .cloudflared-kpi-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-damped);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .cloudflared-kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    .cloudflared-kpi-note {
+      font-size: 0.8rem;
+      color: var(--text-damped);
+      margin-top: 8px;
+    }
   </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
