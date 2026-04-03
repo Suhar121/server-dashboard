@@ -17,6 +17,7 @@ It provides:
 - Browser terminal via WebSocket + PTY
 - Saved command library with template variables (`{{var}}`)
 - Port change detection (newly opened / recently closed)
+- GitHub webhook-based CD trigger (`push` on selected branch)
 
 ---
 
@@ -166,6 +167,12 @@ Defined/used in backend:
 - `CLOUDFLARED_DNS_AUTO_ROUTE` — auto-run `cloudflared tunnel route dns` on route create (`true` by default)
 - `CLOUDFLARED_BIN_PATH` — cloudflared executable path (default `cloudflared`)
 - `CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS` — DNS command timeout (default `20`)
+- `DEPLOY_WEBHOOK_ENABLED` — enables webhook CD endpoint (`true` by default)
+- `DEPLOY_WEBHOOK_SECRET` — shared secret used to verify `X-Hub-Signature-256`
+- `DEPLOY_WEBHOOK_REF` — expected Git ref from GitHub webhook (default `refs/heads/main`)
+- `DEPLOY_WEBHOOK_REPO` — optional repo guard (format `owner/repo`)
+- `DEPLOY_WEBHOOK_PATH` — path to repo on server where deploy runs (default current working dir)
+- `DEPLOY_WEBHOOK_TIMEOUT_SECONDS` — per-command timeout for deploy pipeline
 
 If writing to `/etc/cloudflared/config.yml` fails (common on non-root setups), the app automatically tries the fallback path.
 
@@ -233,6 +240,34 @@ For persistent runtime data, compose mounts:
 - `./data` for SQLite DB (`USERS_DB_PATH=/app/data/users.db`)
 - `./logs` for app/service logs
 - `./cloudflared` for fallback cloudflared config
+
+## 7) Webhook CD setup (simple mode)
+
+This project now includes a built-in deploy webhook endpoint:
+- `POST /deploy/webhook` (GitHub webhook target)
+- `GET /deploy/status` (admin-only status/logs)
+
+Minimal setup:
+1. Set these values in `.env` on each server:
+  - `DEPLOY_WEBHOOK_ENABLED=true`
+  - `DEPLOY_WEBHOOK_SECRET=<same-random-secret-used-in-github-webhook>`
+  - `DEPLOY_WEBHOOK_REF=refs/heads/main`
+  - `DEPLOY_WEBHOOK_REPO=<owner/repo>`
+  - `DEPLOY_WEBHOOK_PATH=/absolute/path/to/this/repo`
+2. Restart the app.
+3. In GitHub → **Settings → Webhooks → Add webhook**:
+  - **Payload URL**: `https://your-domain/deploy/webhook`
+  - **Content type**: `application/json`
+  - **Secret**: same value as `DEPLOY_WEBHOOK_SECRET`
+  - **Events**: `Just the push event`
+4. Push to your configured branch.
+
+Deploy pipeline executed by webhook:
+- `git fetch origin <branch>`
+- `git checkout <branch>`
+- `git reset --hard origin/<branch>`
+- create `.env` from `.env.example` if missing
+- `docker compose up -d --build --remove-orphans`
 
 ---
 
@@ -313,6 +348,11 @@ Base URL: `http://127.0.0.1:8000`
 ### Terminal
 
 - `WS /ws/terminal`
+
+### Deploy webhook
+
+- `POST /deploy/webhook`
+- `GET /deploy/status` (admin)
 
 ### Frontend shell
 

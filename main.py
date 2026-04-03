@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 import psutil
 import subprocess
+import json
 import socket
 import requests
 import os
@@ -11,6 +12,7 @@ import shutil
 import asyncio
 import pty
 import fcntl
+import threading
 from collections import deque
 import secrets
 import time
@@ -62,6 +64,7 @@ USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,64}$")
 SSH_USERNAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 CLOUDFLARED_HOSTNAME_PATTERN = re.compile(r"^(?:\*\.)?(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$")
 CLOUDFLARED_SERVICE_HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}[A-Za-z0-9]$|^[A-Za-z0-9]$")
+BRANCH_NAME_PATTERN = re.compile(r"^[A-Za-z0-9._/-]{1,128}$")
 
 ROLE_ORDER = {
     "viewer": 1,
@@ -74,6 +77,19 @@ battery_alert_sent = False
 managed_services = {}
 active_sessions = {}
 alert_last_sent = {}  # Track when alerts were last sent to avoid spam
+deploy_lock = threading.Lock()
+deploy_status_lock = threading.Lock()
+deploy_status = {
+    "running": False,
+    "last_started_at": None,
+    "last_finished_at": None,
+    "last_exit_code": None,
+    "last_summary": "never-ran",
+    "last_ref": None,
+    "last_repository": None,
+    "last_delivery": None,
+    "last_output": "",
+}
 SSH_MANAGED_BLOCK_BEGIN = "# >>> dashboard-managed-ssh-keys >>>"
 SSH_MANAGED_BLOCK_END = "# <<< dashboard-managed-ssh-keys <<<"
 SUPPORTED_SSH_KEY_TYPES = {
@@ -114,6 +130,23 @@ except ValueError:
     _cf_tunnel_stop_timeout = 10
 CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS = max(2, min(30, _cf_tunnel_stop_timeout))
 CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
+
+DEPLOY_WEBHOOK_ENABLED = (os.getenv("DEPLOY_WEBHOOK_ENABLED", "true") or "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+DEPLOY_WEBHOOK_SECRET = (os.getenv("DEPLOY_WEBHOOK_SECRET", "") or "").strip()
+DEPLOY_WEBHOOK_REF = (os.getenv("DEPLOY_WEBHOOK_REF", "refs/heads/main") or "refs/heads/main").strip()
+DEPLOY_WEBHOOK_REPO = (os.getenv("DEPLOY_WEBHOOK_REPO", "") or "").strip().lower()
+DEPLOY_WEBHOOK_PATH = os.path.abspath((os.getenv("DEPLOY_WEBHOOK_PATH", os.getcwd()) or os.getcwd()).strip())
+try:
+    _deploy_timeout = int(os.getenv("DEPLOY_WEBHOOK_TIMEOUT_SECONDS", "900"))
+except ValueError:
+    _deploy_timeout = 900
+DEPLOY_WEBHOOK_TIMEOUT_SECONDS = max(30, min(3600, _deploy_timeout))
+DEPLOY_LOG_MAX_CHARS = 20_000
 
 
 class RunServiceRequest(BaseModel):
@@ -2111,6 +2144,244 @@ def check_alert_rules(cpu_percent: float, ram_percent: float):
 
     except Exception as e:
         print("Alert check error:", e)
+
+
+def normalize_ref_to_branch(ref: str) -> str:
+    cleaned = (ref or "").strip()
+    if cleaned.startswith("refs/heads/"):
+        return cleaned[len("refs/heads/"):]
+    return cleaned
+
+
+def verify_github_webhook_signature(raw_body: bytes, signature_header: str):
+    if not DEPLOY_WEBHOOK_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="Webhook deploy is not configured (DEPLOY_WEBHOOK_SECRET missing)",
+        )
+
+    provided = (signature_header or "").strip()
+    if not provided.startswith("sha256="):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Hub-Signature-256")
+
+    digest = hmac.new(
+        DEPLOY_WEBHOOK_SECRET.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    expected = f"sha256={digest}"
+
+    if not hmac.compare_digest(expected, provided):
+        raise HTTPException(status_code=401, detail="Webhook signature verification failed")
+
+
+def update_deploy_status(**kwargs):
+    with deploy_status_lock:
+        deploy_status.update(kwargs)
+
+
+def get_deploy_status_snapshot():
+    with deploy_status_lock:
+        return dict(deploy_status)
+
+
+def trim_deploy_output(text: str) -> str:
+    if len(text) <= DEPLOY_LOG_MAX_CHARS:
+        return text
+    return text[-DEPLOY_LOG_MAX_CHARS:]
+
+
+def run_webhook_deploy_job(ref: str, repository_full_name: str, delivery_id: str):
+    started_at = int(time.time())
+    branch = normalize_ref_to_branch(ref)
+    output_chunks = []
+    exit_code = 1
+
+    with deploy_lock:
+        update_deploy_status(
+            running=True,
+            last_started_at=started_at,
+            last_finished_at=None,
+            last_exit_code=None,
+            last_summary="running",
+            last_ref=ref,
+            last_repository=repository_full_name,
+            last_delivery=delivery_id,
+            last_output="",
+        )
+
+        if not BRANCH_NAME_PATTERN.match(branch):
+            output_chunks.append(f"Invalid branch derived from ref: {ref}\n")
+            exit_code = 2
+        elif not os.path.isdir(DEPLOY_WEBHOOK_PATH):
+            output_chunks.append(f"Deploy path does not exist: {DEPLOY_WEBHOOK_PATH}\n")
+            exit_code = 2
+        else:
+            commands = [
+                ("git fetch", ["git", "fetch", "origin", branch]),
+                ("git checkout", ["git", "checkout", branch]),
+                ("git reset", ["git", "reset", "--hard", f"origin/{branch}"]),
+                (
+                    "ensure env",
+                    [
+                        "bash",
+                        "-lc",
+                        "if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi",
+                    ],
+                ),
+                (
+                    "docker compose deploy",
+                    [
+                        "bash",
+                        "-lc",
+                        "set -e; "
+                        "if docker info >/dev/null 2>&1; then DOCKER='docker'; "
+                        "elif sudo docker info >/dev/null 2>&1; then DOCKER='sudo docker'; "
+                        "else echo 'Docker daemon is not accessible'; exit 1; fi; "
+                        "$DOCKER compose up -d --build --remove-orphans; "
+                        "$DOCKER image prune -f >/dev/null 2>&1 || true",
+                    ],
+                ),
+            ]
+
+            for label, command in commands:
+                output_chunks.append(f"\n$ {label}\n")
+                try:
+                    result = subprocess.run(
+                        command,
+                        cwd=DEPLOY_WEBHOOK_PATH,
+                        capture_output=True,
+                        text=True,
+                        timeout=DEPLOY_WEBHOOK_TIMEOUT_SECONDS,
+                    )
+                except subprocess.TimeoutExpired:
+                    output_chunks.append(
+                        f"Command timed out after {DEPLOY_WEBHOOK_TIMEOUT_SECONDS} seconds.\n"
+                    )
+                    exit_code = 124
+                    break
+                except Exception as e:
+                    output_chunks.append(f"Command execution error: {str(e)}\n")
+                    exit_code = 1
+                    break
+
+                if result.stdout:
+                    output_chunks.append(result.stdout)
+                if result.stderr:
+                    output_chunks.append(result.stderr)
+
+                if result.returncode != 0:
+                    exit_code = result.returncode
+                    break
+            else:
+                exit_code = 0
+
+        finished_at = int(time.time())
+        summary = "success" if exit_code == 0 else "failed"
+        full_output = trim_deploy_output("".join(output_chunks))
+
+        update_deploy_status(
+            running=False,
+            last_finished_at=finished_at,
+            last_exit_code=exit_code,
+            last_summary=summary,
+            last_output=full_output,
+        )
+
+
+@app.post("/deploy/webhook")
+async def github_deploy_webhook(request: Request):
+    if not DEPLOY_WEBHOOK_ENABLED:
+        raise HTTPException(status_code=404, detail="Webhook deploy is disabled")
+
+    raw_body = await request.body()
+    verify_github_webhook_signature(
+        raw_body=raw_body,
+        signature_header=request.headers.get("x-hub-signature-256", ""),
+    )
+
+    event = (request.headers.get("x-github-event") or "").strip().lower()
+    delivery_id = (request.headers.get("x-github-delivery") or "").strip()
+
+    try:
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    if event == "ping":
+        return {"status": "pong", "delivery": delivery_id}
+
+    if event != "push":
+        return JSONResponse(
+            status_code=202,
+            content={
+                "status": "ignored",
+                "reason": "unsupported_event",
+                "event": event,
+                "delivery": delivery_id,
+            },
+        )
+
+    ref = (payload.get("ref") or "").strip()
+    repository_full_name = (
+        ((payload.get("repository") or {}).get("full_name") or "").strip().lower()
+    )
+
+    if DEPLOY_WEBHOOK_REPO and repository_full_name != DEPLOY_WEBHOOK_REPO:
+        return JSONResponse(
+            status_code=202,
+            content={
+                "status": "ignored",
+                "reason": "repository_mismatch",
+                "expected_repository": DEPLOY_WEBHOOK_REPO,
+                "received_repository": repository_full_name,
+                "delivery": delivery_id,
+            },
+        )
+
+    if ref != DEPLOY_WEBHOOK_REF:
+        return JSONResponse(
+            status_code=202,
+            content={
+                "status": "ignored",
+                "reason": "ref_mismatch",
+                "expected_ref": DEPLOY_WEBHOOK_REF,
+                "received_ref": ref,
+                "delivery": delivery_id,
+            },
+        )
+
+    if deploy_lock.locked():
+        return JSONResponse(
+            status_code=202,
+            content={
+                "status": "ignored",
+                "reason": "deploy_in_progress",
+                "delivery": delivery_id,
+            },
+        )
+
+    thread = threading.Thread(
+        target=run_webhook_deploy_job,
+        args=(ref, repository_full_name, delivery_id),
+        daemon=True,
+    )
+    thread.start()
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "accepted",
+            "delivery": delivery_id,
+            "ref": ref,
+            "repository": repository_full_name,
+        },
+    )
+
+
+@app.get("/deploy/status")
+def deploy_status_endpoint(user=Depends(require_role("admin"))):
+    return get_deploy_status_snapshot()
 
 
 @app.middleware("http")
