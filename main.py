@@ -21,6 +21,9 @@ import re
 import base64
 import pwd
 import tempfile
+import json
+import termios
+import struct
 
 app = FastAPI()
 
@@ -115,6 +118,7 @@ except ValueError:
     _cf_tunnel_stop_timeout = 10
 CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS = max(2, min(30, _cf_tunnel_stop_timeout))
 CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
+TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__"
 
 
 class RunServiceRequest(BaseModel):
@@ -3444,6 +3448,12 @@ async def websocket_terminal(websocket: WebSocket):
 
     await websocket.accept()
 
+    if (websocket.query_params.get("protocol") or "").strip().lower() == "v2":
+        try:
+            await websocket.send_text(TERMINAL_PROTOCOL_V2_MARKER)
+        except Exception:
+            pass
+
     pid = None
     master_fd = None
 
@@ -3458,6 +3468,17 @@ async def websocket_terminal(websocket: WebSocket):
 
         flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
         fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+        def set_pty_window_size(rows: int, cols: int):
+            safe_rows = max(5, min(200, int(rows)))
+            safe_cols = max(20, min(500, int(cols)))
+            winsize = struct.pack("HHHH", safe_rows, safe_cols, 0, 0)
+            fcntl.ioctl(master_fd, termios.TIOCSWINSZ, winsize)
+
+        try:
+            set_pty_window_size(24, 80)
+        except Exception:
+            pass
 
         log_audit(session["username"], "terminal_open", "Opened web terminal session")
 
@@ -3478,7 +3499,38 @@ async def websocket_terminal(websocket: WebSocket):
                 data = await websocket.receive_text()
                 if master_fd is None:
                     break
-                os.write(master_fd, data.encode("utf-8", errors="ignore"))
+
+                payload = None
+                try:
+                    payload = json.loads(data)
+                except Exception:
+                    payload = None
+
+                if isinstance(payload, dict):
+                    message_type = str(payload.get("type", "")).strip().lower()
+
+                    if message_type == "resize":
+                        try:
+                            rows = int(payload.get("rows", 24))
+                            cols = int(payload.get("cols", 80))
+                            set_pty_window_size(rows, cols)
+                            if pid:
+                                try:
+                                    os.kill(pid, signal.SIGWINCH)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                        continue
+
+                    if message_type == "input":
+                        input_data = payload.get("data", "")
+                        if isinstance(input_data, str) and input_data:
+                            os.write(master_fd, input_data.encode("utf-8", errors="ignore"))
+                        continue
+
+                if data:
+                    os.write(master_fd, data.encode("utf-8", errors="ignore"))
 
         await asyncio.gather(pty_to_websocket(), websocket_to_pty())
 
