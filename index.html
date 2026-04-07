@@ -752,6 +752,46 @@
     .todo-text { overflow-wrap: anywhere; }
     .todo-done .todo-text { text-decoration: line-through; color: var(--muted); }
 
+    .recent-ports-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .recent-port-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-soft);
+      flex-wrap: wrap;
+    }
+
+    .recent-port-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .recent-port-open {
+      color: var(--ok);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .recent-port-closed {
+      color: var(--bad);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
     #loginModal, #permissionsModal {
       position: fixed;
       inset: 0;
@@ -1706,10 +1746,14 @@
             <th>Protocol</th>
             <th>State</th>
             <th>Local Address</th>
+            <th>Alias</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="portsBody"></tbody>
       </table>
+      <div class="muted" style="margin-top: 10px;">Recent Port Activity</div>
+      <div id="recentPortsList" class="recent-ports-list"></div>
     </section>
 
     <section class="card panel-half">
@@ -2792,6 +2836,13 @@
     let lastBatteryPercent = null;
     const TREND_WINDOW_MINUTES = 180;
     const TREND_SAMPLE_INTERVAL_MS = 60000;
+    const PORT_ALIAS_STORAGE_KEY = "dashboard_port_aliases_v1";
+    const PORT_ACTIVITY_STORAGE_KEY = "dashboard_port_activity_v1";
+    const MAX_PORT_ACTIVITY_ITEMS = 30;
+
+    let portAliases = loadPortAliases();
+    let recentPortActivity = loadRecentPortActivity();
+    let lastPortSnapshot = new Map();
 
     let currentPath = "/";
     let fileView = "grid"; // "grid" or "list"
@@ -2807,6 +2858,169 @@
     function hasRole(minRole) {
       if (!currentUser) return false;
       return (ROLE_ORDER[currentUser.role] || 0) >= (ROLE_ORDER[minRole] || 0);
+    }
+
+    function loadPortAliases() {
+      try {
+        const raw = localStorage.getItem(PORT_ALIAS_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function savePortAliases() {
+      try {
+        localStorage.setItem(PORT_ALIAS_STORAGE_KEY, JSON.stringify(portAliases || {}));
+      } catch {
+        // Ignore storage failures.
+      }
+    }
+
+    function loadRecentPortActivity() {
+      try {
+        const raw = localStorage.getItem(PORT_ACTIVITY_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.slice(0, MAX_PORT_ACTIVITY_ITEMS) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRecentPortActivity() {
+      try {
+        localStorage.setItem(
+          PORT_ACTIVITY_STORAGE_KEY,
+          JSON.stringify((recentPortActivity || []).slice(0, MAX_PORT_ACTIVITY_ITEMS))
+        );
+      } catch {
+        // Ignore storage failures.
+      }
+    }
+
+    function extractPortNumber(localAddress) {
+      const text = String(localAddress || "").trim();
+      const matched = text.match(/:(\d{1,5})$/);
+      if (!matched) return null;
+      const port = Number(matched[1]);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
+      return port;
+    }
+
+    function normalizePortEntry(entry) {
+      const protocol = String(entry?.protocol || "").trim();
+      const state = String(entry?.state || "").trim();
+      const local = String(entry?.local || "").trim();
+      const port = extractPortNumber(local);
+      return {
+        protocol,
+        state,
+        local,
+        port,
+        key: `${protocol}|${state}|${local}`,
+      };
+    }
+
+    function recordPortActivity(type, entry, timestamp) {
+      const newest = recentPortActivity[0];
+      if (
+        newest
+        && newest.type === type
+        && newest.key === entry.key
+        && Math.abs(Number(newest.timestamp || 0) - Number(timestamp)) < 1500
+      ) {
+        return;
+      }
+
+      recentPortActivity.unshift({
+        type,
+        key: entry.key,
+        protocol: entry.protocol,
+        state: entry.state,
+        local: entry.local,
+        port: entry.port,
+        timestamp,
+      });
+
+      recentPortActivity = recentPortActivity.slice(0, MAX_PORT_ACTIVITY_ITEMS);
+      saveRecentPortActivity();
+    }
+
+    function updateRecentPortActivity(snapshot) {
+      const now = Date.now();
+
+      for (const [key, entry] of snapshot.entries()) {
+        if (!lastPortSnapshot.has(key)) {
+          recordPortActivity("opened", entry, now);
+        }
+      }
+
+      for (const [key, entry] of lastPortSnapshot.entries()) {
+        if (!snapshot.has(key)) {
+          recordPortActivity("closed", entry, now);
+        }
+      }
+    }
+
+    function renderRecentPortActivity() {
+      const list = document.getElementById("recentPortsList");
+      if (!list) return;
+
+      if (!recentPortActivity.length) {
+        list.innerHTML = `<div class="muted">No recent port activity yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = recentPortActivity.slice(0, 8).map((entry) => {
+        const isOpen = entry.type === "opened";
+        const stateClass = isOpen ? "recent-port-open" : "recent-port-closed";
+        const badgeText = isOpen ? "OPENED" : "CLOSED";
+        const alias = entry.port ? (portAliases[String(entry.port)] || "") : "";
+        const aliasText = alias ? ` • ${esc(alias)}` : "";
+        const timeText = entry.timestamp
+          ? new Date(Number(entry.timestamp)).toLocaleTimeString()
+          : "--:--:--";
+        const portText = entry.port ? `:${entry.port}` : "(unknown)";
+
+        return `
+          <div class="recent-port-item">
+            <span class="recent-port-badge ${stateClass}">${badgeText}</span>
+            <strong>${esc(portText)}</strong>
+            <span>${aliasText || "<span class=\"muted\">No alias</span>"}</span>
+            <span class="muted">${esc(entry.protocol)} • ${esc(entry.local)} • ${esc(timeText)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function renamePortAlias(encodedLocalAddress) {
+      const localAddress = decodeURIComponent(String(encodedLocalAddress || ""));
+      const port = extractPortNumber(localAddress);
+      if (!port) {
+        alert("Could not detect a numeric port for this row.");
+        return;
+      }
+
+      const currentAlias = portAliases[String(port)] || "";
+      const nextAlias = prompt(
+        `Set alias for port ${port} (leave empty to clear):`,
+        currentAlias
+      );
+
+      if (nextAlias === null) return;
+
+      const trimmed = String(nextAlias).trim().slice(0, 40);
+      if (trimmed) {
+        portAliases[String(port)] = trimmed;
+      } else {
+        delete portAliases[String(port)];
+      }
+
+      savePortAliases();
+      await loadPorts();
     }
 
     function updateAccessTabs() {
@@ -3729,21 +3943,42 @@
       try {
         const res = await apiFetch("/ports");
         const ports = await res.json();
+        const normalized = (ports || []).map(normalizePortEntry).filter((entry) => !!entry.local);
 
-        if (!ports.length) {
-          body.innerHTML = `<tr><td colspan="3" class="muted">No open ports found.</td></tr>`;
+        const snapshot = new Map();
+        normalized.forEach((entry) => snapshot.set(entry.key, entry));
+
+        if (lastPortSnapshot.size > 0) {
+          updateRecentPortActivity(snapshot);
+        }
+        lastPortSnapshot = snapshot;
+        renderRecentPortActivity();
+
+        if (!normalized.length) {
+          body.innerHTML = `<tr><td colspan="5" class="muted">No open ports found.</td></tr>`;
           return;
         }
 
-        body.innerHTML = ports.slice(0, 20).map(p => `
+        body.innerHTML = normalized.slice(0, 20).map((p) => {
+          const alias = p.port ? (portAliases[String(p.port)] || "") : "";
+          const encodedLocal = encodeURIComponent(p.local);
+          return `
           <tr>
             <td>${esc(p.protocol)}</td>
             <td>${esc(p.state)}</td>
             <td>${esc(p.local)}</td>
+            <td>${alias ? esc(alias) : '<span class="muted">—</span>'}</td>
+            <td>
+              ${p.port
+                ? `<button class="btn-neutral" onclick="renamePortAlias('${encodedLocal}')">Rename</button>`
+                : '<span class="muted">N/A</span>'}
+            </td>
           </tr>
-        `).join("");
+        `;
+        }).join("");
       } catch {
-        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load port data.</td></tr>`;
+        renderRecentPortActivity();
+        body.innerHTML = `<tr><td colspan="5" class="muted">Failed to load port data.</td></tr>`;
       }
     }
 
