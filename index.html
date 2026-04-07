@@ -1780,24 +1780,22 @@
     </section>
 
     <section class="card panel-side">
-      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="server"></i> Pinned Services</h3>
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="pin"></i> Pinned Ports</h3>
       <div class="stack" style="margin-top: 10px;">
-        <input id="serviceName" class="field" placeholder="Service name e.g. FastAPI" />
-        <input id="servicePort" class="field" type="number" placeholder="Port e.g. 8000" />
-        <input id="serviceCommand" class="field" placeholder="Command e.g. uvicorn app:app --port 8000" />
-        <button id="addServiceBtn" onclick="addService()">Add Service</button>
+        <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port e.g. 8000" />
+        <button id="addPinnedPortBtn" onclick="addPinnedPort()">Pin Port</button>
       </div>
 
-      <table class="services-table" id="servicesTable">
+      <table class="services-table" id="pinnedPortsTable">
         <thead>
           <tr>
-            <th>Service</th>
             <th>Port</th>
+            <th>Alias</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
-        <tbody id="servicesBody"></tbody>
+        <tbody id="pinnedPortsBody"></tbody>
       </table>
     </section>
 
@@ -2887,6 +2885,7 @@
     });
 
     let services = [];
+    let pinnedPorts = [];
     let todos = [];
     let cloudflaredRoutes = [];
     let currentLogService = null;
@@ -3090,7 +3089,7 @@
       }
 
       savePortAliases();
-      await loadPorts();
+      await Promise.all([loadPorts(), loadPinnedPorts()]);
     }
 
     function updateAccessTabs() {
@@ -3265,7 +3264,8 @@
 
       const canOperate = hasRole("operator");
       const isAdmin = hasRole("admin");
-      document.getElementById("addServiceBtn").disabled = !canOperate;
+      const addPinnedPortBtn = document.getElementById("addPinnedPortBtn");
+      if (addPinnedPortBtn) addPinnedPortBtn.disabled = !canOperate;
       document.getElementById("addTodoBtn").disabled = !canOperate;
       document.getElementById("todoComposer").style.display = canOperate ? "grid" : "none";
       document.getElementById("adminMenuItem").style.display = isAdmin ? "inline-flex" : "none";
@@ -3466,6 +3466,7 @@
 
       currentUser = null;
       services = [];
+      pinnedPorts = [];
       todos = [];
       closeAllTerminalTabs();
       currentPage = "dashboard";
@@ -3621,6 +3622,155 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    async function addPinnedPort(portOverride = null) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const rawPort = portOverride ?? document.getElementById("pinnedPortInput")?.value;
+      const port = Number(rawPort);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        alert("Enter a valid port between 1 and 65535.");
+        return;
+      }
+
+      try {
+        await apiFetch("/state/pinned-ports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ port }),
+        });
+
+        const input = document.getElementById("pinnedPortInput");
+        if (input) input.value = "";
+        await loadPinnedPorts();
+      } catch (e) {
+        alert(e.message || "Failed to pin port.");
+      }
+    }
+
+    async function removePinnedPort(pinId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      try {
+        await apiFetch(`/state/pinned-ports/${pinId}`, { method: "DELETE" });
+        await loadPinnedPorts();
+      } catch (e) {
+        alert(e.message || "Failed to remove pinned port.");
+      }
+    }
+
+    async function terminatePinnedPort(port) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      if (!confirm(`Stop processes listening on port ${port}?`)) {
+        return;
+      }
+
+      try {
+        const res = await apiFetch(`/ports/${port}/terminate`, { method: "POST" });
+        const data = await res.json();
+        if (data.status === "no_process") {
+          alert(`No process found on port ${port}.`);
+        }
+        await Promise.all([loadPinnedPorts(), loadPorts()]);
+      } catch (e) {
+        alert(e.message || "Failed to stop port processes.");
+      }
+    }
+
+    async function renamePortAliasByPort(port) {
+      const normalizedPort = Number(port);
+      if (!Number.isInteger(normalizedPort) || normalizedPort < 1 || normalizedPort > 65535) {
+        alert("Invalid port.");
+        return;
+      }
+
+      const key = String(normalizedPort);
+      const currentAlias = portAliases[key] || "";
+      const nextAlias = prompt(`Set alias for port ${normalizedPort} (leave empty to clear):`, currentAlias);
+      if (nextAlias === null) return;
+
+      const trimmed = String(nextAlias).trim().slice(0, 40);
+      if (trimmed) {
+        portAliases[key] = trimmed;
+      } else {
+        delete portAliases[key];
+      }
+
+      savePortAliases();
+      await Promise.all([loadPinnedPorts(), loadPorts()]);
+    }
+
+    async function pinPortFromMenu(port, triggerEl = null) {
+      if (triggerEl && triggerEl.closest("details")) {
+        triggerEl.closest("details").removeAttribute("open");
+      }
+
+      if (!Number.isInteger(Number(port))) {
+        alert("Port value is invalid for pinning.");
+        return;
+      }
+
+      await addPinnedPort(Number(port));
+    }
+
+    async function loadPinnedPorts() {
+      const body = document.getElementById("pinnedPortsBody");
+      if (!body) return;
+
+      try {
+        const res = await apiFetch("/state/pinned-ports");
+        const data = await res.json();
+        pinnedPorts = data.ports || [];
+      } catch {
+        pinnedPorts = [];
+      }
+
+      if (!pinnedPorts.length) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">No pinned ports yet.</td></tr>`;
+        return;
+      }
+
+      const rows = await Promise.all(pinnedPorts.map(async (item) => {
+        let active = false;
+        try {
+          const res = await apiFetch(`/check-port/${item.port}`, {}, { silent: true });
+          const data = await res.json();
+          active = !!data.active;
+        } catch {
+          active = false;
+        }
+
+        const alias = portAliases[String(item.port)] || "";
+        const canOperate = hasRole("operator");
+
+        return `
+          <tr>
+            <td>${esc(item.port)}</td>
+            <td>${alias ? esc(alias) : '<span class="muted">—</span>'}</td>
+            <td class="${active ? "status-up" : "status-down"}">${active ? "Active" : "Down"}</td>
+            <td>
+              <div class="actions">
+                <button class="btn-neutral" onclick="renamePortAliasByPort(${item.port})">Rename</button>
+                ${canOperate ? `<button class="btn-warn" onclick="terminatePinnedPort(${item.port})">Stop</button>` : ""}
+                ${canOperate ? `<button class="btn-danger" onclick="removePinnedPort(${item.id})">Unpin</button>` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }));
+
+      body.innerHTML = rows.join("");
     }
 
     async function addService() {
@@ -4044,6 +4194,7 @@
                     <summary aria-label="Port actions" title="Actions">⋮</summary>
                     <div class="port-menu-dropdown">
                       <button class="port-menu-item" onclick="renamePortAlias('${encodedLocal}', this)">Rename</button>
+                      ${hasRole("operator") ? `<button class="port-menu-item" onclick="pinPortFromMenu(${p.port}, this)">Pin Port</button>` : ""}
                     </div>
                   </details>`
                 : '<span class="muted">N/A</span>'}
@@ -5524,7 +5675,7 @@
 
     async function refreshAll() {
       await loadBattery();
-      await Promise.all([loadServices(), loadTodos(), loadSystem(), loadPorts(), loadDocker()]);
+      await Promise.all([loadPinnedPorts(), loadTodos(), loadSystem(), loadPorts(), loadDocker()]);
     }
 
     document.getElementById("todoInput").addEventListener("keydown", (e) => {

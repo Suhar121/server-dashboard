@@ -169,6 +169,10 @@ class SaveServiceRequest(BaseModel):
     command: str
 
 
+class SavePinnedPortRequest(BaseModel):
+    port: int
+
+
 class SaveTodoRequest(BaseModel):
     text: str
 
@@ -345,6 +349,15 @@ def init_user_db():
             name TEXT NOT NULL UNIQUE,
             port INTEGER NOT NULL,
             command TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pinned_ports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            port INTEGER NOT NULL UNIQUE,
             created_at INTEGER NOT NULL
         )
         """
@@ -568,6 +581,117 @@ def delete_pinned_service(service_id: int):
     conn.commit()
     conn.close()
     return deleted > 0
+
+
+def list_pinned_ports():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id, port, created_at FROM pinned_ports ORDER BY id")
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "port": row[1],
+            "created_at": row[2],
+        }
+        for row in rows
+    ]
+
+
+def create_pinned_port(port: int):
+    now = int(time.time())
+
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO pinned_ports(port, created_at) VALUES(?, ?)",
+        (port, now),
+    )
+    new_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": new_id,
+        "port": port,
+        "created_at": now,
+    }
+
+
+def delete_pinned_port(pin_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM pinned_ports WHERE id = ?", (pin_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return deleted > 0
+
+
+def list_process_ids_by_port(port: int):
+    pids = set()
+    try:
+        connections = psutil.net_connections(kind="inet")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to inspect processes for port {port}: {str(e)}")
+
+    for conn in connections:
+        laddr = getattr(conn, "laddr", None)
+        if not laddr:
+            continue
+
+        try:
+            local_port = laddr.port if hasattr(laddr, "port") else laddr[1]
+        except Exception:
+            continue
+
+        if local_port == port and conn.pid:
+            pids.add(int(conn.pid))
+
+    return sorted(pids)
+
+
+def terminate_processes_for_port(port: int):
+    found_pids = list_process_ids_by_port(port)
+    if not found_pids:
+        return {
+            "found_pids": [],
+            "terminated_pids": [],
+            "killed_pids": [],
+        }
+
+    processes = []
+    for pid in found_pids:
+        try:
+            processes.append(psutil.Process(pid))
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    for proc in processes:
+        try:
+            proc.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    gone, alive = psutil.wait_procs(processes, timeout=3)
+
+    terminated_pids = [proc.pid for proc in gone]
+    killed_pids = []
+
+    for proc in alive:
+        try:
+            proc.kill()
+            killed_pids.append(proc.pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    return {
+        "found_pids": found_pids,
+        "terminated_pids": sorted(set(terminated_pids)),
+        "killed_pids": sorted(set(killed_pids)),
+    }
 
 
 def list_todos():
@@ -2386,6 +2510,35 @@ def remove_state_service(service_id: int, user=Depends(require_role("admin"))):
     return {"status": "deleted", "id": service_id}
 
 
+@app.get("/state/pinned-ports")
+def get_state_pinned_ports(user=Depends(require_role("viewer"))):
+    return {"ports": list_pinned_ports()}
+
+
+@app.post("/state/pinned-ports")
+def add_state_pinned_port(data: SavePinnedPortRequest, user=Depends(require_role("operator"))):
+    port = int(data.port)
+    if port < 1 or port > 65535:
+        raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
+
+    try:
+        created = create_pinned_port(port=port)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Port is already pinned")
+
+    log_audit(user["username"], "pin_port", f"Pinned port {port}")
+    return {"status": "created", "port": created}
+
+
+@app.delete("/state/pinned-ports/{pin_id}")
+def remove_state_pinned_port(pin_id: int, user=Depends(require_role("operator"))):
+    if not delete_pinned_port(pin_id):
+        raise HTTPException(status_code=404, detail="Pinned port not found")
+
+    log_audit(user["username"], "unpin_port", f"Removed pinned port id={pin_id}")
+    return {"status": "deleted", "id": pin_id}
+
+
 @app.get("/state/todos")
 def get_state_todos(user=Depends(require_role("viewer"))):
     return {"todos": list_todos()}
@@ -2656,6 +2809,44 @@ def check_port(port: int, user=Depends(require_role("viewer"))):
     s.close()
 
     return {"port": port, "active": result == 0}
+
+
+@app.post("/ports/{port}/terminate")
+def terminate_port_processes(port: int, user=Depends(require_role("operator"))):
+    if port < 1 or port > 65535:
+        raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
+
+    outcome = terminate_processes_for_port(port)
+    remaining_pids = list_process_ids_by_port(port)
+
+    log_audit(
+        user["username"],
+        "terminate_port",
+        (
+            f"Attempted terminate on port {port}; found={outcome['found_pids']}, "
+            f"terminated={outcome['terminated_pids']}, killed={outcome['killed_pids']}, "
+            f"remaining={remaining_pids}"
+        ),
+    )
+
+    if not outcome["found_pids"]:
+        return {
+            "status": "no_process",
+            "port": port,
+            "found_pids": [],
+            "terminated_pids": [],
+            "killed_pids": [],
+            "remaining_pids": [],
+        }
+
+    return {
+        "status": "terminated" if not remaining_pids else "partial",
+        "port": port,
+        "found_pids": outcome["found_pids"],
+        "terminated_pids": outcome["terminated_pids"],
+        "killed_pids": outcome["killed_pids"],
+        "remaining_pids": remaining_pids,
+    }
 
 
 @app.get("/audit-logs")
