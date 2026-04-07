@@ -92,6 +92,8 @@ managed_services = {}
 active_sessions = {}
 alert_last_sent = {}  # Track when alerts were last sent to avoid spam
 pinned_port_down_alert_state = {}  # port -> bool (True when already alerted as down)
+docker_container_alert_state = {}  # container_id -> snapshot
+docker_last_alert_scan_at = 0.0
 SSH_MANAGED_BLOCK_BEGIN = "# >>> dashboard-managed-ssh-keys >>>"
 SSH_MANAGED_BLOCK_END = "# <<< dashboard-managed-ssh-keys <<<"
 SUPPORTED_SSH_KEY_TYPES = {
@@ -131,6 +133,11 @@ try:
 except ValueError:
     _cf_tunnel_stop_timeout = 10
 CLOUDFLARED_TUNNEL_STOP_TIMEOUT_SECONDS = max(2, min(30, _cf_tunnel_stop_timeout))
+try:
+    _docker_alert_scan_interval = int(os.getenv("DOCKER_ALERT_SCAN_INTERVAL_SECONDS", "8"))
+except ValueError:
+    _docker_alert_scan_interval = 8
+DOCKER_ALERT_SCAN_INTERVAL_SECONDS = max(3, min(300, _docker_alert_scan_interval))
 CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
 TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__"
 
@@ -2271,6 +2278,175 @@ def send_telegram(msg):
         print("Telegram error:", e)
 
 
+def list_docker_container_snapshots():
+    result = run_docker_command(
+        [
+            "ps",
+            "-a",
+            "--format",
+            "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}",
+        ],
+        timeout=30,
+    )
+    output = (result.stdout or "").strip().split("\n")
+
+    containers = []
+    for line in output:
+        if not line:
+            continue
+
+        parts = line.split("|", 5)
+        if len(parts) < 6:
+            continue
+
+        container_id, name, image, state, status, ports = parts
+        containers.append(
+            {
+                "id": container_id,
+                "name": name,
+                "image": image,
+                "state": state,
+                "status": status,
+                "ports": ports,
+            }
+        )
+
+    return containers
+
+
+def parse_docker_exit_code(status_text: str):
+    if not status_text:
+        return None
+
+    matched = re.search(r"exited\s*\(([-]?\d+)\)", status_text, re.IGNORECASE)
+    if not matched:
+        return None
+
+    try:
+        return int(matched.group(1))
+    except ValueError:
+        return None
+
+
+def docker_container_has_error(snapshot: dict) -> bool:
+    state = (snapshot.get("state") or "").strip().lower()
+    status = (snapshot.get("status") or "").strip().lower()
+
+    if state in {"dead", "restarting"}:
+        return True
+
+    if "unhealthy" in status or "error" in status:
+        return True
+
+    exit_code = parse_docker_exit_code(status)
+    return exit_code is not None and exit_code != 0
+
+
+def format_docker_ports_for_alert(snapshot: dict) -> str:
+    ports = (snapshot.get("ports") or "").strip()
+    return ports if ports else "no published ports"
+
+
+def check_docker_container_alerts(force: bool = False):
+    """Send Telegram alerts for Docker container start/stop/error transitions."""
+    global docker_container_alert_state, docker_last_alert_scan_at
+
+    now = time.time()
+    if not force and (now - docker_last_alert_scan_at) < DOCKER_ALERT_SCAN_INTERVAL_SECONDS:
+        return
+    docker_last_alert_scan_at = now
+
+    try:
+        snapshots = list_docker_container_snapshots()
+    except Exception as e:
+        print("Docker alert check error:", e)
+        return
+
+    current_by_id = {}
+
+    for raw_snapshot in snapshots:
+        container_id = (raw_snapshot.get("id") or "").strip()
+        if not container_id:
+            continue
+
+        snapshot = {
+            "id": container_id,
+            "name": (raw_snapshot.get("name") or "").strip(),
+            "image": (raw_snapshot.get("image") or "").strip(),
+            "state": (raw_snapshot.get("state") or "").strip(),
+            "status": (raw_snapshot.get("status") or "").strip(),
+            "ports": (raw_snapshot.get("ports") or "").strip(),
+        }
+        current_by_id[container_id] = snapshot
+
+        previous = docker_container_alert_state.get(container_id)
+        if not previous:
+            continue
+
+        previous_state = (previous.get("state") or "").strip().lower()
+        current_state = (snapshot.get("state") or "").strip().lower()
+
+        started = previous_state != "running" and current_state == "running"
+        stopped = previous_state == "running" and current_state != "running"
+        previous_error = docker_container_has_error(previous)
+        current_error = docker_container_has_error(snapshot)
+
+        display_name = snapshot["name"] or container_id[:12]
+        ports_text = format_docker_ports_for_alert(snapshot if snapshot.get("ports") else previous)
+
+        if started:
+            send_telegram(
+                f"✅ Docker Started: {display_name} ({container_id[:12]}) is running. Ports: {ports_text}"
+            )
+
+        if stopped:
+            if current_error:
+                send_telegram(
+                    (
+                        f"🚨 Docker Error: {display_name} ({container_id[:12]}) stopped with an error. "
+                        f"State: {snapshot['state'] or 'unknown'}, Status: {snapshot['status'] or 'unknown'}, "
+                        f"Ports: {ports_text}"
+                    )
+                )
+            else:
+                send_telegram(
+                    (
+                        f"⚠️ Docker Stopped: {display_name} ({container_id[:12]}) stopped. "
+                        f"State: {snapshot['state'] or 'unknown'}, Status: {snapshot['status'] or 'unknown'}, "
+                        f"Ports: {ports_text}"
+                    )
+                )
+        elif current_error and not previous_error:
+            send_telegram(
+                (
+                    f"🚨 Docker Error: {display_name} ({container_id[:12]}) entered error state. "
+                    f"State: {snapshot['state'] or 'unknown'}, Status: {snapshot['status'] or 'unknown'}, "
+                    f"Ports: {ports_text}"
+                )
+            )
+
+    previous_ids = set(docker_container_alert_state.keys())
+    current_ids = set(current_by_id.keys())
+    removed_ids = previous_ids - current_ids
+
+    for removed_id in removed_ids:
+        previous = docker_container_alert_state.get(removed_id, {})
+        previous_state = (previous.get("state") or "").strip().lower()
+        if previous_state != "running":
+            continue
+
+        display_name = (previous.get("name") or "").strip() or removed_id[:12]
+        ports_text = format_docker_ports_for_alert(previous)
+        send_telegram(
+            (
+                f"⚠️ Docker Stopped: {display_name} ({removed_id[:12]}) is no longer running "
+                f"(container removed or not found). Ports: {ports_text}"
+            )
+        )
+
+    docker_container_alert_state = current_by_id
+
+
 def is_local_port_active(port: int) -> bool:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1)
@@ -2748,6 +2924,7 @@ def system(user=Depends(require_role("viewer"))):
     # Check alert rules
     check_alert_rules(cpu, memory)
     check_pinned_port_alerts()
+    check_docker_container_alerts()
 
     return {
         "cpu": cpu,
@@ -2779,34 +2956,7 @@ def ports(user=Depends(require_role("viewer"))):
 @app.get("/docker")
 def docker(user=Depends(require_role("viewer"))):
     try:
-        result = run_docker_command(
-            [
-                "ps",
-                "-a",
-                "--format",
-                "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}",
-            ],
-            timeout=30,
-        )
-        output = (result.stdout or "").strip().split("\n")
-
-        containers = []
-        for line in output:
-            if line:
-                parts = line.split("|", 5)
-                if len(parts) < 6:
-                    continue
-                container_id, name, image, state, status, ports = parts
-                containers.append({
-                    "id": container_id,
-                    "name": name,
-                    "image": image,
-                    "state": state,
-                    "status": status,
-                    "ports": ports
-                })
-
-        return containers
+        return list_docker_container_snapshots()
     except:
         return []
 
