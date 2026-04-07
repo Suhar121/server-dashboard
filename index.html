@@ -792,6 +792,69 @@
       background: rgba(239, 68, 68, 0.1);
     }
 
+    .port-action-menu {
+      position: relative;
+      display: inline-block;
+    }
+
+    .port-action-menu > summary {
+      list-style: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .port-action-menu > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .port-action-menu[open] > summary {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    .port-menu-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      min-width: 130px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-md);
+      padding: 6px;
+      z-index: 40;
+    }
+
+    .port-menu-item {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: transparent;
+      color: var(--text);
+      box-shadow: none;
+      justify-content: flex-start;
+    }
+
+    .port-menu-item:hover {
+      background: var(--nav-hover);
+      border-color: var(--brand);
+      box-shadow: none;
+      opacity: 1;
+      transform: none;
+    }
+
     #loginModal, #permissionsModal {
       position: fixed;
       inset: 0;
@@ -2207,6 +2270,7 @@
         <button onclick="createNewFile()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="file-plus" style="width:16px;height:16px;"></i> New File</div></button>
         <button onclick="createNewFolder()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="folder-plus" style="width:16px;height:16px;"></i> New Folder</div></button>
         <button class="btn-neutral" onclick="gitCloneRepo()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="git-branch" style="width:16px;height:16px;"></i> Git Clone</div></button>
+        <button class="btn-neutral" onclick="openCurrentFolderInTerminal()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="terminal-square" style="width:16px;height:16px;"></i> Open in Terminal</div></button>
         <button class="btn-neutral" onclick="document.getElementById('uploadFileInput').click()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="upload" style="width:16px;height:16px;"></i> Upload File</div></button>
         <input type="file" id="uploadFileInput" style="display:none;" onchange="uploadSelectedFile(event)" />
         <button class="btn-neutral" onclick="refreshCurrentDir()">🔄 Refresh</button>
@@ -2845,12 +2909,14 @@
     let lastPortSnapshot = new Map();
 
     let currentPath = "/";
+    let lastDirectoryPath = "/";
     let fileView = "grid"; // "grid" or "list"
     let currentEditingFile = null;
     let terminalTabs = [];
     let activeTerminalTabId = null;
     let terminalTabCounter = 0;
     let terminalResizeRaf = null;
+    let pendingTerminalPath = null;
     const TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__";
 
     const ROLE_ORDER = { viewer: 1, operator: 2, admin: 3 };
@@ -2996,7 +3062,11 @@
       }).join("");
     }
 
-    async function renamePortAlias(encodedLocalAddress) {
+    async function renamePortAlias(encodedLocalAddress, triggerEl = null) {
+      if (triggerEl && triggerEl.closest("details")) {
+        triggerEl.closest("details").removeAttribute("open");
+      }
+
       const localAddress = decodeURIComponent(String(encodedLocalAddress || ""));
       const port = extractPortNumber(localAddress);
       if (!port) {
@@ -3970,7 +4040,12 @@
             <td>${alias ? esc(alias) : '<span class="muted">—</span>'}</td>
             <td>
               ${p.port
-                ? `<button class="btn-neutral" onclick="renamePortAlias('${encodedLocal}')">Rename</button>`
+                ? `<details class="port-action-menu">
+                    <summary aria-label="Port actions" title="Actions">⋮</summary>
+                    <div class="port-menu-dropdown">
+                      <button class="port-menu-item" onclick="renamePortAlias('${encodedLocal}', this)">Rename</button>
+                    </div>
+                  </details>`
                 : '<span class="muted">N/A</span>'}
             </td>
           </tr>
@@ -4622,22 +4697,24 @@
         return;
       }
 
-      currentPath = path;
+      const requestedPath = path;
       const msg = document.getElementById("fileManagerMsg");
       msg.innerText = "";
 
       try {
-        const res = await apiFetch(`/files/browse?path=${encodeURIComponent(path)}`);
+        const res = await apiFetch(`/files/browse?path=${encodeURIComponent(requestedPath)}`);
         const data = await res.json();
 
         if (data.type === "file") {
           // It's a file, open editor
-          await openFileEditor(path);
+          await openFileEditor(requestedPath);
           return;
         }
 
         // It's a directory
-        renderBreadcrumb(path);
+        currentPath = data.path || requestedPath;
+        lastDirectoryPath = currentPath;
+        renderBreadcrumb(currentPath);
         renderFileList(data.items || []);
       } catch (e) {
         msg.innerText = e.message || "Failed to browse directory.";
@@ -4748,6 +4825,57 @@
 
     function refreshCurrentDir() {
       browseFiles(currentPath);
+    }
+
+    function buildTerminalCdCommand(path) {
+      const raw = String(path || "").replace(/[\r\n]+/g, " ").trim();
+      if (!raw) return "";
+      const escaped = raw
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"');
+      return `cd "${escaped}"\r`;
+    }
+
+    function sendTerminalCd(tab, path) {
+      if (!tab) return false;
+      const cmd = buildTerminalCdCommand(path);
+      if (!cmd) return false;
+      sendTerminalMessage(tab, { type: "input", data: cmd });
+      return true;
+    }
+
+    function applyPendingTerminalPath() {
+      if (!pendingTerminalPath) return;
+
+      const tab = terminalTabs.find((t) => t.id === activeTerminalTabId)
+        || terminalTabs[terminalTabs.length - 1];
+      if (!tab) return;
+
+      const targetPath = pendingTerminalPath;
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        if (sendTerminalCd(tab, targetPath)) {
+          pendingTerminalPath = null;
+        }
+      } else {
+        tab.pendingPath = targetPath;
+        pendingTerminalPath = null;
+      }
+    }
+
+    function openCurrentFolderInTerminal() {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const targetPath = String(lastDirectoryPath || currentPath || "").trim();
+      if (!targetPath) {
+        alert("No folder selected.");
+        return;
+      }
+
+      pendingTerminalPath = targetPath;
+      goToPage("terminal");
     }
 
     async function openFileEditor(path) {
@@ -5171,6 +5299,7 @@
       } else {
         switchTerminalTab(terminalTabs[terminalTabs.length - 1].id);
       }
+      applyPendingTerminalPath();
       syncTerminalFullscreenUi();
       requestFitActiveTerminal();
     }
@@ -5294,10 +5423,17 @@
         protocolVersion: 1,
         history: [],
         inputBuffer: "",
+        pendingPath: pendingTerminalPath,
       };
+
+      pendingTerminalPath = null;
 
       ws.onopen = () => {
         term.write("\u001b[32mConnected. Happy hacking.\u001b[0m\r\n");
+        if (tab.pendingPath) {
+          sendTerminalCd(tab, tab.pendingPath);
+          tab.pendingPath = null;
+        }
         requestFitActiveTerminal();
       };
 

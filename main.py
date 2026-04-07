@@ -9,8 +9,6 @@ import os
 import signal
 import shutil
 import asyncio
-import pty
-import fcntl
 from collections import deque
 import secrets
 import time
@@ -19,11 +17,26 @@ import hashlib
 import hmac
 import re
 import base64
-import pwd
 import tempfile
 import json
-import termios
-import struct
+
+try:
+    import pwd
+except ImportError:
+    pwd = None
+
+try:
+    import pty
+    import fcntl
+    import termios
+    import struct
+    TERMINAL_BACKEND_AVAILABLE = True
+except ImportError:
+    pty = None
+    fcntl = None
+    termios = None
+    struct = None
+    TERMINAL_BACKEND_AVAILABLE = False
 
 app = FastAPI()
 
@@ -971,6 +984,12 @@ def build_managed_ssh_block(ssh_user: str) -> str:
 
 
 def sync_managed_ssh_keys(ssh_user: str):
+    if pwd is None:
+        raise HTTPException(
+            status_code=501,
+            detail="SSH key deployment is supported only on Unix/Linux hosts",
+        )
+
     try:
         user_info = pwd.getpwnam(ssh_user)
     except KeyError:
@@ -3444,6 +3463,10 @@ async def websocket_terminal(websocket: WebSocket):
     role_rank = ROLE_ORDER.get(session.get("role", ""), 0)
     if role_rank < ROLE_ORDER["operator"]:
         await websocket.close(code=4403, reason="operator role required")
+        return
+
+    if not TERMINAL_BACKEND_AVAILABLE:
+        await websocket.close(code=4403, reason="Web terminal is not supported on this OS")
         return
 
     await websocket.accept()
