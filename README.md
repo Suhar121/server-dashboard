@@ -17,6 +17,7 @@ It provides:
 - Browser terminal via WebSocket + PTY
 - Saved command library with template variables (`{{var}}`)
 - Port change detection (newly opened / recently closed)
+- Telegram alerts when pinned ports go down
 
 ---
 
@@ -52,6 +53,7 @@ This project is an operational dashboard intended for local/server administratio
   - CPU/RAM from `psutil`
   - Battery state and threshold alerts
   - Open port scan via `ss -tuln`
+  - Pinned-port health checks (`127.0.0.1:<port>`)
   - Docker process listing via `docker ps`
 - **Service Control**
   - Start/stop custom service commands
@@ -132,6 +134,7 @@ This project is an operational dashboard intended for local/server administratio
    - Frontend periodically calls refresh endpoints every ~3s once logged in
 6. **Alerts**
    - CPU/RAM alert thresholds checked in `/system`
+  - Pinned-port down checks also run in `/system`
    - Telegram notification sent with cooldown logic
 
 ---
@@ -461,6 +464,7 @@ SQLite DB (`users.db`) tables:
 
 ### Telegram notifications not sending
 - Check `BOT_TOKEN`, `CHAT_ID`.
+- Ensure the port is pinned in the dashboard (only pinned ports are monitored for down alerts).
 - Confirm network egress to Telegram API.
 
 ---

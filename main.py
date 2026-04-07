@@ -91,6 +91,7 @@ battery_alert_sent = False
 managed_services = {}
 active_sessions = {}
 alert_last_sent = {}  # Track when alerts were last sent to avoid spam
+pinned_port_down_alert_state = {}  # port -> bool (True when already alerted as down)
 SSH_MANAGED_BLOCK_BEGIN = "# >>> dashboard-managed-ssh-keys >>>"
 SSH_MANAGED_BLOCK_END = "# <<< dashboard-managed-ssh-keys <<<"
 SUPPORTED_SSH_KEY_TYPES = {
@@ -2270,6 +2271,15 @@ def send_telegram(msg):
         print("Telegram error:", e)
 
 
+def is_local_port_active(port: int) -> bool:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    try:
+        return sock.connect_ex(("127.0.0.1", int(port))) == 0
+    finally:
+        sock.close()
+
+
 def check_alert_rules(cpu_percent: float, ram_percent: float):
     """Check if any alert rules are triggered and send notifications"""
     global alert_last_sent
@@ -2310,6 +2320,39 @@ def check_alert_rules(cpu_percent: float, ram_percent: float):
 
     except Exception as e:
         print("Alert check error:", e)
+
+
+def check_pinned_port_alerts():
+    """Send Telegram alerts when a pinned port goes down (once per downtime event)."""
+    global pinned_port_down_alert_state
+
+    try:
+        pinned_ports = list_pinned_ports()
+        active_port_set = set()
+
+        for pin in pinned_ports:
+            port = int(pin["port"])
+            if port < 1 or port > 65535:
+                continue
+
+            active_port_set.add(port)
+            is_up = is_local_port_active(port)
+            was_alerted_down = bool(pinned_port_down_alert_state.get(port, False))
+
+            if not is_up and not was_alerted_down:
+                send_telegram(f"🚨 Port Down: Pinned port {port} is not reachable on 127.0.0.1")
+                pinned_port_down_alert_state[port] = True
+            elif is_up and was_alerted_down:
+                # Port recovered: reset state so future downtime can alert again.
+                pinned_port_down_alert_state[port] = False
+
+        # Cleanup state for ports that are no longer pinned.
+        stale_ports = [port for port in pinned_port_down_alert_state.keys() if port not in active_port_set]
+        for stale_port in stale_ports:
+            pinned_port_down_alert_state.pop(stale_port, None)
+
+    except Exception as e:
+        print("Pinned port alert check error:", e)
 
 
 @app.middleware("http")
@@ -2704,6 +2747,7 @@ def system(user=Depends(require_role("viewer"))):
 
     # Check alert rules
     check_alert_rules(cpu, memory)
+    check_pinned_port_alerts()
 
     return {
         "cpu": cpu,
@@ -2802,13 +2846,7 @@ def docker_logs(container_id: str, lines: int = Query(100, ge=1, le=2000), user=
 
 @app.get("/check-port/{port}")
 def check_port(port: int, user=Depends(require_role("viewer"))):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1)
-
-    result = s.connect_ex(("127.0.0.1", port))
-    s.close()
-
-    return {"port": port, "active": result == 0}
+    return {"port": port, "active": is_local_port_active(port)}
 
 
 @app.post("/ports/{port}/terminate")
