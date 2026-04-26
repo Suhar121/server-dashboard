@@ -38,6 +38,9 @@ dist/
 build/
 *.egg-info/
 
+# Worktrees
+.worktrees/
+
 # Local debug/extracted artifacts
 script.js
 todo.md
