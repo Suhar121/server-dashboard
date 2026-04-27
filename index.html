@@ -5705,5 +5705,434 @@
       }
     })();
   </script>
+<script>
+// ─── AI Chat Panel ───────────────────────────────────────────────────────────
+(function() {
+  const PANEL_ID = 'ai-chat-panel';
+  const STORAGE_KEY = 'ai_chat_history';
+
+  let isOpen = false;
+  let chatHistory = [];
+  let isStreaming = false;
+
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+  }
+  function saveHistory(h) {
+    if (h.length > 50) h = h.slice(-50);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
+  }
+
+  function render() {
+    let panel = document.getElementById(PANEL_ID);
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = PANEL_ID;
+      document.body.appendChild(panel);
+    }
+    panel.innerHTML = `
+      <style>
+      #${PANEL_ID} {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 380px;
+        max-width: calc(100vw - 40px);
+        height: 520px;
+        max-height: calc(100vh - 40px);
+        background: var(--bg-secondary, #1a1a2e);
+        border: 1px solid var(--border, #2a2a4a);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        font-family: inherit;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        transition: opacity 0.2s, transform 0.2s;
+      }
+      #${PANEL_ID}.collapsed {
+        height: 56px;
+        width: 56px;
+        border-radius: 28px;
+        cursor: pointer;
+      }
+      #${PANEL_ID}.collapsed .ai-header,
+      #${PANEL_ID}.collapsed .ai-body,
+      #${PANEL_ID}.collapsed .ai-input-area { display: none; }
+      #${PANEL_ID}.collapsed::before {
+        content: '🤖';
+        font-size: 28px;
+        position: absolute;
+        top: 14px;
+        left: 14px;
+      }
+      .ai-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border, #2a2a4a);
+        background: var(--bg-tertiary, #16162a);
+        border-radius: 12px 12px 0 0;
+        cursor: grab;
+      }
+      .ai-header-title { font-weight: 700; font-size: 15px; color: var(--text, #e0e0e0); }
+      .ai-header-actions { display: flex; gap: 8px; }
+      .ai-header-btn {
+        background: none; border: none; cursor: pointer;
+        color: var(--text-muted, #888); font-size: 16px;
+        padding: 4px; border-radius: 4px;
+      }
+      .ai-header-btn:hover { background: var(--hover, #2a2a4a); }
+      .ai-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        scroll-behavior: smooth;
+      }
+      .ai-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+      .ai-msg.user {
+        align-self: flex-end;
+        background: var(--primary, #4a90d9);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .ai-msg.ai {
+        align-self: flex-start;
+        background: var(--bg-tertiary, #252540);
+        color: var(--text, #e0e0e0);
+        border-bottom-left-radius: 4px;
+      }
+      .ai-msg.error {
+        background: #3a1a1a;
+        color: #f88;
+        border: 1px solid #f44;
+      }
+      .ai-tool-card {
+        background: var(--bg-tertiary, #252540);
+        border: 1px solid var(--border, #2a2a4a);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: var(--text-muted, #888);
+        align-self: flex-start;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .ai-tool-card b { color: var(--text, #e0e0e0); }
+      .ai-tool-result { margin-top: 4px; font-family: monospace; font-size: 11px; color: var(--text, #ccc); max-height: 80px; overflow-y: auto; }
+      .ai-pending-card {
+        background: #2a2a1a;
+        border: 1px solid #8a7a2a;
+        border-radius: 8px;
+        padding: 10px 14px;
+        align-self: flex-start;
+        max-width: 90%;
+      }
+      .ai-pending-card .pending-title { color: #dda; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+      .ai-pending-card .pending-btns { display: flex; gap: 8px; margin-top: 8px; }
+      .ai-pending-card button {
+        padding: 4px 14px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .ai-pending-card .approve-btn { background: #2a6a2a; color: #fff; }
+      .ai-pending-card .deny-btn { background: #6a2a2a; color: #fff; }
+      .ai-input-area {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--border, #2a2a4a);
+        background: var(--bg-tertiary, #16162a);
+        border-radius: 0 0 12px 12px;
+      }
+      .ai-input {
+        flex: 1;
+        background: var(--bg, #1a1a2e);
+        border: 1px solid var(--border, #2a2a4a);
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: var(--text, #e0e0e0);
+        font-family: inherit;
+        font-size: 13px;
+        resize: none;
+        max-height: 80px;
+        outline: none;
+      }
+      .ai-input:focus { border-color: var(--primary, #4a90d9); }
+      .ai-send-btn {
+        background: var(--primary, #4a90d9);
+        border: none;
+        border-radius: 8px;
+        width: 38px;
+        height: 38px;
+        cursor: pointer;
+        color: #fff;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+      }
+      .ai-send-btn:hover { background: var(--primary-hover, #3a80c9); }
+      .ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .ai-loading {
+        display: flex; gap: 4px; padding: 4px 0;
+      }
+      .ai-loading span {
+        width: 8px; height: 8px; background: var(--text-muted, #888);
+        border-radius: 50%; animation: ai-bounce 1.2s infinite;
+      }
+      .ai-loading span:nth-child(2) { animation-delay: 0.2s; }
+      .ai-loading span:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes ai-bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+      </style>
+      <div class="ai-header" onmousedown="startDrag(event)">
+        <span class="ai-header-title">AI Assistant</span>
+        <div class="ai-header-actions">
+          <button class="ai-header-btn" onclick="toggleAIPanel()" title="Collapse">−</button>
+          <button class="ai-header-btn" onclick="clearAIHistory()" title="Clear history">🗑</button>
+        </div>
+      </div>
+      <div class="ai-body" id="aiBody"></div>
+      <div class="ai-input-area">
+        <textarea class="ai-input" id="aiInput" rows="1" placeholder="Ask me anything about your server..."
+          onkeydown="handleAIInputKey(event)"></textarea>
+        <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">↑</button>
+      </div>
+    `;
+
+    chatHistory = getHistory();
+    renderMessages();
+    if (!isOpen) panel.classList.add('collapsed');
+  }
+
+  function renderMessages() {
+    const body = document.getElementById('aiBody');
+    if (!body) return;
+    body.innerHTML = '';
+    for (const msg of chatHistory) {
+      appendMsgEl(body, msg);
+    }
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function appendMsgEl(container, msg) {
+    if (msg.type === 'tool_call') {
+      const card = document.createElement('div');
+      card.className = 'ai-tool-card';
+      card.innerHTML = `<b>🔧 ${escapeHtml(msg.tool)}</b><div class="ai-tool-result">Running...</div>`;
+      container.appendChild(card);
+      return;
+    }
+    if (msg.type === 'tool_result') {
+      const cards = container.querySelectorAll('.ai-tool-card');
+      const last = cards[cards.length - 1];
+      if (last && last.innerHTML.includes(msg.tool)) {
+        const res = last.querySelector('.ai-tool-result');
+        if (res) res.textContent = formatJSON(msg.result);
+      }
+      return;
+    }
+    if (msg.type === 'action_pending') {
+      const card = document.createElement('div');
+      card.className = 'ai-pending-card';
+      card.innerHTML = `
+        <div class="pending-title">⏳ ${escapeHtml(msg.summary || msg.tool)}</div>
+        <div class="pending-btns">
+          <button class="approve-btn" onclick="confirmAIAction('${msg.action_id}', true)">Approve</button>
+          <button class="deny-btn" onclick="confirmAIAction('${msg.action_id}', false)">Deny</button>
+        </div>`;
+      container.appendChild(card);
+      return;
+    }
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + (msg.role === 'user' ? 'user' : 'ai');
+    if (msg.role === 'ai' && msg.content && msg.content.startsWith('[Error]')) {
+      div.className = 'ai-msg error';
+    }
+    div.textContent = msg.content || '';
+    container.appendChild(div);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatJSON(obj) {
+    try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+  }
+
+  window.toggleAIPanel = function() {
+    isOpen = !isOpen;
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) {
+      if (isOpen) panel.classList.remove('collapsed');
+      else panel.classList.add('collapsed');
+    }
+  };
+
+  window.clearAIHistory = function() {
+    chatHistory = [];
+    localStorage.removeItem(STORAGE_KEY);
+    renderMessages();
+  };
+
+  window.handleAIInputKey = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendAIMessage();
+    }
+  };
+
+  window.confirmAIAction = async function(action_id, approved) {
+    try {
+      const res = await fetch('/ai/confirm-action', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action_id, approved}),
+      });
+      const data = await res.json();
+      const body = document.getElementById('aiBody');
+      if (body) {
+        const msg = {
+          role: 'ai',
+          content: approved
+            ? `Action ${data.executed ? 'executed successfully' : 'failed'}: ${formatJSON(data.result || data.error)}`
+            : 'Action denied by user.',
+        };
+        appendMsgEl(body, msg);
+        chatHistory.push(msg);
+        saveHistory(chatHistory);
+        body.scrollTop = body.scrollHeight;
+      }
+    } catch (e) {
+      alert('Failed to confirm action: ' + e.message);
+    }
+  };
+
+  window.sendAIMessage = async function() {
+    const input = document.getElementById('aiInput');
+    const sendBtn = document.getElementById('aiSendBtn');
+    if (!input || isStreaming) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    isStreaming = true;
+    sendBtn.disabled = true;
+    input.value = '';
+
+    const body = document.getElementById('aiBody');
+    if (!body) return;
+
+    const userMsg = { role: 'user', content: text };
+    chatHistory.push(userMsg);
+    saveHistory(chatHistory);
+    appendMsgEl(body, userMsg);
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'ai-msg ai';
+    loadingDiv.innerHTML = '<div class="ai-loading"><span></span><span></span><span></span></div>';
+    body.appendChild(loadingDiv);
+    body.scrollTop = body.scrollHeight;
+
+    try {
+      const res = await fetch('/ai/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: text, stream: true}),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let aiMsgDiv = loadingDiv;
+
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'text') {
+              if (aiMsgDiv === loadingDiv) {
+                loadingDiv.className = 'ai-msg ai';
+                loadingDiv.textContent = '';
+                aiMsgDiv = loadingDiv;
+              }
+              aiMsgDiv.textContent += event.content;
+              body.scrollTop = body.scrollHeight;
+            } else if (event.type === 'tool_call') {
+              appendMsgEl(body, {type: 'tool_call', tool: event.tool});
+            } else if (event.type === 'tool_result') {
+              appendMsgEl(body, {type: 'tool_result', tool: event.tool, result: event.result});
+            } else if (event.type === 'action_pending') {
+              appendMsgEl(body, {type: 'action_pending', action_id: event.action_id, summary: event.summary, tool: event.tool});
+            } else if (event.type === 'done') {
+              chatHistory.push({role: 'ai', content: aiMsgDiv.textContent || '[Analysis complete]'});
+              saveHistory(chatHistory);
+            } else if (event.type === 'error') {
+              const errDiv = document.createElement('div');
+              errDiv.className = 'ai-msg error';
+              errDiv.textContent = '[Error] ' + event.message;
+              body.appendChild(errDiv);
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      loadingDiv.textContent = '[Connection error] ' + e.message;
+      loadingDiv.className = 'ai-msg error';
+    } finally {
+      isStreaming = false;
+      sendBtn.disabled = false;
+      saveHistory(chatHistory);
+    }
+  };
+
+  let dragOffsetX, dragOffsetY;
+  window.startDrag = function(e) {
+    const panel = document.getElementById(PANEL_ID);
+    dragOffsetX = e.clientX - panel.offsetLeft;
+    dragOffsetY = e.clientY - panel.offsetTop;
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  };
+  window.doDrag = function(e) {
+    const panel = document.getElementById(PANEL_ID);
+    panel.style.left = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, e.clientX - dragOffsetX)) + 'px';
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+  };
+  window.stopDrag = function() {
+    document.removeEventListener('mousemove', doDrag);
+    document.removeEventListener('mouseup', stopDrag);
+  };
+
+  render();
+
+  (async function checkAIAvailable() {
+    try {
+      const res = await fetch('/ai/status');
+      const data = await res.json();
+      if (!data.available) {
+        const input = document.getElementById('aiInput');
+        if (input) input.placeholder = 'AI not configured. Set GEMINI_API_KEY in .env';
+      }
+    } catch {}
+  })();
+})();
+</script>
 </body>
 </html>
