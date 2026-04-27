@@ -449,8 +449,12 @@ def init_user_db():
             service_port INTEGER NOT NULL,
             created_by TEXT NOT NULL,
             created_at INTEGER NOT NULL
-        );
+        )
+        """
+    )
 
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS ai_conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
@@ -459,7 +463,7 @@ def init_user_db():
             tools_used TEXT,
             action_initiated TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+        )
         """
     )
 
