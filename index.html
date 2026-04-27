@@ -5730,6 +5730,12 @@
       panel.id = PANEL_ID;
       document.body.appendChild(panel);
     }
+    // Click on collapsed bubble toggles open
+    panel.onclick = function(e) {
+      if (panel.classList.contains('collapsed')) {
+        toggleAIPanel();
+      }
+    };
     panel.innerHTML = `
       <style>
       #${PANEL_ID} {
