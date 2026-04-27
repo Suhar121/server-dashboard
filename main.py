@@ -20,6 +20,15 @@ import base64
 import tempfile
 import json
 
+# AI Assistant
+from ai.gemini_client import GeminiChat
+from ai.guardrails import (
+    check_chat_rate_limit,
+    get_pending_action,
+    confirm_action,
+    deny_action,
+)
+
 try:
     import pwd
 except ImportError:
@@ -140,6 +149,18 @@ except ValueError:
 DOCKER_ALERT_SCAN_INTERVAL_SECONDS = max(3, min(300, _docker_alert_scan_interval))
 CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
 TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__"
+
+# 🤖 GEMINI AI CONFIG
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+# Initialize Gemini on startup
+if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_KEY":
+    try:
+        GeminiChat.configure()
+        print(f"[AI] Gemini configured with model {GEMINI_MODEL}")
+    except Exception as e:
+        print(f"[AI] Warning: Gemini configuration failed: {e}")
 
 
 class RunServiceRequest(BaseModel):
@@ -3958,4 +3979,83 @@ async def websocket_terminal(websocket: WebSocket):
 
         log_audit(session["username"], "terminal_close", "Closed web terminal session")
 
+
+# 🤖 AI ASSISTANT ENDPOINTS
+from ai.models import AIChatRequest, AIActionConfirmation, AIAnalyzeRequest
+
+@app.post("/ai/chat")
+async def ai_chat(
+    request: AIChatRequest,
+    user: dict = Depends(get_current_user),
+):
+    if not check_chat_rate_limit(user["session_id"]):
+        raise HTTPException(429, detail="Rate limit exceeded. Try again in a minute.")
+
+    async def event_stream():
+        chat = GeminiChat(user)
+        async for event in chat.chat_stream(request.message):
+            import json
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.post("/ai/confirm-action")
+async def ai_confirm_action(
+    data: AIActionConfirmation,
+    user: dict = Depends(get_current_user),
+):
+    if data.approved:
+        action = get_pending_action(data.action_id)
+        if not action:
+            return {"executed": False, "error": "Action not found or expired"}
+        from ai.tools import execute_tool
+        result = execute_tool(action.tool, user, action.params)
+        confirm_action(data.action_id)
+        log_audit(user["username"], "ai_action", f"AI action approved: {action.tool} with {action.params}")
+        return {"executed": True, "result": result}
+    else:
+        deny_action(data.action_id)
+        return {"executed": False, "denied": True}
+
+
+@app.get("/ai/status")
+async def ai_status(user: dict = Depends(get_current_user)):
+    has_key = bool(GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_KEY")
+    return {
+        "available": has_key,
+        "model": GEMINI_MODEL if has_key else None,
+        "configured": has_key,
+    }
+
+
+@app.post("/ai/analyze")
+async def ai_analyze(
+    data: AIAnalyzeRequest,
+    user: dict = Depends(require_role("operator")),
+):
+    chat = GeminiChat(user)
+    analysis = await chat.analyze(data.trigger, data.context)
+    return analysis
+
+
+@app.get("/ai/conversations")
+async def ai_conversations(
+    user: dict = Depends(get_current_user),
+    limit: int = Query(default=50, le=100),
+):
+    conn = sqlite3.connect(USERS_DB_PATH)
+    cursor = conn.execute(
+        "SELECT id, action, details, timestamp FROM audit_logs "
+        "WHERE action LIKE 'ai_%' AND details LIKE ? "
+        "ORDER BY timestamp DESC LIMIT ?",
+        (f"%{user['session_id']}%", limit),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return {"conversations": [{"id": r[0], "action": r[1], "details": r[2], "timestamp": r[3]} for r in rows]}
 
