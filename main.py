@@ -2549,6 +2549,13 @@ def check_pinned_port_alerts():
             if not is_up and not was_alerted_down:
                 send_telegram(f"🚨 Port Down: Pinned port {port} is not reachable on 127.0.0.1")
                 pinned_port_down_alert_state[port] = True
+                # Trigger AI auto-remediation
+                if os.getenv("AI_AUTO_REMEDIATION", "").lower() in ("1", "true", "yes"):
+                    try:
+                        from ai.remediation import on_port_down
+                        on_port_down(port=port)
+                    except Exception:
+                        pass
             elif is_up and was_alerted_down:
                 # Port recovered: reset state so future downtime can alert again.
                 pinned_port_down_alert_state[port] = False
@@ -2956,6 +2963,17 @@ def system(user=Depends(require_role("viewer"))):
     check_alert_rules(cpu, memory)
     check_pinned_port_alerts()
     check_docker_container_alerts()
+
+    # Trigger AI auto-remediation if configured
+    if os.getenv("AI_AUTO_REMEDIATION", "").lower() in ("1", "true", "yes"):
+        try:
+            from ai.remediation import on_cpu_alert, on_port_down
+            # CPU remediation via alert rules threshold (80%)
+            cpu_val = psutil.cpu_percent(interval=0.5)
+            if cpu_val > 80:
+                on_cpu_alert(threshold=80, current_cpu=cpu_val, session_id=user.get("session_id"))
+        except Exception:
+            pass
 
     return {
         "cpu": cpu,
