@@ -21,6 +21,7 @@ users.db
 *.sqlite3
 cloudflared/config.yml
 cloudflared/*.log
+deployed_apps/
 
 # Editor / OS
 .vscode/

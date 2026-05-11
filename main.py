@@ -48,6 +48,7 @@ app = FastAPI()
 
 # AI Assistant (imported after env is loaded)
 from ai.gemini_client import GeminiChat
+from ai.nvidia_client import NvidiaChat
 from ai.guardrails import (
     check_chat_rate_limit,
     get_pending_action,
@@ -148,12 +149,17 @@ DOCKER_ALERT_SCAN_INTERVAL_SECONDS = max(3, min(300, _docker_alert_scan_interval
 CLOUDFLARED_TUNNEL_LOG_PATH = os.path.join(LOG_DIR, "cloudflared_tunnel.log")
 TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__"
 
-# 🤖 GEMINI AI CONFIG
+# 🤖 AI CONFIG
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+NVIDIA_MODEL = os.getenv("NVIDIA_MODEL", "z-ai/glm-5.1")
 
-# Initialize Gemini on startup
-if GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_KEY":
+# Initialize AI provider on startup
+if AI_PROVIDER == "nvidia" and NVIDIA_API_KEY:
+    print(f"[AI] NVIDIA provider configured with model {NVIDIA_MODEL}")
+elif GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_KEY":
     try:
         GeminiChat.configure()
         print(f"[AI] Gemini configured with model {GEMINI_MODEL}")
@@ -269,6 +275,17 @@ class GitCloneRequest(BaseModel):
     path: str
     repo_url: str
     folder_name: str | None = None
+
+
+class DeployAppRequest(BaseModel):
+    template_id: int | None = None
+    app_name: str
+    env_vars: dict[str, str] = {}
+    port_override: int | None = None
+
+
+class DeployedAppActionRequest(BaseModel):
+    action: str
 
 
 def normalize_service_name(name: str) -> str:
@@ -464,7 +481,39 @@ def init_user_db():
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT NOT NULL,
+            icon TEXT NOT NULL DEFAULT 'box',
+            category TEXT NOT NULL DEFAULT 'general',
+            compose_yaml TEXT NOT NULL,
+            env_schema TEXT NOT NULL DEFAULT '[]',
+            default_port INTEGER,
+            created_at INTEGER NOT NULL
+        )
+        """
+    )
 
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS deployed_apps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            template_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'stopped',
+            compose_path TEXT,
+            ports TEXT NOT NULL DEFAULT '[]',
+            env_vars TEXT NOT NULL DEFAULT '{}',
+            container_ids TEXT NOT NULL DEFAULT '[]',
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (template_id) REFERENCES app_templates(id)
+        )
+        """
+    )
     cur.execute("PRAGMA table_info(users)")
     user_columns = {row[1] for row in cur.fetchall()}
     if "last_login_at" not in user_columns:
@@ -477,6 +526,357 @@ def init_user_db():
         os.chmod(USERS_DB_PATH, 0o600)
     except Exception:
         pass
+
+
+DEFAULT_TEMPLATES = [
+    {
+        "name": "Nginx",
+        "description": "High-performance web server and reverse proxy",
+        "icon": "globe",
+        "category": "web",
+        "default_port": 80,
+        "env_schema": json.dumps([
+            {"key": "NGINX_HOST", "label": "Server Name", "default": "localhost"},
+        ]),
+        "compose_yaml": """services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-app
+    ports:
+      - "${PORT:-80}:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+    restart: unless-stopped
+""",
+    },
+    {
+        "name": "Node.js",
+        "description": "JavaScript runtime with Express.js starter",
+        "icon": "code-2",
+        "category": "dev",
+        "default_port": 3000,
+        "env_schema": json.dumps([
+            {"key": "NODE_ENV", "label": "Environment", "default": "production"},
+        ]),
+        "compose_yaml": """services:
+  node-app:
+    image: node:20-alpine
+    container_name: node-app
+    ports:
+      - "${PORT:-3000}:3000"
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: sh -c "npm install && node index.js"
+    restart: unless-stopped
+""",
+    },
+    {
+        "name": "Python",
+        "description": "Python Flask/FastAPI application server",
+        "icon": "terminal",
+        "category": "dev",
+        "default_port": 5000,
+        "env_schema": json.dumps([
+            {"key": "FLASK_ENV", "label": "Environment", "default": "production"},
+            {"key": "PYTHONUNBUFFERED", "label": "Unbuffered Output", "default": "1"},
+        ]),
+        "compose_yaml": """services:
+  python-app:
+    image: python:3.12-slim
+    container_name: python-app
+    ports:
+      - "${PORT:-5000}:5000"
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: sh -c "pip install -r requirements.txt && python app.py"
+    restart: unless-stopped
+""",
+    },
+    {
+        "name": "PostgreSQL",
+        "description": "Advanced open-source relational database",
+        "icon": "database",
+        "category": "database",
+        "default_port": 5432,
+        "env_schema": json.dumps([
+            {"key": "POSTGRES_USER", "label": "Username", "default": "admin"},
+            {"key": "POSTGRES_PASSWORD", "label": "Password", "default": "changeme"},
+            {"key": "POSTGRES_DB", "label": "Database Name", "default": "mydb"},
+        ]),
+        "compose_yaml": """services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    ports:
+      - "${PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-mydb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+""",
+    },
+    {
+        "name": "Redis",
+        "description": "In-memory data store for caching and queues",
+        "icon": "zap",
+        "category": "database",
+        "default_port": 6379,
+        "env_schema": json.dumps([
+            {"key": "REDIS_PASSWORD", "label": "Password (optional)", "default": ""},
+        ]),
+        "compose_yaml": """services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "${PORT:-6379}:6379"
+    command: redis-server ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  redisdata:
+""",
+    },
+    {
+        "name": "MySQL",
+        "description": "Popular open-source relational database",
+        "icon": "database",
+        "category": "database",
+        "default_port": 3306,
+        "env_schema": json.dumps([
+            {"key": "MYSQL_ROOT_PASSWORD", "label": "Root Password", "default": "changeme"},
+            {"key": "MYSQL_DATABASE", "label": "Database Name", "default": "mydb"},
+            {"key": "MYSQL_USER", "label": "Username", "default": "admin"},
+            {"key": "MYSQL_PASSWORD", "label": "Password", "default": "changeme"},
+        ]),
+        "compose_yaml": """services:
+  mysql:
+    image: mysql:8
+    container_name: mysql-db
+    ports:
+      - "${PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mydb}
+      MYSQL_USER: ${MYSQL_USER:-admin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+    volumes:
+      - mysqldata:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  mysqldata:
+""",
+    },
+    {
+        "name": "WordPress",
+        "description": "Full WordPress site with MySQL and PHP",
+        "icon": "layout",
+        "category": "web",
+        "default_port": 8080,
+        "env_schema": json.dumps([
+            {"key": "WORDPRESS_DB_USER", "label": "DB Username", "default": "wordpress"},
+            {"key": "WORDPRESS_DB_PASSWORD", "label": "DB Password", "default": "wordpress"},
+            {"key": "WORDPRESS_DB_NAME", "label": "DB Name", "default": "wordpress"},
+        ]),
+        "compose_yaml": """services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress-site
+    ports:
+      - "${PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: wp-db
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+    volumes:
+      - wpdata:/var/www/html
+    depends_on:
+      - wp-db
+    restart: unless-stopped
+
+  wp-db:
+    image: mysql:8
+    container_name: wordpress-db
+    environment:
+      MYSQL_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
+      MYSQL_USER: ${WORDPRESS_DB_USER:-wordpress}
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+      MYSQL_ROOT_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+    volumes:
+      - wpdbdata:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  wpdata:
+  wpdbdata:
+""",
+    },
+    {
+        "name": "MongoDB",
+        "description": "NoSQL document database",
+        "icon": "database",
+        "category": "database",
+        "default_port": 27017,
+        "env_schema": json.dumps([
+            {"key": "MONGO_INITDB_ROOT_USERNAME", "label": "Username", "default": "admin"},
+            {"key": "MONGO_INITDB_ROOT_PASSWORD", "label": "Password", "default": "changeme"},
+        ]),
+        "compose_yaml": """services:
+  mongo:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "${PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-changeme}
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongodata:
+""",
+    },
+]
+
+
+def seed_app_templates():
+    now = int(time.time())
+    conn = db_connect()
+    cur = conn.cursor()
+    for t in DEFAULT_TEMPLATES:
+        cur.execute(
+            """INSERT OR IGNORE INTO app_templates (name, description, icon, category, compose_yaml, env_schema, default_port, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (t["name"], t["description"], t["icon"], t["category"], t["compose_yaml"], t["env_schema"], t["default_port"], now),
+        )
+    conn.commit()
+    conn.close()
+
+
+def list_app_templates():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, description, icon, category, compose_yaml, env_schema, default_port, created_at FROM app_templates ORDER BY category, name")
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {
+            "id": r[0], "name": r[1], "description": r[2], "icon": r[3],
+            "category": r[4], "compose_yaml": r[5],
+            "env_schema": json.loads(r[6]) if r[6] else [],
+            "default_port": r[7], "created_at": r[8],
+        }
+        for r in rows
+    ]
+
+
+def get_app_template(template_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, description, icon, category, compose_yaml, env_schema, default_port, created_at FROM app_templates WHERE id = ?", (template_id,))
+    r = cur.fetchone()
+    conn.close()
+    if not r:
+        return None
+    return {
+        "id": r[0], "name": r[1], "description": r[2], "icon": r[3],
+        "category": r[4], "compose_yaml": r[5],
+        "env_schema": json.loads(r[6]) if r[6] else [],
+        "default_port": r[7], "created_at": r[8],
+    }
+
+
+def list_deployed_apps():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("""SELECT da.id, da.name, da.template_id, da.status, da.compose_path,
+                          da.ports, da.env_vars, da.container_ids, da.created_by, da.created_at,
+                          t.name as template_name
+                   FROM deployed_apps da LEFT JOIN app_templates t ON da.template_id = t.id
+                   ORDER BY da.created_at DESC""")
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {
+            "id": r[0], "name": r[1], "template_id": r[2], "status": r[3],
+            "compose_path": r[4], "ports": json.loads(r[5]) if r[5] else [],
+            "env_vars": json.loads(r[6]) if r[6] else {},
+            "container_ids": json.loads(r[7]) if r[7] else [],
+            "created_by": r[8], "created_at": r[9], "template_name": r[10],
+        }
+        for r in rows
+    ]
+
+
+def get_deployed_app(app_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("""SELECT da.id, da.name, da.template_id, da.status, da.compose_path,
+                          da.ports, da.env_vars, da.container_ids, da.created_by, da.created_at,
+                          t.name as template_name
+                   FROM deployed_apps da LEFT JOIN app_templates t ON da.template_id = t.id
+                   WHERE da.id = ?""", (app_id,))
+    r = cur.fetchone()
+    conn.close()
+    if not r:
+        return None
+    return {
+        "id": r[0], "name": r[1], "template_id": r[2], "status": r[3],
+        "compose_path": r[4], "ports": json.loads(r[5]) if r[5] else [],
+        "env_vars": json.loads(r[6]) if r[6] else {},
+        "container_ids": json.loads(r[7]) if r[7] else [],
+        "created_by": r[8], "created_at": r[9], "template_name": r[10],
+    }
+
+
+def create_deployed_app(name: str, template_id: int | None, compose_path: str, ports: list, env_vars: dict, created_by: str):
+    now = int(time.time())
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO deployed_apps (name, template_id, status, compose_path, ports, env_vars, container_ids, created_by, created_at)
+           VALUES (?, ?, 'stopped', ?, ?, ?, '[]', ?, ?)""",
+        (name, template_id, compose_path, json.dumps(ports), json.dumps(env_vars), "[]", created_by, now),
+    )
+    conn.commit()
+    app_id = cur.lastrowid
+    conn.close()
+    return app_id
+
+
+def update_deployed_app_status(app_id: int, status: str, container_ids: list | None = None):
+    conn = db_connect()
+    cur = conn.cursor()
+    if container_ids is not None:
+        cur.execute("UPDATE deployed_apps SET status = ?, container_ids = ? WHERE id = ?", (status, json.dumps(container_ids), app_id))
+    else:
+        cur.execute("UPDATE deployed_apps SET status = ? WHERE id = ?", (status, app_id))
+    conn.commit()
+    conn.close()
+
+
+def delete_deployed_app(app_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM deployed_apps WHERE id = ?", (app_id,))
+    deleted = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
 
 
 def get_user_record(username: str):
@@ -2221,6 +2621,7 @@ def bootstrap_admin_user():
 
 init_user_db()
 bootstrap_admin_user()
+seed_app_templates()
 
 
 def create_session(username: str, role: str) -> str:
@@ -3043,6 +3444,260 @@ def docker_logs(container_id: str, lines: int = Query(100, ge=1, le=2000), user=
         combined += result.stderr
 
     return {"logs": combined.splitlines(keepends=True)}
+
+
+def _render_compose_yaml(template_yaml: str, app_name: str, env_vars: dict, port_override: int | None) -> str:
+    rendered = template_yaml
+    port = str(port_override) if port_override else ""
+    rendered = rendered.replace("${PORT:-80}", port or "80")
+    rendered = rendered.replace("${PORT:-3000}", port or "3000")
+    rendered = rendered.replace("${PORT:-5000}", port or "5000")
+    rendered = rendered.replace("${PORT:-5432}", port or "5432")
+    rendered = rendered.replace("${PORT:-6379}", port or "6379")
+    rendered = rendered.replace("${PORT:-3306}", port or "3306")
+    rendered = rendered.replace("${PORT:-8080}", port or "8080")
+    rendered = rendered.replace("${PORT:-27017}", port or "27017")
+    for key, value in env_vars.items():
+        rendered = rendered.replace(f"${{{key}:-", f"${{{key}:-")
+    return rendered
+
+
+def _run_docker_compose(compose_path: str, args: list[str], timeout: int = 120):
+    commands = [
+        ["docker", "compose", "-f", compose_path, *args],
+        ["docker-compose", "-f", compose_path, *args],
+        ["sudo", "docker", "compose", "-f", compose_path, *args],
+    ]
+    last_error = ""
+    for command in commands:
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+        if result.returncode == 0:
+            return result
+        stderr_text = (result.stderr or "").strip()
+        stdout_text = (result.stdout or "").strip()
+        lowered = f"{stderr_text}\n{stdout_text}".lower()
+        if "permission denied" in lowered or "cannot connect to the docker daemon" in lowered:
+            last_error = stderr_text or stdout_text
+            continue
+        raise HTTPException(status_code=500, detail=(stderr_text or stdout_text or "Docker compose failed")[:500])
+    raise HTTPException(status_code=500, detail=(last_error or "Docker compose is not available")[:500])
+
+
+def _get_compose_container_ids(compose_path: str) -> list[str]:
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "-f", compose_path, "ps", "-q"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            result = subprocess.run(
+                ["docker-compose", "-f", compose_path, "ps", "-q"],
+                capture_output=True, text=True, timeout=30,
+            )
+        ids = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+        return ids
+    except Exception:
+        return []
+
+
+@app.get("/deploy/templates")
+def get_deploy_templates(user=Depends(require_role("viewer"))):
+    return {"templates": list_app_templates()}
+
+
+@app.get("/deploy/templates/{template_id}")
+def get_deploy_template(template_id: int, user=Depends(require_role("viewer"))):
+    template = get_app_template(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+
+@app.post("/deploy")
+def deploy_app(data: DeployAppRequest, user=Depends(require_role("operator"))):
+    app_name = data.app_name.strip()
+    if not app_name:
+        raise HTTPException(status_code=400, detail="App name is required")
+
+    if not all(ch.isalnum() or ch in "-_" for ch in app_name):
+        raise HTTPException(status_code=400, detail="App name must be alphanumeric with dashes/underscores only")
+
+    template = None
+    if data.template_id:
+        template = get_app_template(data.template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+
+    compose_dir = os.path.join("deployed_apps", app_name)
+    os.makedirs(compose_dir, exist_ok=True)
+    compose_path = os.path.join(compose_dir, "docker-compose.yml")
+
+    env_file_path = os.path.join(compose_dir, ".env")
+    env_lines = [f"PORT={data.port_override or template['default_port'] if template else data.port_override or 80}"]
+    for key, value in data.env_vars.items():
+        env_lines.append(f"{key}={value}")
+    with open(env_file_path, "w") as f:
+        f.write("\n".join(env_lines) + "\n")
+
+    if template:
+        compose_content = _render_compose_yaml(template["compose_yaml"], app_name, data.env_vars, data.port_override)
+    else:
+        raise HTTPException(status_code=400, detail="Template is required for deployment")
+
+    with open(compose_path, "w") as f:
+        f.write(compose_content)
+
+    ports = []
+    if data.port_override:
+        ports.append(data.port_override)
+    elif template and template.get("default_port"):
+        ports.append(template["default_port"])
+
+    app_id = create_deployed_app(
+        name=app_name,
+        template_id=data.template_id,
+        compose_path=compose_path,
+        ports=ports,
+        env_vars=data.env_vars,
+        created_by=user["username"],
+    )
+
+    try:
+        env = os.environ.copy()
+        env.update(data.env_vars)
+        env["PORT"] = str(data.port_override or (template["default_port"] if template else 80))
+
+        commands = [
+            ["docker", "compose", "-f", compose_path, "up", "-d"],
+            ["docker-compose", "-f", compose_path, "up", "-d"],
+            ["sudo", "docker", "compose", "-f", compose_path, "up", "-d"],
+        ]
+        last_error = ""
+        deployed = False
+        for command in commands:
+            try:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=180, env=env, cwd=compose_dir)
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                last_error = str(e)
+                continue
+            if result.returncode == 0:
+                deployed = True
+                break
+            stderr_text = (result.stderr or "").strip()
+            if "permission denied" in stderr_text.lower() or "cannot connect" in stderr_text.lower():
+                last_error = stderr_text
+                continue
+            last_error = stderr_text
+            break
+
+        if deployed:
+            container_ids = _get_compose_container_ids(compose_path)
+            update_deployed_app_status(app_id, "running", container_ids)
+            log_audit(user["username"], "deploy_app", f"Deployed app '{app_name}' from template '{template['name'] if template else 'custom'}'")
+            return {"status": "running", "app_id": app_id, "name": app_name, "container_ids": container_ids}
+        else:
+            update_deployed_app_status(app_id, "failed")
+            log_audit(user["username"], "deploy_app_failed", f"Failed to deploy '{app_name}': {last_error[:200]}")
+            raise HTTPException(status_code=500, detail=f"Deployment failed: {last_error[:300]}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        update_deployed_app_status(app_id, "failed")
+        raise HTTPException(status_code=500, detail=f"Deployment error: {str(e)[:300]}")
+
+
+@app.get("/deploy/apps")
+def get_deploy_apps(user=Depends(require_role("viewer"))):
+    apps = list_deployed_apps()
+    for app in apps:
+        if app["status"] == "running" and app["compose_path"] and os.path.exists(app["compose_path"]):
+            container_ids = _get_compose_container_ids(app["compose_path"])
+            app["container_ids"] = container_ids
+    return {"apps": apps}
+
+
+@app.post("/deploy/apps/{app_id}/action")
+def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(require_role("operator"))):
+    app = get_deployed_app(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Deployed app not found")
+
+    action = data.action.strip().lower()
+    compose_path = app["compose_path"]
+
+    if not compose_path or not os.path.exists(compose_path):
+        raise HTTPException(status_code=400, detail="Compose file not found for this app")
+
+    compose_dir = os.path.dirname(compose_path)
+
+    if action == "start":
+        result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
+        container_ids = _get_compose_container_ids(compose_path)
+        update_deployed_app_status(app_id, "running", container_ids)
+        log_audit(user["username"], "deploy_app_start", f"Started app '{app['name']}'")
+        return {"status": "running", "container_ids": container_ids}
+
+    elif action == "stop":
+        result = _run_docker_compose(compose_path, ["down"], timeout=60)
+        update_deployed_app_status(app_id, "stopped", [])
+        log_audit(user["username"], "deploy_app_stop", f"Stopped app '{app['name']}'")
+        return {"status": "stopped"}
+
+    elif action == "restart":
+        _run_docker_compose(compose_path, ["down"], timeout=60)
+        _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
+        container_ids = _get_compose_container_ids(compose_path)
+        update_deployed_app_status(app_id, "running", container_ids)
+        log_audit(user["username"], "deploy_app_restart", f"Restarted app '{app['name']}'")
+        return {"status": "running", "container_ids": container_ids}
+
+    elif action == "delete":
+        try:
+            _run_docker_compose(compose_path, ["down", "-v"], timeout=60)
+        except Exception:
+            pass
+        try:
+            import shutil
+            shutil.rmtree(compose_dir, ignore_errors=True)
+        except Exception:
+            pass
+        delete_deployed_app(app_id)
+        log_audit(user["username"], "deploy_app_delete", f"Deleted app '{app['name']}'")
+        return {"status": "deleted"}
+
+    else:
+        raise HTTPException(status_code=400, detail="Action must be start, stop, restart, or delete")
+
+
+@app.get("/deploy/apps/{app_id}/logs")
+def deploy_app_logs(app_id: int, lines: int = Query(100, ge=1, le=2000), user=Depends(require_role("viewer"))):
+    app = get_deployed_app(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Deployed app not found")
+
+    compose_path = app["compose_path"]
+    if not compose_path or not os.path.exists(compose_path):
+        return {"logs": ["No compose file found for this app."]}
+
+    try:
+        result = _run_docker_compose(compose_path, ["logs", "--tail", str(lines)], timeout=60)
+        combined = ""
+        if result.stdout:
+            combined += result.stdout
+        if result.stderr:
+            combined += result.stderr
+        return {"logs": combined.splitlines(keepends=True)}
+    except Exception as e:
+        return {"logs": [f"Error fetching logs: {str(e)}"]}
 
 
 @app.get("/check-port/{port}")
@@ -4013,6 +4668,13 @@ async def websocket_terminal(websocket: WebSocket):
 # 🤖 AI ASSISTANT ENDPOINTS
 from ai.models import AIChatRequest, AIActionConfirmation, AIAnalyzeRequest
 
+
+def _get_ai_chat(user: dict):
+    if AI_PROVIDER == "nvidia" and NVIDIA_API_KEY:
+        return NvidiaChat(user)
+    return GeminiChat(user)
+
+
 @app.post("/ai/chat")
 async def ai_chat(
     request: AIChatRequest,
@@ -4025,11 +4687,11 @@ async def ai_chat(
     if any(p in request.message.lower() for p in image_patterns):
         async def error_stream():
             import json
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Image input is not supported. gemini-2.0-flash only supports text. Please describe what you need instead.'})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Image input is not supported. Please describe what you need instead.'})}\n\n"
         return StreamingResponse(error_stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
     async def event_stream():
-        chat = GeminiChat(user)
+        chat = _get_ai_chat(user)
         async for event in chat.chat_stream(request.message):
             import json
             yield f"data: {json.dumps(event)}\n\n"
@@ -4062,9 +4724,18 @@ async def ai_confirm_action(
 
 @app.get("/ai/status")
 async def ai_status(user: dict = Depends(get_current_user)):
+    if AI_PROVIDER == "nvidia":
+        has_key = bool(NVIDIA_API_KEY)
+        return {
+            "available": has_key,
+            "provider": "nvidia",
+            "model": NVIDIA_MODEL if has_key else None,
+            "configured": has_key,
+        }
     has_key = bool(GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_KEY")
     return {
         "available": has_key,
+        "provider": "gemini",
         "model": GEMINI_MODEL if has_key else None,
         "configured": has_key,
     }
@@ -4075,7 +4746,7 @@ async def ai_analyze(
     data: AIAnalyzeRequest,
     user: dict = Depends(require_role("operator")),
 ):
-    chat = GeminiChat(user)
+    chat = _get_ai_chat(user)
     analysis = await chat.analyze(data.trigger, data.context)
     return analysis
 
