@@ -74,6 +74,42 @@ Guidelines:
             "parameters": tool["parameters"],
         }
 
+    @staticmethod
+    def _extract_text(response) -> str | None:
+        """Safely extract text from a Gemini response, ignoring function_call parts."""
+        try:
+            if not response.candidates:
+                return None
+            parts = response.candidates[0].content.parts
+            text_parts = [p.text for p in parts if hasattr(p, 'text') and p.text]
+            return "\n".join(text_parts) if text_parts else None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _has_function_calls(response) -> bool:
+        """Check if response contains function calls."""
+        try:
+            return bool(response.candidates and
+                        response.candidates[0].content.parts and
+                        any(hasattr(p, 'function_call') and p.function_call
+                            for p in response.candidates[0].content.parts))
+        except Exception:
+            return False
+
+    @staticmethod
+    def _get_function_calls(response) -> list:
+        """Extract function_call objects from a response safely."""
+        calls = []
+        try:
+            if response.candidates and response.candidates[0].content.parts:
+                for p in response.candidates[0].content.parts:
+                    if hasattr(p, 'function_call') and p.function_call:
+                        calls.append(p.function_call)
+        except Exception:
+            pass
+        return calls
+
     async def chat_stream(self, message: str) -> AsyncGenerator[dict, None]:
         """Stream chat response as dicts with type tags."""
         if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_KEY":
@@ -90,30 +126,54 @@ Guidelines:
                 system_instruction=self._build_system_prompt(),
                 tools=[{"function_declarations": [self._tool_to_gemini_func(t) for t in TOOLS]}],
             )
-            chat = model.start_chat(enable_automatic_function_calling=True)
-            response = chat.send_message(message, stream=True)
+            chat = model.start_chat()
 
-            for chunk in response:
-                if chunk.text:
-                    yield {"type": "text", "content": chunk.text}
-                if chunk.function_calls:
-                    for fc in chunk.function_calls:
-                        tool_name = fc.name
-                        tool_args = dict(fc.args) if hasattr(fc, 'args') else {}
-                        yield {"type": "tool_call", "tool": tool_name, "params": tool_args}
+            response = chat.send_message(message, stream=False)
 
-                        result = execute_tool(tool_name, self.user, tool_args)
-                        yield {"type": "tool_result", "tool": tool_name, "result": result}
+            max_rounds = 10
+            for _ in range(max_rounds):
+                func_calls = self._get_function_calls(response)
+                if not func_calls:
+                    text = self._extract_text(response)
+                    if text:
+                        yield {"type": "text", "content": text}
+                    break
 
-                        tool_def = next((t for t in TOOLS if t["name"] == tool_name), None)
-                        if tool_def and not tool_def["auto_exec"]:
-                            action_id = create_pending_action(tool_name, tool_args)
-                            yield {
-                                "type": "action_pending",
-                                "action_id": action_id,
-                                "tool": tool_name,
-                                "summary": f"Wants to {tool_name} with {tool_args}",
-                            }
+                function_responses = []
+                for fc in func_calls:
+                    tool_name = fc.name
+                    tool_args = dict(fc.args) if hasattr(fc, 'args') else {}
+                    yield {"type": "tool_call", "tool": tool_name, "params": tool_args}
+
+                    result = execute_tool(tool_name, self.user, tool_args)
+                    yield {"type": "tool_result", "tool": tool_name, "result": result}
+
+                    tool_def = next((t for t in TOOLS if t["name"] == tool_name), None)
+                    needs_confirm = tool_def and not tool_def["auto_exec"]
+
+                    if needs_confirm:
+                        action_id = create_pending_action(tool_name, tool_args)
+                        yield {
+                            "type": "action_pending",
+                            "action_id": action_id,
+                            "tool": tool_name,
+                            "summary": f"Wants to {tool_name} with {tool_args}",
+                        }
+                    else:
+                        function_responses.append(
+                            genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                                name=tool_name,
+                                response={"result": str(result)}
+                            ))
+                        )
+
+                if not function_responses:
+                    break
+
+                response = chat.send_message(
+                    genai.protos.Content(parts=function_responses),
+                    stream=False,
+                )
 
             yield {"type": "done", "summary": "Chat complete"}
 
@@ -163,7 +223,7 @@ Diagnose: Why might it have stopped? Suggest restart or investigation steps.""",
         model = genai.GenerativeModel(model_name=self.model_name)
         response = model.generate_content(prompt)
         return {
-            "analysis": response.text,
+            "analysis": self._extract_text(response) or "No analysis generated",
             "recommended_action": context,
             "auto_executable": False,
         }

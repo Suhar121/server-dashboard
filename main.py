@@ -20,7 +20,33 @@ import base64
 import tempfile
 import json
 
-# AI Assistant
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+def load_env_file(path: str = ".env"):
+    if not os.path.exists(path):
+        return
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key:
+                    os.environ.setdefault(key, value)
+    except Exception as e:
+        print("Failed to load .env:", e)
+
+load_env_file()
+
+app = FastAPI()
+
+# AI Assistant (imported after env is loaded)
 from ai.gemini_client import GeminiChat
 from ai.guardrails import (
     check_chat_rate_limit,
@@ -46,34 +72,6 @@ except ImportError:
     termios = None
     struct = None
     TERMINAL_BACKEND_AVAILABLE = False
-
-app = FastAPI()
-
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-
-def load_env_file(path: str = ".env"):
-    if not os.path.exists(path):
-        return
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for raw_line in f:
-                line = raw_line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                if key:
-                    os.environ.setdefault(key, value)
-    except Exception as e:
-        print("Failed to load .env:", e)
-
-
-load_env_file()
 
 # 🔑 TELEGRAM CONFIG
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TOKEN")
@@ -4022,6 +4020,13 @@ async def ai_chat(
 ):
     if not check_chat_rate_limit(user["session_id"]):
         raise HTTPException(429, detail="Rate limit exceeded. Try again in a minute.")
+
+    image_patterns = ['data:image', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']
+    if any(p in request.message.lower() for p in image_patterns):
+        async def error_stream():
+            import json
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Image input is not supported. gemini-2.0-flash only supports text. Please describe what you need instead.'})}\n\n"
+        return StreamingResponse(error_stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
     async def event_stream():
         chat = GeminiChat(user)
