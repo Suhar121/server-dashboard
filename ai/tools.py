@@ -208,7 +208,7 @@ def get_alert_rules(session: dict, params: dict) -> dict:
     description="Get recent audit log entries (actions taken on the dashboard).",
     parameters={
         "type": "object",
-        "properties": {"limit": {"type": "integer", "default": 20}},
+        "properties": {"limit": {"type": "integer"}},
         "required": [],
     },
     min_role="viewer",
