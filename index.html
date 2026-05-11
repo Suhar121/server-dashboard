@@ -1694,6 +1694,167 @@
       border-color: var(--border);
       background: transparent;
     }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .deploy-template-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .deploy-template-card:hover {
+      border-color: var(--brand);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .deploy-template-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--brand-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--brand);
+    }
+
+    .deploy-template-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .deploy-template-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .deploy-template-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 8px;
+    }
+
+    .deploy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .deploy-badge-category {
+      background: var(--brand-soft);
+      color: var(--brand);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .deploy-badge-port {
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .deploy-status-running {
+      color: var(--ok);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .deploy-status-stopped {
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .deploy-status-failed {
+      color: var(--bad);
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    #deployWizardModal, #deployLogsModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 18, 0.9);
+      backdrop-filter: blur(4px);
+      z-index: 220;
+      padding: 20px;
+    }
+
+    #deployWizardBox {
+      max-width: 560px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    #deployLogsBox {
+      max-width: 900px;
+      width: 100%;
+      max-height: 80vh;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #deployLogsContent {
+      flex: 1;
+      margin: 0;
+      background: #030814;
+      color: #7ef5b8;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      max-height: 55vh;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
   </style>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -1716,6 +1877,7 @@
     <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> <span>Alert Rules</span></button>
     <button id="accessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub')"><i data-lucide="waypoints"></i> <span>Access & Tunnels</span></button>
     <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> <span>File Manager</span></button>
+    <button id="deployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy')"><i data-lucide="rocket"></i> <span>Deploy Apps</span></button>
   </nav>
 
   <div class="sidebar-footer">
@@ -1916,6 +2078,117 @@
       </div>
     </div>
   </section>
+
+  <section class="card admin-page" id="deployPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="rocket"></i> App Deployer</h3>
+    <div class="muted" style="margin-top: 6px;">Deploy applications using pre-configured Docker Compose templates.</div>
+
+    <div class="cloudflared-kpis" style="margin-top: 16px;">
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Templates</div>
+        <div class="cloudflared-kpi-value" id="deployKpiTemplates">0</div>
+        <div class="cloudflared-kpi-note">Available to deploy</div>
+      </div>
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Running</div>
+        <div class="cloudflared-kpi-value" id="deployKpiRunning">0</div>
+        <div class="cloudflared-kpi-note">Active deployments</div>
+      </div>
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Total Deployed</div>
+        <div class="cloudflared-kpi-value" id="deployKpiTotal">0</div>
+        <div class="cloudflared-kpi-note">All time deployments</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; align-items:center;">
+      <h4 style="margin:0; display:flex; align-items:center; gap:6px;"><i data-lucide="layout-grid" style="width:18px;height:18px;"></i> Template Gallery</h4>
+      <div style="flex:1;"></div>
+      <input id="deployTemplateSearch" class="field" placeholder="Search templates..." style="max-width:250px;" oninput="filterDeployTemplates()" />
+      <select id="deployCategoryFilter" class="field" style="max-width:160px;" onchange="filterDeployTemplates()">
+        <option value="">All Categories</option>
+        <option value="web">Web</option>
+        <option value="dev">Dev</option>
+        <option value="database">Database</option>
+      </select>
+    </div>
+
+    <div id="deployTemplateGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; margin-top:16px;">
+      <div class="muted">Loading templates...</div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:16px;">
+        <h4 style="margin:0; display:flex; align-items:center; gap:6px;"><i data-lucide="layers" style="width:18px;height:18px;"></i> Deployed Applications</h4>
+        <div style="flex:1;"></div>
+        <button class="btn-neutral" onclick="loadDeployedApps()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Template</th>
+            <th>Status</th>
+            <th>Ports</th>
+            <th>Deployed By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="deployedAppsBody">
+          <tr><td colspan="6" class="muted">Loading deployed apps...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="deployWizardModal">
+    <div id="deployWizardBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="rocket"></i> <span id="deployWizardTitle">Deploy Application</span></h3>
+      <div class="muted" style="margin-top:4px;" id="deployWizardDesc">Configure and deploy your application.</div>
+
+      <div style="margin-top:16px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Application Name</label>
+        <input id="deployAppName" class="field" placeholder="my-app" style="margin-top:4px;" />
+        <div class="muted" style="font-size:0.78rem; margin-top:2px;">Alphanumeric, dashes, and underscores only.</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Port Override</label>
+        <input id="deployPortOverride" class="field" type="number" placeholder="Auto (template default)" style="margin-top:4px;" />
+      </div>
+
+      <div id="deployEnvVarsSection" style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Environment Variables</label>
+        <div id="deployEnvVarsFields" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted); font-weight:600;">View Docker Compose YAML</summary>
+          <pre id="deployComposePreview" style="margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.8rem; max-height:250px; overflow:auto; white-space:pre-wrap;"></pre>
+        </details>
+      </div>
+
+      <div id="deployWizardError" class="error-text" style="margin-top:8px;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closeDeployWizard()">Cancel</button>
+        <button class="btn-success" id="deployWizardSubmitBtn" onclick="submitDeploy()"><i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deployLogsModal">
+    <div id="deployLogsBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="file-text"></i> <span id="deployLogsTitle">App Logs</span></h3>
+      <div class="log-meta" id="deployLogsMeta">Showing last 100 lines</div>
+      <pre id="deployLogsContent">Loading...</pre>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-neutral" onclick="closeDeployLogs()">Close</button>
+      </div>
+    </div>
+  </div>
 
   <section class="card admin-page" id="adminPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield"></i> Admin User Management</h3>
@@ -3238,6 +3511,7 @@
       document.getElementById("dashboardContent").style.display = "none";
       document.getElementById("dockerPage").style.display = "none";
       document.getElementById("secretsPage").style.display = "none";
+      document.getElementById("deployPage").style.display = "none";
       document.getElementById("adminPage").style.display = "none";
       document.getElementById("alertRulesPage").style.display = "none";
       document.getElementById("accessHubPage").style.display = "none";
@@ -3273,6 +3547,7 @@
       document.getElementById("accessHubMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("dockerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("deployMenuItem").style.display = canOperate ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
 
       if (!canOperate && currentPage === "terminal") {
@@ -3306,6 +3581,7 @@
         "docker": "dockerMenuItem",
         "secrets": "fileManagerMenuItem",
         "file-manager": "fileManagerMenuItem",
+        "deploy": "deployMenuItem",
       };
 
       document.querySelectorAll(".top-nav-item").forEach((btn) => btn.classList.remove("active"));
@@ -3323,6 +3599,7 @@
       const showFileManager = currentPage === "file-manager" && hasRole("admin");
       const showDocker = currentPage === "docker" && hasRole("admin");
       const showSecrets = currentPage === "secrets" && hasRole("admin");
+      const showDeploy = currentPage === "deploy" && hasRole("operator");
       const showTerminal = currentPage === "terminal" && hasRole("operator");
       const showDash = currentPage === "dashboard";
 
@@ -3335,6 +3612,7 @@
       document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
       document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
       document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
+      document.getElementById("deployPage").style.display = showDeploy ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
       if (!showTerminal) {
         exitTerminalFullscreenIfActive();
@@ -3358,6 +3636,11 @@
       }
 
       if (page === "terminal" && !hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      if (page === "deploy" && !hasRole("operator")) {
         alert("Operator or Admin role required.");
         return;
       }
@@ -3386,6 +3669,8 @@
         browseFiles(currentPath);
       } else if (page === "terminal") {
         ensureTerminalReady();
+      } else if (page === "deploy") {
+        loadDeployPage();
       }
       closeMenu();
     }
@@ -3613,6 +3898,242 @@
       } catch (e) {
         msg.innerText = e.message || "Failed to delete user.";
       }
+    }
+
+    let deployTemplates = [];
+    let deploySelectedTemplate = null;
+
+    async function loadDeployPage() {
+      await Promise.all([loadDeployTemplates(), loadDeployedApps()]);
+    }
+
+    async function loadDeployTemplates() {
+      try {
+        const res = await apiFetch("/deploy/templates");
+        const data = await res.json();
+        deployTemplates = data.templates || [];
+        renderDeployTemplates(deployTemplates);
+        document.getElementById("deployKpiTemplates").textContent = deployTemplates.length;
+      } catch (e) {
+        document.getElementById("deployTemplateGrid").innerHTML = `<div class="error-text">Failed to load templates: ${esc(e.message)}</div>`;
+      }
+    }
+
+    function filterDeployTemplates() {
+      const search = (document.getElementById("deployTemplateSearch").value || "").toLowerCase();
+      const category = document.getElementById("deployCategoryFilter").value;
+      let filtered = deployTemplates;
+      if (search) {
+        filtered = filtered.filter(t => t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search));
+      }
+      if (category) {
+        filtered = filtered.filter(t => t.category === category);
+      }
+      renderDeployTemplates(filtered);
+    }
+
+    function renderDeployTemplates(templates) {
+      const grid = document.getElementById("deployTemplateGrid");
+      if (!templates.length) {
+        grid.innerHTML = '<div class="muted">No templates found.</div>';
+        return;
+      }
+      grid.innerHTML = templates.map(t => `
+        <div class="deploy-template-card" onclick="openDeployWizard(${t.id})">
+          <div class="deploy-template-icon">
+            <i data-lucide="${esc(t.icon || 'box')}" style="width:22px;height:22px;"></i>
+          </div>
+          <div class="deploy-template-name">${esc(t.name)}</div>
+          <div class="deploy-template-desc">${esc(t.description)}</div>
+          <div class="deploy-template-meta">
+            <span class="deploy-badge deploy-badge-category">${esc(t.category)}</span>
+            ${t.default_port ? `<span class="deploy-badge deploy-badge-port">Port ${t.default_port}</span>` : ''}
+          </div>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    async function openDeployWizard(templateId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+      deploySelectedTemplate = null;
+      document.getElementById("deployAppName").value = "";
+      document.getElementById("deployPortOverride").value = "";
+      document.getElementById("deployEnvVarsFields").innerHTML = "";
+      document.getElementById("deployComposePreview").textContent = "";
+      document.getElementById("deployWizardError").textContent = "";
+
+      try {
+        const res = await apiFetch(`/deploy/templates/${templateId}`);
+        deploySelectedTemplate = await res.json();
+      } catch (e) {
+        document.getElementById("deployWizardError").textContent = "Failed to load template: " + e.message;
+        document.getElementById("deployWizardModal").style.display = "flex";
+        return;
+      }
+
+      document.getElementById("deployWizardTitle").textContent = `Deploy ${deploySelectedTemplate.name}`;
+      document.getElementById("deployWizardDesc").textContent = deploySelectedTemplate.description;
+      document.getElementById("deployComposePreview").textContent = deploySelectedTemplate.compose_yaml;
+
+      if (deploySelectedTemplate.default_port) {
+        document.getElementById("deployPortOverride").placeholder = `Default: ${deploySelectedTemplate.default_port}`;
+      }
+
+      const envFields = document.getElementById("deployEnvVarsFields");
+      const schema = deploySelectedTemplate.env_schema || [];
+      if (schema.length) {
+        envFields.innerHTML = schema.map(v => `
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <label style="font-size:0.8rem; font-weight:600; color:var(--muted);">${esc(v.label || v.key)}</label>
+            <input class="field deploy-env-input" data-key="${esc(v.key)}" value="${esc(v.default || '')}" placeholder="${esc(v.default || '')}" />
+          </div>
+        `).join("");
+      } else {
+        envFields.innerHTML = '<div class="muted" style="font-size:0.82rem;">No environment variables required.</div>';
+      }
+
+      document.getElementById("deployWizardModal").style.display = "flex";
+    }
+
+    function closeDeployWizard() {
+      document.getElementById("deployWizardModal").style.display = "none";
+      deploySelectedTemplate = null;
+    }
+
+    async function submitDeploy() {
+      const errorEl = document.getElementById("deployWizardError");
+      errorEl.textContent = "";
+
+      const appName = document.getElementById("deployAppName").value.trim();
+      if (!appName) {
+        errorEl.textContent = "Application name is required.";
+        return;
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(appName)) {
+        errorEl.textContent = "Name must be alphanumeric with dashes/underscores only.";
+        return;
+      }
+
+      const portVal = document.getElementById("deployPortOverride").value;
+      const portOverride = portVal ? parseInt(portVal) : null;
+
+      const envVars = {};
+      document.querySelectorAll(".deploy-env-input").forEach(input => {
+        const key = input.getAttribute("data-key");
+        const val = input.value.trim();
+        if (key && val) {
+          envVars[key] = val;
+        }
+      });
+
+      const btn = document.getElementById("deployWizardSubmitBtn");
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px;animation:spin 1s linear infinite;"></i> Deploying...';
+      lucide.createIcons();
+
+      try {
+        const res = await apiFetch("/deploy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            template_id: deploySelectedTemplate ? deploySelectedTemplate.id : null,
+            app_name: appName,
+            env_vars: envVars,
+            port_override: portOverride,
+          }),
+        });
+        const data = await res.json();
+        closeDeployWizard();
+        await loadDeployedApps();
+        loadDeployTemplates();
+      } catch (e) {
+        errorEl.textContent = e.message || "Deployment failed.";
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy';
+        lucide.createIcons();
+      }
+    }
+
+    async function loadDeployedApps() {
+      const body = document.getElementById("deployedAppsBody");
+      if (!body) return;
+      try {
+        const res = await apiFetch("/deploy/apps");
+        const data = await res.json();
+        const apps = data.apps || [];
+        let running = 0;
+        apps.forEach(a => { if (a.status === "running") running++; });
+        document.getElementById("deployKpiRunning").textContent = running;
+        document.getElementById("deployKpiTotal").textContent = apps.length;
+
+        if (!apps.length) {
+          body.innerHTML = '<tr><td colspan="6" class="muted">No apps deployed yet. Select a template above to get started.</td></tr>';
+          return;
+        }
+
+        body.innerHTML = apps.map(a => {
+          const statusClass = a.status === "running" ? "deploy-status-running" : a.status === "failed" ? "deploy-status-failed" : "deploy-status-stopped";
+          const portsHtml = (a.ports || []).map(p => `<span class="deploy-badge deploy-badge-port">${esc(String(p))}</span>`).join(" ");
+          const isRunning = a.status === "running";
+          const actionBtns = `
+            <div class="actions" style="gap:4px;">
+              ${isRunning
+                ? `<button class="btn-warn" onclick="deployAppAction(${a.id}, 'restart')"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i></button>
+                   <button class="btn-danger" onclick="deployAppAction(${a.id}, 'stop')"><i data-lucide="square" style="width:14px;height:14px;"></i></button>`
+                : `<button class="btn-success" onclick="deployAppAction(${a.id}, 'start')"><i data-lucide="play" style="width:14px;height:14px;"></i></button>`}
+              <button class="btn-neutral" onclick="viewDeployLogs(${a.id}, '${esc(a.name)}')"><i data-lucide="file-text" style="width:14px;height:14px;"></i></button>
+              <button class="btn-danger" onclick="deployAppAction(${a.id}, 'delete')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            </div>`;
+          return `
+            <tr>
+              <td style="font-weight:600;">${esc(a.name)}</td>
+              <td>${a.template_name ? `<span class="deploy-badge deploy-badge-category">${esc(a.template_name)}</span>` : '<span class="muted">Custom</span>'}</td>
+              <td><span class="${statusClass}">${esc(a.status)}</span></td>
+              <td>${portsHtml || '<span class="muted">--</span>'}</td>
+              <td style="font-size:0.85rem; color:var(--muted);">${esc(a.created_by)}</td>
+              <td>${actionBtns}</td>
+            </tr>`;
+        }).join("");
+        lucide.createIcons();
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="6" class="error-text">Failed to load: ${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    async function deployAppAction(appId, action) {
+      if (action === "delete" && !confirm("Delete this app and all its containers/data?")) return;
+      try {
+        await apiFetch(`/deploy/apps/${appId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        await loadDeployedApps();
+      } catch (e) {
+        alert("Action failed: " + (e.message || "Unknown error"));
+      }
+    }
+
+    async function viewDeployLogs(appId, appName) {
+      document.getElementById("deployLogsTitle").textContent = appName + " — Logs";
+      document.getElementById("deployLogsContent").textContent = "Loading...";
+      document.getElementById("deployLogsModal").style.display = "flex";
+      try {
+        const res = await apiFetch(`/deploy/apps/${appId}/logs`);
+        const data = await res.json();
+        document.getElementById("deployLogsContent").textContent = (data.logs || []).join("") || "No logs available.";
+      } catch (e) {
+        document.getElementById("deployLogsContent").textContent = "Error: " + e.message;
+      }
+    }
+
+    function closeDeployLogs() {
+      document.getElementById("deployLogsModal").style.display = "none";
     }
 
     function esc(text) {
