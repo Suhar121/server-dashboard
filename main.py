@@ -19,6 +19,7 @@ import re
 import base64
 import tempfile
 import json
+import threading
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -288,6 +289,19 @@ class DeployedAppActionRequest(BaseModel):
     action: str
 
 
+class GitHubAnalyzeRequest(BaseModel):
+    repo_url: str
+    branch: str = "main"
+
+
+class GitHubDeployRequest(BaseModel):
+    repo_url: str
+    app_name: str
+    branch: str = "main"
+    env_vars: dict[str, str] = {}
+    port_override: int | None = None
+
+
 def normalize_service_name(name: str) -> str:
     allowed = "-_"
     cleaned = "".join(ch for ch in name if ch.isalnum() or ch in allowed).strip("-_")
@@ -514,6 +528,30 @@ def init_user_db():
         )
         """
     )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS github_deployments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_name TEXT NOT NULL UNIQUE,
+            repo_url TEXT NOT NULL,
+            branch TEXT NOT NULL DEFAULT 'main',
+            detected_type TEXT,
+            detected_framework TEXT,
+            detected_port INTEGER,
+            env_vars TEXT NOT NULL DEFAULT '{}',
+            deploy_path TEXT,
+            compose_path TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            step_status TEXT NOT NULL DEFAULT '{}',
+            container_ids TEXT NOT NULL DEFAULT '[]',
+            logs TEXT NOT NULL DEFAULT '',
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        )
+        """
+    )
+
     cur.execute("PRAGMA table_info(users)")
     user_columns = {row[1] for row in cur.fetchall()}
     if "last_login_at" not in user_columns:
@@ -2607,6 +2645,562 @@ def suggest_git_clone_folder_name(repo_url: str) -> str:
     return sanitized or "repo-clone"
 
 
+# ──────────────────────────────────────────────────────────────────
+#  GITHUB DEPLOY — DB helpers
+# ──────────────────────────────────────────────────────────────────
+
+def create_github_deployment(app_name, repo_url, branch, deploy_path, created_by):
+    now = int(time.time())
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO github_deployments
+           (app_name, repo_url, branch, deploy_path, status, step_status, created_by, created_at)
+           VALUES (?, ?, ?, ?, 'pending', '{}', ?, ?)""",
+        (app_name, repo_url, branch, deploy_path, created_by, now),
+    )
+    deploy_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return deploy_id
+
+
+def get_github_deployment(deploy_id):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM github_deployments WHERE id = ?", (deploy_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    cols = [d[0] for d in cur.description] if cur.description else []
+    return dict(zip(cols, row))
+
+
+def get_github_deployment_by_name(app_name):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM github_deployments WHERE app_name = ?", (app_name,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    cols = [d[0] for d in cur.description] if cur.description else []
+    return dict(zip(cols, row))
+
+
+def update_github_deployment_status(deploy_id, status, step_status=None, container_ids=None):
+    conn = db_connect()
+    cur = conn.cursor()
+    if step_status is not None and container_ids is not None:
+        cur.execute(
+            "UPDATE github_deployments SET status=?, step_status=?, container_ids=? WHERE id=?",
+            (status, json.dumps(step_status), json.dumps(container_ids), deploy_id),
+        )
+    elif step_status is not None:
+        cur.execute(
+            "UPDATE github_deployments SET status=?, step_status=? WHERE id=?",
+            (status, json.dumps(step_status), deploy_id),
+        )
+    else:
+        cur.execute("UPDATE github_deployments SET status=? WHERE id=?", (status, deploy_id))
+    conn.commit()
+    conn.close()
+
+
+def update_github_deployment_fields(deploy_id, **fields):
+    if not fields:
+        return
+    sets = []
+    vals = []
+    for k, v in fields.items():
+        if k in ("detected_type", "detected_framework", "detected_port", "env_vars",
+                 "compose_path", "logs", "container_ids", "step_status", "status"):
+            sets.append(f"{k} = ?")
+            vals.append(v)
+    if not sets:
+        return
+    vals.append(deploy_id)
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(f"UPDATE github_deployments SET {', '.join(sets)} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def list_github_deployments():
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM github_deployments ORDER BY created_at DESC")
+    rows = cur.fetchall()
+    cols = [d[0] for d in cur.description] if cur.description else []
+    conn.close()
+    return [dict(zip(cols, r)) for r in rows]
+
+
+# ──────────────────────────────────────────────────────────────────
+#  GITHUB DEPLOY — Project detection engine
+# ──────────────────────────────────────────────────────────────────
+
+def _read_file_safe(path, max_bytes=65536):
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read(max_bytes)
+    except Exception:
+        return ""
+
+
+def _scan_env_file(repo_path):
+    env_vars = []
+    for name in (".env.example", ".env.sample", ".env.template"):
+        p = os.path.join(repo_path, name)
+        if os.path.isfile(p):
+            content = _read_file_safe(p)
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, _, default = line.partition("=")
+                    env_vars.append({"key": key.strip(), "default": default.strip().strip('"').strip("'")})
+            return env_vars, name
+    return [], None
+
+
+def _detect_python(repo_path):
+    framework = "none"
+    port = 8000
+    entry = "main.py"
+    deps_file = None
+    start_cmd = None
+
+    for f in ("requirements.txt", "pyproject.toml", "setup.py", "Pipfile"):
+        if os.path.isfile(os.path.join(repo_path, f)):
+            deps_file = f
+            break
+
+    candidates = ("main.py", "app.py", "server.py", "wsgi.py", "manage.py")
+    for c in candidates:
+        if os.path.isfile(os.path.join(repo_path, c)):
+            entry = c
+            break
+
+    content = _read_file_safe(os.path.join(repo_path, entry))
+    if "from fastapi" in content or "FastAPI()" in content:
+        framework = "fastapi"
+        port = 8000
+        start_cmd = f"uvicorn main:app --host 0.0.0.0 --port {port}"
+    elif "from flask" in content or "Flask(__name__)" in content:
+        framework = "flask"
+        port = 5000
+        start_cmd = f"python {entry}"
+    elif "from django" in content:
+        framework = "django"
+        port = 8000
+        start_cmd = f"python manage.py runserver 0.0.0.0:{port}"
+    else:
+        start_cmd = f"python {entry}"
+
+    return {
+        "type": "python",
+        "framework": framework,
+        "port": port,
+        "start_command": start_cmd,
+        "build_command": None,
+        "dependencies_file": deps_file,
+        "entry_point": entry,
+    }
+
+
+def _detect_node(repo_path):
+    framework = "none"
+    port = 3000
+    start_cmd = "node index.js"
+    build_cmd = None
+    pkg_path = os.path.join(repo_path, "package.json")
+    content = _read_file_safe(pkg_path)
+    if not content:
+        return None
+
+    try:
+        pkg = json.loads(content)
+    except Exception:
+        return None
+
+    all_deps = {}
+    all_deps.update(pkg.get("dependencies", {}))
+    all_deps.update(pkg.get("devDependencies", {}))
+    scripts = pkg.get("scripts", {})
+
+    if "next" in all_deps:
+        framework = "nextjs"
+        port = 3000
+        build_cmd = "npm run build"
+        start_cmd = "npm start"
+    elif "nuxt" in all_deps:
+        framework = "nuxt"
+        port = 3000
+        build_cmd = "npm run build"
+        start_cmd = "npm start"
+    elif "express" in all_deps:
+        framework = "express"
+        port = 3000
+        start_cmd = scripts.get("start", "node index.js")
+    elif "@vue/cli-service" in all_deps or "vue" in all_deps:
+        framework = "vue"
+        port = 8080
+        build_cmd = "npm run build"
+        start_cmd = "npm run serve"
+    elif "react-scripts" in all_deps or "react" in all_deps:
+        framework = "react"
+        port = 3000
+        build_cmd = "npm run build"
+        start_cmd = "npm start"
+    elif "start" in scripts:
+        start_cmd = "npm start"
+
+    return {
+        "type": "node",
+        "framework": framework,
+        "port": port,
+        "start_command": start_cmd,
+        "build_command": build_cmd,
+        "dependencies_file": "package.json",
+        "entry_point": pkg.get("main", "index.js"),
+    }
+
+
+def _detect_go(repo_path):
+    return {
+        "type": "go",
+        "framework": "none",
+        "port": 8080,
+        "start_command": "./app",
+        "build_command": "go build -o app .",
+        "dependencies_file": "go.mod",
+        "entry_point": "main.go",
+    }
+
+
+def _detect_rust(repo_path):
+    return {
+        "type": "rust",
+        "framework": "none",
+        "port": 8080,
+        "start_command": "./target/release/app",
+        "build_command": "cargo build --release",
+        "dependencies_file": "Cargo.toml",
+        "entry_point": "src/main.rs",
+    }
+
+
+def detect_project_type(repo_path):
+    files = set(os.listdir(repo_path)) if os.path.isdir(repo_path) else set()
+
+    has_dockerfile = "Dockerfile" in files
+    has_compose = any(f in files for f in ("docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"))
+    env_vars, env_file = _scan_env_file(repo_path)
+
+    result = None
+
+    if "requirements.txt" in files or "pyproject.toml" in files or "setup.py" in files or "Pipfile" in files:
+        result = _detect_python(repo_path)
+    elif "package.json" in files:
+        result = _detect_node(repo_path)
+    elif "go.mod" in files:
+        result = _detect_go(repo_path)
+    elif "Cargo.toml" in files:
+        result = _detect_rust(repo_path)
+    elif "index.html" in files and "package.json" not in files:
+        result = {
+            "type": "static",
+            "framework": "none",
+            "port": 80,
+            "start_command": None,
+            "build_command": None,
+            "dependencies_file": None,
+            "entry_point": "index.html",
+        }
+    elif has_dockerfile or has_compose:
+        result = {
+            "type": "docker",
+            "framework": "none",
+            "port": 80,
+            "start_command": None,
+            "build_command": None,
+            "dependencies_file": None,
+            "entry_point": None,
+        }
+    else:
+        result = {
+            "type": "unknown",
+            "framework": "none",
+            "port": 80,
+            "start_command": None,
+            "build_command": None,
+            "dependencies_file": None,
+            "entry_point": None,
+        }
+
+    result["has_dockerfile"] = has_dockerfile
+    result["has_compose"] = has_compose
+    result["env_file"] = env_file
+    result["env_vars"] = env_vars
+    return result
+
+
+# ──────────────────────────────────────────────────────────────────
+#  GITHUB DEPLOY — Dockerfile / Compose generators
+# ──────────────────────────────────────────────────────────────────
+
+def generate_dockerfile(detected, repo_path):
+    if detected.get("has_dockerfile"):
+        return _read_file_safe(os.path.join(repo_path, "Dockerfile"))
+
+    dtype = detected["type"]
+    port = detected["port"]
+    fw = detected.get("framework", "none")
+
+    if dtype == "python":
+        deps = detected.get("dependencies_file", "requirements.txt")
+        if fw == "fastapi":
+            cmd = f'CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "{port}"]'
+        elif fw == "flask":
+            entry = detected.get("entry_point", "app.py")
+            cmd = f'CMD ["python", "{entry}"]'
+        elif fw == "django":
+            cmd = f'CMD ["python", "manage.py", "runserver", "0.0.0.0:{port}"]'
+        else:
+            entry = detected.get("entry_point", "main.py")
+            cmd = f'CMD ["python", "{entry}"]'
+
+        return f"""FROM python:3.12-slim
+WORKDIR /app
+COPY {deps} .
+RUN pip install --no-cache-dir -r {deps}
+COPY . .
+EXPOSE {port}
+{cmd}
+"""
+
+    if dtype == "node":
+        lines = [
+            "FROM node:20-alpine",
+            "WORKDIR /app",
+            "COPY package*.json ./",
+            "RUN npm install",
+            "COPY . .",
+        ]
+        if detected.get("build_command"):
+            lines.append(f"RUN {detected['build_command']}")
+        lines.append(f"EXPOSE {port}")
+        lines.append(f'CMD ["sh", "-c", "{detected["start_command"]}"]')
+        return "\n".join(lines) + "\n"
+
+    if dtype == "static":
+        return """FROM nginx:alpine
+COPY . /usr/share/nginx/html
+EXPOSE 80
+"""
+
+    if dtype == "go":
+        return f"""FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o app .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/app .
+EXPOSE {port}
+CMD ["./app"]
+"""
+
+    if dtype == "rust":
+        return f"""FROM rust:1.77 AS builder
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=builder /app/target/release/app .
+EXPOSE {port}
+CMD ["./app"]
+"""
+
+    return f"""FROM ubuntu:22.04
+WORKDIR /app
+COPY . .
+EXPOSE {port}
+CMD ["echo", "No start command detected — edit this Dockerfile"]
+"""
+
+
+def generate_compose_yaml(app_name, detected, port):
+    internal_port = detected["port"]
+    return f"""services:
+  {app_name}:
+    build: .
+    container_name: {app_name}
+    ports:
+      - "{port}:{internal_port}"
+    restart: unless-stopped
+"""
+
+
+# ──────────────────────────────────────────────────────────────────
+#  GITHUB DEPLOY — Pipeline runner
+# ──────────────────────────────────────────────────────────────────
+
+def run_github_deploy_pipeline(deploy_id):
+    dep = get_github_deployment(deploy_id)
+    if not dep:
+        return
+
+    app_name = dep["app_name"]
+    repo_url = dep["repo_url"]
+    branch = dep.get("branch", "main")
+    deploy_path = dep["deploy_path"]
+    env_vars = json.loads(dep.get("env_vars", "{}"))
+    port_override = env_vars.pop("__port_override__", None)
+
+    steps = {
+        "clone": "pending",
+        "detect": "pending",
+        "configure": "pending",
+        "build": "pending",
+        "deploy": "pending",
+        "health": "pending",
+    }
+
+    def _fail(step, msg):
+        steps[step] = "failed"
+        update_github_deployment_status(deploy_id, "failed", steps)
+        update_github_deployment_fields(deploy_id, logs=dep.get("logs", "") + f"\n[FAIL] {step}: {msg}")
+
+    def _log(msg):
+        current = dep.get("logs", "")
+        dep["logs"] = current + f"\n{msg}"
+        update_github_deployment_fields(deploy_id, logs=dep["logs"])
+
+    try:
+        # Step 1: Clone
+        steps["clone"] = "running"
+        update_github_deployment_status(deploy_id, "cloning", steps)
+        _log(f"[clone] Cloning {repo_url} (branch: {branch})...")
+
+        os.makedirs(deploy_path, exist_ok=True)
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", "-b", branch, repo_url, deploy_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            _fail("clone", (result.stderr or result.stdout or "clone failed")[:300])
+            return
+        steps["clone"] = "done"
+        _log("[clone] Done.")
+
+        # Step 2: Detect
+        steps["detect"] = "running"
+        update_github_deployment_status(deploy_id, "detecting", steps)
+        _log("[detect] Analyzing project...")
+        detected = detect_project_type(deploy_path)
+        steps["detect"] = "done"
+        _log(f"[detect] Type={detected['type']}, Framework={detected['framework']}, Port={detected['port']}")
+
+        update_github_deployment_fields(
+            deploy_id,
+            detected_type=detected["type"],
+            detected_framework=detected["framework"],
+            detected_port=detected["port"],
+        )
+
+        # Step 3: Configure
+        steps["configure"] = "running"
+        update_github_deployment_status(deploy_id, "configuring", steps)
+        _log("[configure] Generating Dockerfile and docker-compose.yml...")
+
+        port = port_override or detected["port"]
+
+        dockerfile_content = generate_dockerfile(detected, deploy_path)
+        if not detected.get("has_dockerfile"):
+            with open(os.path.join(deploy_path, "Dockerfile"), "w") as f:
+                f.write(dockerfile_content)
+            _log("[configure] Generated Dockerfile.")
+        else:
+            _log("[configure] Using existing Dockerfile.")
+
+        compose_content = generate_compose_yaml(app_name, detected, port)
+        compose_path = os.path.join(deploy_path, "docker-compose.yml")
+        with open(compose_path, "w") as f:
+            f.write(compose_content)
+        _log("[configure] Generated docker-compose.yml.")
+
+        if env_vars:
+            env_lines = [f"PORT={port}"]
+            for k, v in env_vars.items():
+                env_lines.append(f"{k}={v}")
+            with open(os.path.join(deploy_path, ".env"), "w") as f:
+                f.write("\n".join(env_lines) + "\n")
+            _log("[configure] Wrote .env file.")
+
+        steps["configure"] = "done"
+        update_github_deployment_fields(deploy_id, compose_path=compose_path)
+        _log("[configure] Done.")
+
+        # Step 4: Build
+        steps["build"] = "running"
+        update_github_deployment_status(deploy_id, "building", steps)
+        _log("[build] Building Docker image (this may take a while)...")
+
+        build_result = _run_docker_compose(compose_path, ["build"], timeout=600)
+        steps["build"] = "done"
+        _log("[build] Build complete.")
+
+        # Step 5: Deploy
+        steps["deploy"] = "running"
+        update_github_deployment_status(deploy_id, "deploying", steps)
+        _log("[deploy] Starting containers...")
+
+        deploy_result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
+        steps["deploy"] = "done"
+        _log("[deploy] Containers started.")
+
+        # Step 6: Health
+        steps["health"] = "running"
+        update_github_deployment_status(deploy_id, "health_check", steps)
+        _log("[health] Checking container health...")
+
+        time.sleep(3)
+        container_ids = _get_compose_container_ids(compose_path)
+
+        if container_ids:
+            steps["health"] = "done"
+            update_github_deployment_status(deploy_id, "running", steps, container_ids)
+            _log(f"[health] OK — {len(container_ids)} container(s) running.")
+        else:
+            steps["health"] = "failed"
+            update_github_deployment_status(deploy_id, "failed", steps)
+            _log("[health] No containers found after deploy.")
+
+    except subprocess.TimeoutExpired as e:
+        _fail("build" if steps["build"] == "running" else "clone", f"Timeout: {e}")
+    except Exception as e:
+        current_step = [k for k, v in steps.items() if v == "running"]
+        step_name = current_step[0] if current_step else "unknown"
+        _fail(step_name, str(e)[:300])
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Bootstrap / init
+# ──────────────────────────────────────────────────────────────────
+
 def bootstrap_admin_user():
     admin_username = os.getenv("ADMIN_USERNAME", "admin").strip()
     admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
@@ -3698,6 +4292,116 @@ def deploy_app_logs(app_id: int, lines: int = Query(100, ge=1, le=2000), user=De
         return {"logs": combined.splitlines(keepends=True)}
     except Exception as e:
         return {"logs": [f"Error fetching logs: {str(e)}"]}
+
+
+@app.post("/deploy/github/analyze")
+def github_analyze(data: GitHubAnalyzeRequest, user=Depends(require_role("operator"))):
+    repo_url = data.repo_url.strip()
+    branch = data.branch.strip() or "main"
+    if not repo_url:
+        raise HTTPException(status_code=400, detail="Repository URL is required")
+
+    tmp_dir = tempfile.mkdtemp(prefix="gh-analyze-")
+    try:
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", "-b", branch, repo_url, tmp_dir],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=400, detail=f"Clone failed: {(result.stderr or result.stdout)[:300]}")
+
+        detected = detect_project_type(tmp_dir)
+        repo_name = suggest_git_clone_folder_name(repo_url)
+
+        dockerfile_content = generate_dockerfile(detected, tmp_dir)
+        compose_content = generate_compose_yaml(repo_name, detected, detected["port"])
+
+        log_audit(user["username"], "github_analyze", f"Analyzed repo: {repo_url}")
+        return {
+            "repo_name": repo_name,
+            "repo_url": repo_url,
+            "branch": branch,
+            "dockerfile_content": dockerfile_content,
+            "compose_content": compose_content,
+            **detected,
+        }
+    except HTTPException:
+        raise
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Clone timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@app.post("/deploy/github/deploy")
+def github_deploy(data: GitHubDeployRequest, user=Depends(require_role("operator"))):
+    repo_url = data.repo_url.strip()
+    app_name = data.app_name.strip()
+    branch = data.branch.strip() or "main"
+
+    if not repo_url:
+        raise HTTPException(status_code=400, detail="Repository URL is required")
+    if not app_name:
+        raise HTTPException(status_code=400, detail="App name is required")
+    if not all(ch.isalnum() or ch in "-_" for ch in app_name):
+        raise HTTPException(status_code=400, detail="App name must be alphanumeric with dashes/underscores only")
+
+    existing = get_github_deployment_by_name(app_name)
+    if existing and existing.get("status") not in ("failed", "stopped"):
+        raise HTTPException(status_code=409, detail=f"App '{app_name}' already exists with status '{existing['status']}'")
+
+    deploy_path = os.path.join("deployed_apps", app_name)
+
+    env_vars = dict(data.env_vars)
+    if data.port_override:
+        env_vars["__port_override__"] = str(data.port_override)
+
+    deploy_id = create_github_deployment(
+        app_name=app_name,
+        repo_url=repo_url,
+        branch=branch,
+        deploy_path=deploy_path,
+        created_by=user["username"],
+    )
+    update_github_deployment_fields(deploy_id, env_vars=json.dumps(env_vars))
+
+    thread = threading.Thread(target=run_github_deploy_pipeline, args=(deploy_id,), daemon=True)
+    thread.start()
+
+    log_audit(user["username"], "github_deploy", f"Started deploy of '{app_name}' from {repo_url}")
+    return {"deploy_id": deploy_id, "app_name": app_name, "status": "pending"}
+
+
+@app.get("/deploy/github/status/{deploy_id}")
+def github_deploy_status(deploy_id: int, user=Depends(require_role("viewer"))):
+    dep = get_github_deployment(deploy_id)
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    step_status = dep.get("step_status", "{}")
+    if isinstance(step_status, str):
+        try:
+            step_status = json.loads(step_status)
+        except Exception:
+            step_status = {}
+    dep["step_status"] = step_status
+    container_ids = dep.get("container_ids", "[]")
+    if isinstance(container_ids, str):
+        try:
+            container_ids = json.loads(container_ids)
+        except Exception:
+            container_ids = []
+    dep["container_ids"] = container_ids
+    env_vars = dep.get("env_vars", "{}")
+    if isinstance(env_vars, str):
+        try:
+            env_vars = json.loads(env_vars)
+        except Exception:
+            env_vars = {}
+    env_vars.pop("__port_override__", None)
+    dep["env_vars"] = env_vars
+    return dep
 
 
 @app.get("/check-port/{port}")
