@@ -207,6 +207,13 @@ class SavePinnedPortRequest(BaseModel):
     port: int
 
 
+class UpdatePinnedPortServiceRequest(BaseModel):
+    service_name: str | None = None
+    command: str | None = None
+    setup_command: str | None = None
+    workdir: str | None = None
+
+
 class SaveTodoRequest(BaseModel):
     text: str
 
@@ -556,6 +563,17 @@ def init_user_db():
     user_columns = {row[1] for row in cur.fetchall()}
     if "last_login_at" not in user_columns:
         cur.execute("ALTER TABLE users ADD COLUMN last_login_at INTEGER")
+
+    cur.execute("PRAGMA table_info(pinned_ports)")
+    pp_columns = {row[1] for row in cur.fetchall()}
+    for col, col_type in [
+        ("service_name", "TEXT"),
+        ("command", "TEXT"),
+        ("setup_command", "TEXT"),
+        ("workdir", "TEXT"),
+    ]:
+        if col not in pp_columns:
+            cur.execute(f"ALTER TABLE pinned_ports ADD COLUMN {col} {col_type}")
 
     conn.commit()
     conn.close()
@@ -1065,7 +1083,7 @@ def delete_pinned_service(service_id: int):
 def list_pinned_ports():
     conn = db_connect()
     cur = conn.cursor()
-    cur.execute("SELECT id, port, created_at FROM pinned_ports ORDER BY id")
+    cur.execute("SELECT id, port, created_at, service_name, command, setup_command, workdir FROM pinned_ports ORDER BY id")
     rows = cur.fetchall()
     conn.close()
 
@@ -1074,6 +1092,10 @@ def list_pinned_ports():
             "id": row[0],
             "port": row[1],
             "created_at": row[2],
+            "service_name": row[3],
+            "command": row[4],
+            "setup_command": row[5],
+            "workdir": row[6],
         }
         for row in rows
     ]
@@ -1107,6 +1129,38 @@ def delete_pinned_port(pin_id: int):
     conn.commit()
     conn.close()
     return deleted > 0
+
+
+def get_pinned_port(pin_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id, port, created_at, service_name, command, setup_command, workdir FROM pinned_ports WHERE id = ?", (pin_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id": row[0],
+        "port": row[1],
+        "created_at": row[2],
+        "service_name": row[3],
+        "command": row[4],
+        "setup_command": row[5],
+        "workdir": row[6],
+    }
+
+
+def update_pinned_port_service(pin_id: int, service_name: str | None, command: str | None, setup_command: str | None, workdir: str | None):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE pinned_ports SET service_name = ?, command = ?, setup_command = ?, workdir = ? WHERE id = ?",
+        (service_name, command, setup_command, workdir, pin_id),
+    )
+    updated = cur.rowcount
+    conn.commit()
+    conn.close()
+    return updated > 0
 
 
 def list_process_ids_by_port(port: int):
@@ -3791,6 +3845,136 @@ def remove_state_pinned_port(pin_id: int, user=Depends(require_role("operator"))
 
     log_audit(user["username"], "unpin_port", f"Removed pinned port id={pin_id}")
     return {"status": "deleted", "id": pin_id}
+
+
+@app.patch("/state/pinned-ports/{pin_id}/service")
+def update_pinned_port_service_config(pin_id: int, data: UpdatePinnedPortServiceRequest, user=Depends(require_role("operator"))):
+    pin = get_pinned_port(pin_id)
+    if not pin:
+        raise HTTPException(status_code=404, detail="Pinned port not found")
+
+    service_name = data.service_name.strip() if data.service_name else None
+    command = data.command.strip() if data.command else None
+    setup_command = data.setup_command.strip() if data.setup_command else None
+    workdir = data.workdir.strip() if data.workdir else None
+
+    if not update_pinned_port_service(pin_id, service_name, command, setup_command, workdir):
+        raise HTTPException(status_code=500, detail="Failed to update pinned port service config")
+
+    log_audit(user["username"], "configure_pinned_port_service", f"Configured service for pinned port {pin['port']} (id={pin_id})")
+    return {"status": "updated", "id": pin_id}
+
+
+@app.post("/state/pinned-ports/{pin_id}/start")
+async def start_pinned_port_service(pin_id: int, user=Depends(require_role("operator"))):
+    pin = get_pinned_port(pin_id)
+    if not pin:
+        raise HTTPException(status_code=404, detail="Pinned port not found")
+
+    command = pin.get("command")
+    if not command:
+        raise HTTPException(status_code=400, detail="No start command configured for this pinned port. Use Configure to set one.")
+
+    service_name = pin.get("service_name") or f"port-{pin['port']}"
+    setup_command = pin.get("setup_command")
+    workdir = pin.get("workdir") or None
+
+    existing = managed_services.get(service_name)
+    if existing and is_process_running(existing.get("process")):
+        return {"status": "already_running", "name": service_name}
+
+    if setup_command:
+        try:
+            setup_proc = subprocess.run(
+                setup_command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=workdir,
+            )
+            if setup_proc.returncode != 0:
+                return {
+                    "status": "setup_failed",
+                    "name": service_name,
+                    "stderr": (setup_proc.stderr or "")[-500:],
+                    "stdout": (setup_proc.stdout or "")[-500:],
+                }
+        except subprocess.TimeoutExpired:
+            return {"status": "setup_failed", "name": service_name, "stderr": "Setup command timed out after 120s"}
+        except Exception as e:
+            return {"status": "setup_failed", "name": service_name, "stderr": str(e)}
+
+    log_path = f"{LOG_DIR}/{normalize_service_name(service_name)}.log"
+    logfile = open(log_path, "a", encoding="utf-8")
+
+    logfile.write(f"\n===== START: {service_name} (from pinned port {pin['port']}) =====\n")
+    logfile.flush()
+
+    proc = subprocess.Popen(
+        command,
+        shell=True,
+        stdout=logfile,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        text=True,
+        cwd=workdir,
+    )
+
+    managed_services[service_name] = {
+        "process": proc,
+        "logfile": logfile,
+        "command": command,
+        "port": pin["port"],
+    }
+
+    log_audit(user["username"], "start_pinned_port_service", f"Started service '{service_name}' on port {pin['port']} (PID: {proc.pid})")
+    return {"status": "started", "name": service_name, "pid": proc.pid}
+
+
+@app.post("/state/pinned-ports/{pin_id}/stop")
+async def stop_pinned_port_service(pin_id: int, user=Depends(require_role("operator"))):
+    pin = get_pinned_port(pin_id)
+    if not pin:
+        raise HTTPException(status_code=404, detail="Pinned port not found")
+
+    service_name = pin.get("service_name") or f"port-{pin['port']}"
+    entry = managed_services.get(service_name)
+
+    if not entry:
+        return {"status": "not_managed", "name": service_name}
+
+    proc = entry.get("process")
+    logfile = entry.get("logfile")
+
+    if not is_process_running(proc):
+        if logfile and not logfile.closed:
+            logfile.write(f"===== STOP: {service_name} (already exited) =====\n")
+            logfile.flush()
+            logfile.close()
+        managed_services.pop(service_name, None)
+        return {"status": "already_stopped", "name": service_name}
+
+    try:
+        if proc and proc.pid:
+            os.killpg(proc.pid, signal.SIGTERM)
+    except Exception:
+        proc.terminate()
+
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        proc.kill()
+
+    if logfile and not logfile.closed:
+        logfile.write(f"===== STOP: {service_name} =====\n")
+        logfile.flush()
+        logfile.close()
+
+    managed_services.pop(service_name, None)
+
+    log_audit(user["username"], "stop_pinned_port_service", f"Stopped service '{service_name}' on port {pin['port']}")
+    return {"status": "stopped", "name": service_name}
 
 
 @app.get("/state/todos")
