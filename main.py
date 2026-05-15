@@ -3608,7 +3608,7 @@ def check_pinned_port_alerts():
                     except Exception:
                         pass
             elif is_up and was_alerted_down:
-                # Port recovered: reset state so future downtime can alert again.
+                send_telegram(f"✅ Port Up: Pinned port {port} is back online on 127.0.0.1")
                 pinned_port_down_alert_state[port] = False
 
         # Cleanup state for ports that are no longer pinned.
@@ -3650,15 +3650,34 @@ def dashboard():
 
 
 @app.post("/auth/login")
-async def login(data: LoginRequest, response: Response):
+async def login(data: LoginRequest, request: Request, response: Response):
     username = data.username.strip()
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+    login_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
     row = get_user_record(username)
 
     if not row:
+        send_telegram(
+            f"🚨 Failed Login Attempt\n"
+            f"Username: {username} (not found)\n"
+            f"Time: {login_time}\n"
+            f"IP: {client_ip}\n"
+            f"User-Agent: {user_agent}"
+        )
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     _, password_hash, salt, role, _, _ = row
     if not verify_password(data.password, password_hash, salt):
+        send_telegram(
+            f"🚨 Failed Login Attempt\n"
+            f"Username: {username}\n"
+            f"Role: {role}\n"
+            f"Time: {login_time}\n"
+            f"IP: {client_ip}\n"
+            f"User-Agent: {user_agent}"
+        )
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     update_user_last_login(username)
@@ -3676,6 +3695,15 @@ async def login(data: LoginRequest, response: Response):
         path="/",
     )
 
+    send_telegram(
+        f"🔐 Login Alert\n"
+        f"User: {username}\n"
+        f"Role: {role}\n"
+        f"Time: {login_time}\n"
+        f"IP: {client_ip}\n"
+        f"User-Agent: {user_agent}"
+    )
+
     return {
         "status": "ok",
         "username": username,
@@ -3690,6 +3718,23 @@ async def logout(response: Response, user=Depends(get_current_user)):
     active_sessions.pop(user["session_id"], None)
     response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
     return {"status": "logged_out"}
+
+
+@app.post("/auth/failed-login-photo")
+async def failed_login_photo(photo: UploadFile = File(...), username: str = ""):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+        login_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        caption = f"🚨 Failed Login - Intruder Photo\nUsername: {username}\nTime: {login_time}"
+        photo_bytes = await photo.read()
+        requests.post(
+            url,
+            data={"chat_id": CHAT_ID, "caption": caption},
+            files={"photo": ("intruder.jpg", photo_bytes, "image/jpeg")},
+        )
+    except Exception as e:
+        print("Failed login photo error:", e)
+    return {"status": "ok"}
 
 
 @app.get("/auth/me")
