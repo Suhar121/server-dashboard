@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>DevOps Control Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,47 +128,19 @@
       --sidebar-border: #e2e8f0;
     }
 
-    @media (max-width: 1024px) {
-          * { box-sizing: border-box; }
-
-    body {
-        flex-direction: column;
-        overflow: auto;
-      }
-      .app-sidebar {
-        width: 100%;
-        height: auto;
-        flex-direction: row;
-        align-items: center;
-        padding: 10px 20px;
-        border-right: none;
-        border-bottom: 1px solid var(--sidebar-border);
-      }
-      .sidebar-header {
-        padding: 0;
-      }
-      .sidebar-nav {
-        flex-direction: row;
-        overflow-x: auto;
-        padding: 0;
-        margin-left: 20px;
-      }
-      .top-nav-item {
-        width: auto;
-        white-space: nowrap;
-      }
-      .sidebar-footer {
-        display: none; /* Hide complex footer on mobile for fitting */
-      }
+    @media (max-width: 1024px) and (min-width: 769px) {
       .app-content-wrapper {
-        padding: 20px 16px;
+        padding: 24px 20px;
       }
       .grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
       }
-      .kpi, .panel-wide, .panel-side, .panel-half, .panel-full {
-        grid-column: span 1 !important;
-      }
+      .kpi { grid-column: span 4; }
+      .panel-wide { grid-column: span 12; }
+      .panel-side { grid-column: span 6; }
+      .panel-half { grid-column: span 6; }
+      .panel-full { grid-column: span 12; }
     }
 
     /* We will keep the default styles but transition to an app layout */
@@ -1330,8 +1302,9 @@
       }
     }
 
-    @media (max-width: 1100px) {
-      .kpi, .panel-wide, .panel-side, .panel-half { grid-column: span 12; }
+    @media (max-width: 1100px) and (min-width: 769px) {
+      .kpi { grid-column: span 4; }
+      .panel-wide, .panel-side, .panel-half { grid-column: span 12; }
       .topbar { flex-direction: column; align-items: flex-start; }
       .topbar-center { width: 100%; justify-content: flex-start; }
       .file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
@@ -1346,22 +1319,31 @@
   
     /* Mobile Responsive Optimizations */
     @media (max-width: 768px) {
-      body {
-        flex-direction: column;
+      html {
+        overflow-x: hidden;
       }
       
+      body {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
       .app-sidebar {
         width: 100% !important;
         height: auto;
         flex-direction: row;
         align-items: center;
-        padding: 10px 16px;
+        padding: 8px 12px;
         border-right: none;
         border-bottom: 1px solid var(--sidebar-border);
         position: sticky;
         top: 0;
         z-index: 200;
         background: var(--sidebar-bg);
+        flex-shrink: 0;
       }
 
       .app-sidebar.collapsed {
@@ -1369,7 +1351,7 @@
       }
 
       .toggle-sidebar-btn {
-        display: none !important; /* hide collapse button on mobile */
+        display: none !important;
       }
 
       .sidebar-header {
@@ -1378,84 +1360,353 @@
       }
       
       .sidebar-header .title {
-        display: none !important; /* Hide text, just show icon on mobile */
+        display: none !important;
       }
       
       .sidebar-nav {
         flex-direction: row;
         overflow-x: auto;
         padding: 0;
-        margin: 0 0 0 16px;
-        gap: 8px;
-        /* hide scrollbar */
-        -ms-overflow-style: none;  
-        scrollbar-width: none;  
+        margin: 0 0 0 8px;
+        gap: 4px;
+        flex: 1;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
-      .sidebar-nav::-webkit-scrollbar { 
-        display: none; 
+      .sidebar-nav::-webkit-scrollbar {
+        display: none;
       }
       
       .top-nav-item {
         width: auto;
         white-space: nowrap;
-        padding: 8px 12px;
+        padding: 8px 10px;
+        font-size: 0;
+        gap: 0;
+      }
+      
+      .top-nav-item i {
+        font-size: 1.1rem;
       }
       
       .top-nav-item span {
-        display: none; /* Hide text, just show icons on mobile for space */
+        display: none;
       }
       
       .app-main {
-        height: calc(100vh - 60px);
+        height: auto;
+        min-height: 0;
+        overflow-y: visible;
+        overflow-x: hidden;
       }
 
       .app-content-wrapper {
-        padding: 16px 12px;
-        gap: 16px;
+        padding: 12px 10px;
+        gap: 12px;
+        max-width: 100%;
       }
       
       .page-title {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
+      }
+
+      .page-subtitle {
+        font-size: 0.82rem;
       }
 
       .card {
-        padding: 16px;
+        padding: 14px;
+        min-height: auto;
+        border-radius: 12px;
+      }
+      
+      .card:hover {
+        transform: none;
       }
       
       .grid {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
       }
       
       .kpi, .panel-wide, .panel-side, .panel-half, .panel-full {
         grid-column: span 1 !important;
       }
+      
+      .kpi .value {
+        font-size: 1.6rem;
+      }
 
-      /* Make tables scroll horizontally rather than breaking out */
       .services-table, .data-table, .cloudflared-table-wrap {
         display: block;
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
+      
+      .services-table th, .services-table td,
+      .data-table th, .data-table td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+      }
 
-      /* Inputs and buttons better touch targets */
       .field, select, button {
-        min-height: 44px; /* Touch friendly */
+        min-height: 44px;
+        font-size: 0.9rem;
       }
       
+      button {
+        padding: 10px 14px;
+      }
+
       .cloudflared-grid-2 {
         grid-template-columns: 1fr;
       }
       
       .auth-badge, .sidebar-footer {
-        display: none !important; /* Save space on mobile */
+        display: none !important;
       }
-      
-      /* Mobile modal adjustments */
+
+      /* Modals */
       #cloudflaredEditBox, #fileEditorBox, #permissionsBox, #loginBox {
         width: 95%;
+        max-width: 95vw;
+        padding: 14px;
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+
+      #logModal {
+        padding: 8px;
+      }
+      #logBox {
+        max-width: 100%;
+        height: min(90vh, 100%);
+        padding: 10px;
+      }
+
+      #deployWizardModal, #deployLogsModal {
+        padding: 8px;
+      }
+      #deployWizardBox {
+        max-width: 100%;
+        max-height: 92vh;
         padding: 16px;
+      }
+      #deployLogsBox {
+        max-width: 100%;
+        max-height: 92vh;
+        padding: 14px;
+      }
+      #deployLogsContent {
+        max-height: 60vh;
+      }
+
+      #fileEditorModal {
+        padding: 6px;
+      }
+      #fileEditorBox {
+        max-width: 100%;
+        height: min(95vh, 100%);
+        margin: 0;
+        padding: 10px;
+        border-radius: 12px;
+      }
+      #fileEditorContent {
+        font-size: 0.8rem;
+      }
+
+      /* Admin pages */
+      .admin-page {
+        padding: 14px;
+        border-radius: 12px;
+      }
+      .admin-page .stack {
+        max-width: 100% !important;
+      }
+      .admin-page .cmd-card {
+        max-width: 100% !important;
+      }
+
+      /* File Manager */
+      .file-manager-wrapper {
+        max-width: 100%;
+      }
+      .file-actions {
+        gap: 6px;
+      }
+      .file-actions button {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+      }
+      .file-grid {
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 8px;
+      }
+      .file-item {
+        padding: 10px 6px;
+      }
+      .file-icon {
+        font-size: 2rem;
+      }
+      .file-name {
+        font-size: 0.72rem;
+      }
+      .file-list-item {
+        grid-template-columns: 32px 1fr;
+        gap: 8px;
+        padding: 8px;
+      }
+      .file-list-item > *:not(:first-child):not(:nth-child(2)) {
+        display: none;
+      }
+      .breadcrumb {
+        font-size: 0.8rem;
+        padding: 8px;
+      }
+      .view-toggle {
+        margin-left: 0 !important;
+      }
+
+      /* Terminal */
+      .terminal-shell {
+        height: 300px;
+        min-height: 250px;
+        border-radius: 10px;
+      }
+      .terminal-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .terminal-header .actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .terminal-header .actions button {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.78rem;
+        padding: 8px 6px;
+      }
+      .terminal-tabs {
+        gap: 4px;
+      }
+      .terminal-tab {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+      }
+
+      /* Deploy page */
+      .gh-deploy-box {
+        padding: 14px;
+      }
+      .gh-input-row {
+        flex-direction: column;
+      }
+      .gh-branch-input {
+        width: 100%;
+      }
+      .gh-form-grid {
+        grid-template-columns: 1fr;
+      }
+      .gh-stepper {
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+      }
+      .gh-stepper::before {
+        display: none;
+      }
+      .gh-step {
+        flex: 0 0 auto;
+      }
+      .gh-actions {
+        flex-wrap: wrap;
+      }
+      .gh-actions button {
+        flex: 1;
+      }
+      .gh-env-key {
+        min-width: 100px;
+        font-size: 0.75rem;
+      }
+
+      #deployTemplateGrid {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Access hub */
+      .access-tabs {
+        gap: 4px;
+        padding: 4px;
+      }
+      .access-tab-btn {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+        gap: 4px;
+      }
+      .access-hub-stats {
+        grid-template-columns: 1fr;
+      }
+
+      /* Cloudflared KPIs */
+      .cloudflared-kpis {
+        grid-template-columns: 1fr;
+      }
+
+      /* To-do */
+      .todo-row {
+        grid-template-columns: 1fr;
+      }
+      .todo-item {
+        padding: 8px;
+      }
+
+      /* SSH / Forms */
+      .cmd-card {
+        padding: 10px;
+        max-width: 100% !important;
+      }
+      .cmd-line {
+        font-size: 0.75rem;
+      }
+
+      /* Context menu */
+      .file-context-menu {
+        min-width: 150px;
+      }
+      .context-menu-item {
+        padding: 12px 10px;
+        font-size: 0.85rem;
+      }
+
+      /* Port action menu */
+      .port-menu-dropdown {
+        min-width: 110px;
+      }
+
+      /* Permissions grid */
+      .perms-grid {
+        grid-template-columns: 1fr repeat(3, 1fr);
+        font-size: 0.8rem;
+      }
+
+      /* Recent ports */
+      .recent-port-item {
+        padding: 6px 8px;
+      }
+
+      /* Details/summary elements */
+      details pre {
+        max-height: 150px;
+        font-size: 0.7rem;
+      }
+
+      /* Scrollbar on mobile */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
       }
     }
 
@@ -2141,6 +2392,14 @@
       .gh-form-grid { grid-template-columns: 1fr; }
       .gh-stepper { flex-wrap: wrap; gap: 12px; }
       .gh-stepper::before { display: none; }
+
+      .kpi .value { font-size: 1.4rem; }
+      
+      .header-area {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
     }
   </style>
   <script src="https://unpkg.com/lucide@latest"></script>
