@@ -2107,6 +2107,39 @@
       white-space: pre-wrap;
     }
 
+    #pinnedPortServiceModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 18, 0.9);
+      backdrop-filter: blur(4px);
+      z-index: 220;
+      padding: 20px;
+    }
+
+    #pinnedPortServiceBox {
+      max-width: 520px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    #pinnedPortServiceBox .stack {
+      gap: 10px;
+    }
+
+    @media (max-width: 768px) {
+      #pinnedPortServiceModal { padding: 8px; }
+      #pinnedPortServiceBox { max-width: 100%; max-height: 92vh; padding: 16px; }
+    }
+
     /* ── GitHub Deploy Styles ── */
     .gh-deploy-box {
       background: var(--card);
@@ -2827,6 +2860,47 @@
       <pre id="deployLogsContent">Loading...</pre>
       <div style="display:flex; gap:8px;">
         <button class="btn-neutral" onclick="closeDeployLogs()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pinnedPortServiceModal">
+    <div id="pinnedPortServiceBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="settings"></i> Configure Pinned Port Service</h3>
+      <div class="muted" style="margin-top:4px;" id="pinnedPortServiceDesc">Set up a start command for this port so you can start/stop the service from the dashboard.</div>
+
+      <div class="stack" style="margin-top:16px;">
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Service Name</label>
+          <input id="ppSvcName" class="field" placeholder="e.g. frontend, backend-api" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Used for process tracking and log files.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Start Command</label>
+          <input id="ppSvcCommand" class="field" placeholder="e.g. npm run dev, python app.py" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">The command to start your service.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Setup Command <span style="opacity:0.6;">(optional)</span></label>
+          <input id="ppSvcSetup" class="field" placeholder="e.g. source venv/bin/activate && pip install -r requirements.txt" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Runs before start. Use for activating venvs, installing deps, etc.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Working Directory <span style="opacity:0.6;">(optional)</span></label>
+          <input id="ppSvcWorkdir" class="field" placeholder="e.g. /home/user/my-app" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Directory where commands will run.</div>
+        </div>
+      </div>
+
+      <div id="ppSvcError" class="error-text" style="margin-top:8px;"></div>
+      <div id="ppSvcSuccess" class="info-text" style="margin-top:8px;color:var(--ok);"></div>
+
+      <input type="hidden" id="ppSvcPinId" />
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closePinnedPortServiceModal()">Cancel</button>
+        <button class="btn-danger" id="ppSvcClearBtn" onclick="clearPinnedPortService()" style="display:none;">Remove Config</button>
+        <button class="btn-success" id="ppSvcSaveBtn" onclick="savePinnedPortService()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save</button>
       </div>
     </div>
   </div>
@@ -5135,17 +5209,36 @@
 
         const alias = portAliases[String(item.port)] || "";
         const canOperate = hasRole("operator");
+        const hasCommand = !!item.command;
+        const svcLabel = item.service_name ? esc(item.service_name) : `port-${item.port}`;
+
+        let actionButtons = `<button class="btn-neutral" onclick="renamePortAliasByPort(${item.port})">Rename</button>`;
+
+        if (hasCommand && canOperate) {
+          if (active) {
+            actionButtons += `<button class="btn-warn" onclick="stopPinnedPortSvc(${item.id})">Stop</button>`;
+            actionButtons += `<button class="btn-neutral" onclick="restartPinnedPortSvc(${item.id})">Restart</button>`;
+          } else {
+            actionButtons += `<button class="btn-success" onclick="startPinnedPortSvc(${item.id})">Start</button>`;
+          }
+        } else if (canOperate) {
+          actionButtons += `<button class="btn-warn" onclick="terminatePinnedPort(${item.port})">Stop</button>`;
+        }
+
+        actionButtons += `<button class="btn-neutral" onclick="openPinnedPortServiceModal(${item.id})">Configure</button>`;
+
+        if (canOperate) {
+          actionButtons += `<button class="btn-danger" onclick="removePinnedPort(${item.id})">Unpin</button>`;
+        }
 
         return `
           <tr>
             <td>${esc(item.port)}</td>
             <td>${alias ? esc(alias) : '<span class="muted">—</span>'}</td>
-            <td class="${active ? "status-up" : "status-down"}">${active ? "Active" : "Down"}</td>
+            <td class="${active ? "status-up" : "status-down"}">${active ? "Active" : "Down"}${hasCommand ? ` <span class="muted" style="font-size:0.72rem;">(${svcLabel})</span>` : ""}</td>
             <td>
               <div class="actions">
-                <button class="btn-neutral" onclick="renamePortAliasByPort(${item.port})">Rename</button>
-                ${canOperate ? `<button class="btn-warn" onclick="terminatePinnedPort(${item.port})">Stop</button>` : ""}
-                ${canOperate ? `<button class="btn-danger" onclick="removePinnedPort(${item.id})">Unpin</button>` : ""}
+                ${actionButtons}
               </div>
             </td>
           </tr>
@@ -5153,6 +5246,158 @@
       }));
 
       body.innerHTML = rows.join("");
+    }
+
+    function openPinnedPortServiceModal(pinId) {
+      const pin = pinnedPorts.find(p => p.id === pinId);
+      if (!pin) return;
+
+      document.getElementById("ppSvcPinId").value = pinId;
+      document.getElementById("ppSvcName").value = pin.service_name || "";
+      document.getElementById("ppSvcCommand").value = pin.command || "";
+      document.getElementById("ppSvcSetup").value = pin.setup_command || "";
+      document.getElementById("ppSvcWorkdir").value = pin.workdir || "";
+      document.getElementById("ppSvcError").textContent = "";
+      document.getElementById("ppSvcSuccess").textContent = "";
+      document.getElementById("ppSvcDesc").textContent = `Port ${pin.port} — Set up a start command so you can start/stop the service from the dashboard.`;
+
+      const hasExisting = !!pin.command;
+      document.getElementById("ppSvcClearBtn").style.display = hasExisting ? "" : "none";
+
+      document.getElementById("pinnedPortServiceModal").style.display = "flex";
+      lucide.createIcons();
+    }
+
+    function closePinnedPortServiceModal() {
+      document.getElementById("pinnedPortServiceModal").style.display = "none";
+    }
+
+    async function savePinnedPortService() {
+      const pinId = Number(document.getElementById("ppSvcPinId").value);
+      if (!pinId) return;
+
+      const serviceName = document.getElementById("ppSvcName").value.trim();
+      const command = document.getElementById("ppSvcCommand").value.trim();
+      const setupCommand = document.getElementById("ppSvcSetup").value.trim();
+      const workdir = document.getElementById("ppSvcWorkdir").value.trim();
+
+      const errEl = document.getElementById("ppSvcError");
+      const okEl = document.getElementById("ppSvcSuccess");
+      errEl.textContent = "";
+      okEl.textContent = "";
+
+      if (command && !serviceName) {
+        errEl.textContent = "Service Name is required when a Start Command is set.";
+        return;
+      }
+
+      try {
+        await apiFetch(`/state/pinned-ports/${pinId}/service`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_name: serviceName || null,
+            command: command || null,
+            setup_command: setupCommand || null,
+            workdir: workdir || null,
+          }),
+        });
+
+        okEl.textContent = "Saved! You can close this dialog.";
+        await loadPinnedPorts();
+      } catch (e) {
+        errEl.textContent = e.message || "Failed to save service config.";
+      }
+    }
+
+    async function clearPinnedPortService() {
+      const pinId = Number(document.getElementById("ppSvcPinId").value);
+      if (!pinId) return;
+
+      if (!confirm("Remove the service configuration for this pinned port? The port will remain pinned but Start/Stop buttons will disappear.")) return;
+
+      const errEl = document.getElementById("ppSvcError");
+      const okEl = document.getElementById("ppSvcSuccess");
+      errEl.textContent = "";
+      okEl.textContent = "";
+
+      try {
+        await apiFetch(`/state/pinned-ports/${pinId}/service`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_name: null,
+            command: null,
+            setup_command: null,
+            workdir: null,
+          }),
+        });
+
+        okEl.textContent = "Configuration removed.";
+        await loadPinnedPorts();
+      } catch (e) {
+        errEl.textContent = e.message || "Failed to clear service config.";
+      }
+    }
+
+    async function startPinnedPortSvc(pinId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const pin = pinnedPorts.find(p => p.id === pinId);
+      const label = pin ? (pin.service_name || `port-${pin.port}`) : "service";
+
+      try {
+        const res = await apiFetch(`/state/pinned-ports/${pinId}/start`, { method: "POST" });
+        const data = await res.json();
+
+        if (data.status === "setup_failed") {
+          alert(`Setup failed for '${label}':\n${data.stderr || data.stdout || "Unknown error"}`);
+        } else if (data.status === "already_running") {
+          alert(`'${label}' is already running.`);
+        }
+      } catch (e) {
+        alert(e.message || `Failed to start ${label}.`);
+      }
+
+      await loadPinnedPorts();
+    }
+
+    async function stopPinnedPortSvc(pinId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      const pin = pinnedPorts.find(p => p.id === pinId);
+      const label = pin ? (pin.service_name || `port-${pin.port}`) : "service";
+
+      try {
+        const res = await apiFetch(`/state/pinned-ports/${pinId}/stop`, { method: "POST" });
+        const data = await res.json();
+
+        if (data.status === "not_managed") {
+          alert(`'${label}' is not currently managed. Trying process kill instead.`);
+          if (pin) await terminatePinnedPort(pin.port);
+          return;
+        }
+      } catch (e) {
+        alert(e.message || `Failed to stop ${label}.`);
+      }
+
+      await loadPinnedPorts();
+    }
+
+    async function restartPinnedPortSvc(pinId) {
+      if (!hasRole("operator")) {
+        alert("Operator or Admin role required.");
+        return;
+      }
+
+      await stopPinnedPortSvc(pinId);
+      await startPinnedPortSvc(pinId);
     }
 
     async function addService() {
