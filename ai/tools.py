@@ -41,7 +41,7 @@ def tool(name: str, description: str, parameters: dict, min_role: str = "viewer"
 
 @tool(
     name="get_system_metrics",
-    description="Get current system metrics: CPU usage, RAM usage, and battery status.",
+    description="Get current system metrics: CPU usage, RAM usage, battery status, and CPU temperature.",
     parameters={
         "type": "object",
         "properties": {},
@@ -54,6 +54,38 @@ def get_system_metrics(session: dict, params: dict) -> dict:
     cpu = psutil.cpu_percent(interval=0.5)
     mem = psutil.virtual_memory()
     battery = psutil.sensors_battery()
+
+    temp_celsius = None
+    temp_label = None
+    try:
+        temps = psutil.sensors_temperatures()
+        if temps:
+            best = None
+            for name, entries in temps.items():
+                for entry in entries:
+                    if entry.current > 0 and (best is None or entry.current > best[0]):
+                        best = (entry.current, name, entry.label or name)
+            if best:
+                temp_celsius, _, temp_label = best
+                temp_celsius = round(temp_celsius, 1)
+    except (AttributeError, Exception):
+        pass
+
+    if temp_celsius is None:
+        import os, subprocess
+        if os.name == "nt":
+            try:
+                out = subprocess.check_output(
+                    ["powershell", "-NoProfile", "-Command",
+                     "(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -ErrorAction Stop | Select-Object -First 1).Temperature"],
+                    timeout=5, stderr=subprocess.DEVNULL
+                ).decode().strip()
+                if out and out.isdigit():
+                    temp_celsius = round(int(out) - 273.15, 1)
+                    temp_label = "Thermal Zone"
+            except Exception:
+                pass
+
     return {
         "cpu_percent": cpu,
         "ram_total_gb": round(mem.total / (1024**3), 1),
@@ -61,6 +93,8 @@ def get_system_metrics(session: dict, params: dict) -> dict:
         "ram_percent": mem.percent,
         "battery_percent": battery.percent if battery else None,
         "battery_charging": battery.is_charging if battery else None,
+        "temperature_celsius": temp_celsius,
+        "temperature_label": temp_label,
     }
 
 

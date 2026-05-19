@@ -2515,9 +2515,15 @@
       <div class="muted">Current memory consumption</div>
     </section>
 
+    <section class="card kpi">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="thermometer"></i> Temperature <span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:#f59e0b;color:#000;margin-left:4px;">BETA</span></h3>
+      <div id="tempValue" class="value">--°C</div>
+      <div id="tempLabel" class="muted">Checking sensors...</div>
+    </section>
+
     <section class="card panel-wide">
       <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="activity"></i> System Trend (Last 3 Hours)</h3>
-      <div class="muted" style="margin-top: 4px;">Window: last 3 hours • CPU, RAM, and Battery</div>
+      <div class="muted" style="margin-top: 4px;">Window: last 3 hours • CPU, RAM, Battery & Temperature</div>
       <canvas id="cpuChart" height="110"></canvas>
     </section>
 
@@ -2938,7 +2944,7 @@
 
   <section class="card admin-page" id="alertRulesPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="bell-ring"></i> Alert Rules</h3>
-    <div class="muted" style="margin-top: 6px;">Configure CPU/RAM usage alerts via Telegram</div>
+    <div class="muted" style="margin-top: 6px;">Configure CPU/RAM/Temperature usage alerts via Telegram</div>
     <div style="margin-top: 10px;">
       <button class="btn-neutral" onclick="loadAlertRules()">Refresh Rules</button>
     </div>
@@ -2946,8 +2952,9 @@
       <select id="newAlertMetric" class="field">
         <option value="cpu">CPU Usage</option>
         <option value="ram">RAM Usage</option>
+        <option value="temperature">Temperature (°C)</option>
       </select>
-      <input id="newAlertThreshold" class="field" type="number" min="0" max="100" step="1" placeholder="Threshold (0-100%)" />
+      <input id="newAlertThreshold" class="field" type="number" min="0" max="150" step="1" placeholder="Threshold (% or °C)" />
       <button onclick="createAlertRule()">Create Alert Rule</button>
     </div>
     <div id="createAlertMsg" class="info-text"></div>
@@ -3774,6 +3781,7 @@
             cpu: { border: "#2563eb", bg: "rgba(37,99,235,0.15)" },
             ram: { border: "#059669", bg: "rgba(5,150,105,0.15)" },
             battery: { border: "#d97706", bg: "rgba(217,119,6,0.15)" },
+            temp: { border: "#dc2626", bg: "rgba(220,38,38,0.15)" },
           }
         },
         dark: {
@@ -3784,6 +3792,7 @@
             cpu: { border: "#60a5fa", bg: "rgba(96,165,250,0.16)" },
             ram: { border: "#34d399", bg: "rgba(52,211,153,0.16)" },
             battery: { border: "#fbbf24", bg: "rgba(251,191,36,0.16)" },
+            temp: { border: "#f87171", bg: "rgba(248,113,113,0.16)" },
           }
         },
         car: {
@@ -3794,6 +3803,7 @@
             cpu: { border: "#ef4444", bg: "rgba(239,68,68,0.18)" },
             ram: { border: "#22c55e", bg: "rgba(34,197,94,0.16)" },
             battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.18)" },
+            temp: { border: "#fb923c", bg: "rgba(251,146,60,0.18)" },
           }
         },
         batman: {
@@ -3804,6 +3814,7 @@
             cpu: { border: "#facc15", bg: "rgba(250,204,21,0.16)" },
             ram: { border: "#84cc16", bg: "rgba(132,204,22,0.16)" },
             battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.16)" },
+            temp: { border: "#ef4444", bg: "rgba(239,68,68,0.16)" },
           }
         },
         builder: {
@@ -3814,6 +3825,7 @@
             cpu: { border: "#f59e0b", bg: "rgba(245,158,11,0.17)" },
             ram: { border: "#16a34a", bg: "rgba(22,163,74,0.17)" },
             battery: { border: "#b45309", bg: "rgba(180,83,9,0.17)" },
+            temp: { border: "#dc2626", bg: "rgba(220,38,38,0.17)" },
           }
         },
         coding: {
@@ -3824,6 +3836,7 @@
             cpu: { border: "#58a6ff", bg: "rgba(88,166,255,0.17)" },
             ram: { border: "#3fb950", bg: "rgba(63,185,80,0.17)" },
             battery: { border: "#d29922", bg: "rgba(210,153,34,0.17)" },
+            temp: { border: "#f85149", bg: "rgba(248,81,73,0.17)" },
           }
         },
         networking: {
@@ -3834,6 +3847,7 @@
             cpu: { border: "#0ea5e9", bg: "rgba(14,165,233,0.17)" },
             ram: { border: "#10b981", bg: "rgba(16,185,129,0.17)" },
             battery: { border: "#f59e0b", bg: "rgba(245,158,11,0.17)" },
+            temp: { border: "#e11d48", bg: "rgba(225,29,72,0.17)" },
           }
         },
       };
@@ -3886,6 +3900,7 @@
     let trendPoints = [];
     let lastTrendPointAt = 0;
     let lastBatteryPercent = null;
+    let lastTemperature = null;
     const TREND_WINDOW_MINUTES = 180;
     const TREND_SAMPLE_INTERVAL_MS = 60000;
     const PORT_ALIAS_STORAGE_KEY = "dashboard_port_aliases_v1";
@@ -4160,11 +4175,16 @@
         datasets[2].borderColor = palette.metrics.battery.border;
         datasets[2].backgroundColor = palette.metrics.battery.bg;
       }
+      if (datasets[3]) {
+        datasets[3].borderColor = palette.metrics.temp.border;
+        datasets[3].backgroundColor = palette.metrics.temp.bg;
+      }
       
       cpuChart.options.scales.x.ticks.color = palette.tick;
       cpuChart.options.scales.x.grid.color = palette.grid;
       cpuChart.options.scales.y.ticks.color = palette.tick;
       cpuChart.options.scales.y.grid.color = palette.grid;
+      cpuChart.options.scales.y1.ticks.color = palette.metrics.temp.border;
       
       cpuChart.options.plugins.legend.labels.color = palette.legend;
       
@@ -4203,6 +4223,16 @@
             fill: false,
             tension: 0.28,
             pointRadius: 1.8,
+          },
+          {
+            label: "Temp °C",
+            data: [],
+            borderColor: "#ef4444",
+            backgroundColor: "rgba(239,68,68,0.16)",
+            fill: false,
+            tension: 0.28,
+            pointRadius: 1.8,
+            yAxisID: "y1",
           }
         ]
       },
@@ -4210,6 +4240,7 @@
         responsive: true,
         scales: {
           y: { beginAtZero: true, max: 100, ticks: { color: "#9eb2dd" }, grid: { color: "rgba(158,178,221,0.14)" } },
+          y1: { beginAtZero: true, max: 120, position: "right", ticks: { color: "#f87171", callback: (v) => v + "°C" }, grid: { drawOnChartArea: false } },
           x: { ticks: { color: "#9eb2dd" }, grid: { color: "rgba(158,178,221,0.08)" } }
         },
         plugins: {
@@ -5769,6 +5800,28 @@
       }
     }
 
+    async function loadTemperature() {
+      try {
+        const res = await apiFetch("/temperature");
+        const data = await res.json();
+
+        if (data.celsius === null || data.celsius === undefined) {
+          lastTemperature = null;
+          document.getElementById("tempValue").innerText = "N/A";
+          document.getElementById("tempLabel").innerText = "No thermal sensors found";
+          return;
+        }
+
+        lastTemperature = Number(data.celsius);
+        document.getElementById("tempValue").innerText = `${lastTemperature.toFixed(1)}°C`;
+        document.getElementById("tempLabel").innerText = data.label || "System sensor";
+      } catch {
+        lastTemperature = null;
+        document.getElementById("tempValue").innerText = "--°C";
+        document.getElementById("tempLabel").innerText = "Sensor read failed";
+      }
+    }
+
     async function loadSystem() {
       try {
         const res = await apiFetch("/system");
@@ -5788,6 +5841,7 @@
             cpu,
             ram,
             battery: Number.isFinite(lastBatteryPercent) ? lastBatteryPercent : null,
+            temp: Number.isFinite(lastTemperature) ? lastTemperature : null,
           });
         }
 
@@ -5800,6 +5854,7 @@
         cpuChart.data.datasets[0].data = trendPoints.map((p) => p.cpu);
         cpuChart.data.datasets[1].data = trendPoints.map((p) => p.ram);
         cpuChart.data.datasets[2].data = trendPoints.map((p) => p.battery);
+        cpuChart.data.datasets[3].data = trendPoints.map((p) => p.temp);
         cpuChart.update();
       } catch {
         document.getElementById("cpuValue").innerText = "--%";
@@ -5932,13 +5987,13 @@
 
         body.innerHTML = rules.map((rule) => {
           const created = new Date(rule.created_at * 1000).toLocaleString();
-          const metricDisplay = rule.metric_type === "cpu" ? "CPU" : "RAM";
+          const metricDisplay = rule.metric_type === "cpu" ? "CPU" : rule.metric_type === "temperature" ? "Temperature" : "RAM";
           const statusDisplay = rule.enabled ? `<span class="status-up">Enabled</span>` : `<span class="status-down">Disabled</span>`;
 
           return `
             <tr>
               <td>${esc(metricDisplay)}</td>
-              <td>${esc(rule.threshold)}%</td>
+              <td>${esc(rule.threshold)}${rule.metric_type === "temperature" ? "°C" : "%"}</td>
               <td>${statusDisplay}</td>
               <td>${esc(created)}</td>
               <td>
@@ -5968,8 +6023,10 @@
       const msg = document.getElementById("createAlertMsg");
       msg.innerText = "";
 
-      if (!threshold || threshold < 0 || threshold > 100) {
-        msg.innerText = "Please enter a valid threshold (0-100).";
+      const isTemp = metric_type === "temperature";
+      const maxVal = isTemp ? 150 : 100;
+      if (!threshold || threshold < 0 || threshold > maxVal) {
+        msg.innerText = `Please enter a valid threshold (0-${maxVal}${isTemp ? "°C" : "%"}).`;
         return;
       }
 
@@ -5981,8 +6038,9 @@
         });
 
         document.getElementById("newAlertThreshold").value = "";
-        const metricName = metric_type === "cpu" ? "CPU" : "RAM";
-        msg.innerText = `${metricName} alert rule created (threshold: ${threshold}%).`;
+        const metricName = isTemp ? "Temperature" : metric_type === "cpu" ? "CPU" : "RAM";
+        const unit = isTemp ? "°C" : "%";
+        msg.innerText = `${metricName} alert rule created (threshold: ${threshold}${unit}).`;
         await loadAlertRules();
       } catch (e) {
         msg.innerText = e.message || "Failed to create alert rule.";
@@ -7324,6 +7382,7 @@
 
     async function refreshAll() {
       await loadBattery();
+      await loadTemperature();
       await Promise.all([loadPinnedPorts(), loadTodos(), loadSystem(), loadPorts(), loadDocker()]);
     }
 
