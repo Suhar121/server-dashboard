@@ -97,8 +97,6 @@ ROLE_ORDER = {
 
 BATTERY_THRESHOLD = 20
 battery_alert_sent = False
-TEMPERATURE_THRESHOLD = 80
-temperature_alert_sent = False
 managed_services = {}
 active_sessions = {}
 alert_last_sent = {}  # Track when alerts were last sent to avoid spam
@@ -3551,9 +3549,6 @@ def check_alert_rules(cpu_percent: float, ram_percent: float):
         # Cooldown period: 5 minutes (300 seconds) to avoid spam
         ALERT_COOLDOWN = 300
 
-        # Get current temperature if available
-        current_temp, _ = _read_temperature()
-
         for rule in rules:
             if not rule["enabled"]:
                 continue
@@ -3563,12 +3558,7 @@ def check_alert_rules(cpu_percent: float, ram_percent: float):
             threshold = rule["threshold"]
 
             # Check if threshold is exceeded
-            if metric_type == "temperature":
-                if current_temp is None:
-                    continue
-                current_value = current_temp
-            else:
-                current_value = cpu_percent if metric_type == "cpu" else ram_percent
+            current_value = cpu_percent if metric_type == "cpu" else ram_percent
 
             if current_value >= threshold:
                 # Check if we've recently sent an alert for this rule
@@ -3576,11 +3566,8 @@ def check_alert_rules(cpu_percent: float, ram_percent: float):
 
                 if current_time - last_sent >= ALERT_COOLDOWN:
                     # Send alert
-                    if metric_type == "temperature":
-                        msg = f"🌡️ Alert: Temperature is {current_value:.1f}°C (threshold: {threshold}°C)"
-                    else:
-                        metric_name = "CPU" if metric_type == "cpu" else "RAM"
-                        msg = f"🚨 Alert: {metric_name} usage is {current_value:.1f}% (threshold: {threshold}%)"
+                    metric_name = "CPU" if metric_type == "cpu" else "RAM"
+                    msg = f"🚨 Alert: {metric_name} usage is {current_value:.1f}% (threshold: {threshold}%)"
                     send_telegram(msg)
 
                     # Update last sent time
@@ -4193,58 +4180,6 @@ def battery(user=Depends(require_role("viewer"))):
     return {"percent": None, "plugged": False}
 
 
-def _read_temperature():
-    """Read system temperature. Returns (celsius, label) or (None, None)."""
-    try:
-        temps = psutil.sensors_temperatures()
-        if temps:
-            best = None
-            for name, entries in temps.items():
-                for entry in entries:
-                    if entry.current > 0 and (best is None or entry.current > best[0]):
-                        best = (entry.current, name, entry.label or name)
-            if best:
-                return (round(best[0], 1), best[2])
-    except (AttributeError, Exception):
-        pass
-
-    if os.name == "nt":
-        try:
-            out = subprocess.check_output(
-                ["powershell", "-NoProfile", "-Command",
-                 "(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -ErrorAction Stop | Select-Object -First 1).Temperature"],
-                timeout=5, stderr=subprocess.DEVNULL
-            ).decode().strip()
-            if out and out.isdigit():
-                kelvin = int(out)
-                celsius = round(kelvin - 273.15, 1)
-                if celsius > 0:
-                    return (celsius, "Thermal Zone")
-        except Exception:
-            pass
-
-    return (None, None)
-
-
-@app.get("/temperature")
-def temperature(user=Depends(require_role("viewer"))):
-    global temperature_alert_sent
-
-    celsius, label = _read_temperature()
-
-    if celsius is None:
-        return {"celsius": None, "label": None}
-
-    if celsius >= TEMPERATURE_THRESHOLD:
-        if not temperature_alert_sent:
-            send_telegram(f"🌡️ Temperature High: {celsius:.1f}°C ({label})")
-            temperature_alert_sent = True
-    else:
-        temperature_alert_sent = False
-
-    return {"celsius": celsius, "label": label}
-
-
 @app.get("/system")
 def system(user=Depends(require_role("viewer"))):
     cpu = psutil.cpu_percent()
@@ -4764,13 +4699,10 @@ def add_alert_rule(data: CreateAlertRuleRequest, user=Depends(require_role("admi
     """Create a new alert rule (admin only)"""
     metric_type = data.metric_type.strip().lower()
 
-    if metric_type not in ["cpu", "ram", "temperature"]:
-        raise HTTPException(status_code=400, detail="metric_type must be 'cpu', 'ram', or 'temperature'")
+    if metric_type not in ["cpu", "ram"]:
+        raise HTTPException(status_code=400, detail="metric_type must be 'cpu' or 'ram'")
 
-    if metric_type == "temperature":
-        if data.threshold < 0 or data.threshold > 150:
-            raise HTTPException(status_code=400, detail="temperature threshold must be between 0 and 150°C")
-    elif data.threshold < 0 or data.threshold > 100:
+    if data.threshold < 0 or data.threshold > 100:
         raise HTTPException(status_code=400, detail="threshold must be between 0 and 100")
 
     rule = create_alert_rule(metric_type=metric_type, threshold=data.threshold)
