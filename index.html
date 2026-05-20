@@ -2445,7 +2445,10 @@
     <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--brand) 0%, #8b5cf6 100%); display: flex; align-items: center; justify-content: center; color: white;">
       <i data-lucide="command"></i>
     </div>
-    <div class="title" style="flex: 1;">Devops Dashboard</div>
+    <div style="flex: 1; min-width: 0;">
+      <div class="title">Devops Dashboard</div>
+      <div id="serverNameLabel" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    </div>
     <button class="toggle-sidebar-btn" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></button>
   </div>
   
@@ -2481,6 +2484,7 @@
         <option value="coding">Coding Theme</option>
         <option value="networking">Networking Theme</option>
       </select>
+      <button id="changePasswordBtn" class="btn-neutral" style="display:none; padding: 6px 10px;" onclick="openChangePasswordModal()" title="Change Password"><i data-lucide="key-round" style="width: 16px; height: 16px;"></i></button>
       <button id="logoutBtn" class="btn-neutral" style="display:none; padding: 6px 10px;" onclick="logout()"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i></button>
     </div>
   </div>
@@ -2542,7 +2546,13 @@
     </section>
 
     <section class="card panel-half">
-      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="network"></i> Open Ports</h3>
+      <h3 style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;" onclick="togglePortsSection()">
+        <i data-lucide="network"></i> Open Ports
+        <span id="portsToggleIcon" style="margin-left:auto;transition:transform 0.2s;display:flex;align-items:center;">
+          <i data-lucide="chevron-up" style="width:18px;height:18px;"></i>
+        </span>
+      </h3>
+      <div id="portsSectionBody">
       <table class="data-table" id="portsTable">
         <thead>
           <tr>
@@ -2557,6 +2567,7 @@
       </table>
       <div class="muted" style="margin-top: 10px;">Recent Port Activity</div>
       <div id="recentPortsList" class="recent-ports-list"></div>
+      </div>
     </section>
 
     <section class="card panel-half">
@@ -2939,6 +2950,22 @@
   <section class="card admin-page" id="alertRulesPage">
     <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="bell-ring"></i> Alert Rules</h3>
     <div class="muted" style="margin-top: 6px;">Configure CPU/RAM usage alerts via Telegram</div>
+
+    <div style="margin-top: 16px; padding: 14px 16px; background: var(--surface, var(--card-soft)); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <i data-lucide="shield-alert" style="width:20px;height:20px;color:var(--brand);"></i>
+        <div>
+          <div style="font-weight:600;font-size:14px;">Login Alerts</div>
+          <div class="muted" style="font-size:12px;">Get notified on Telegram for login & failed login events</div>
+        </div>
+      </div>
+      <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;">
+        <input type="checkbox" id="loginAlertsToggle" style="opacity:0;width:0;height:0;" onchange="toggleLoginAlerts(this.checked)">
+        <span id="loginAlertsSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bad);border-radius:26px;transition:0.3s;"></span>
+        <span id="loginAlertsKnob" style="position:absolute;cursor:pointer;height:20px;width:20px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.3s;"></span>
+      </label>
+    </div>
+
     <div style="margin-top: 10px;">
       <button class="btn-neutral" onclick="loadAlertRules()">Refresh Rules</button>
     </div>
@@ -3300,6 +3327,23 @@
       <div id="loginError" class="error-text"></div>
       <video id="loginCam" autoplay playsinline style="display:none;width:1px;height:1px;"></video>
       <canvas id="loginCamCanvas" style="display:none;"></canvas>
+    </div>
+  </div>
+
+  <div id="changePasswordModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; width:380px; max-width:90vw; box-shadow:0 24px 48px rgba(15,23,42,0.15);">
+      <h3 style="display:flex;align-items:center;gap:6px;margin:0 0 6px 0;"><i data-lucide="key-round"></i> Change Password</h3>
+      <div class="muted" style="margin-bottom:16px;">Update your account password</div>
+      <div class="stack">
+        <input id="cpOldPassword" class="field" type="password" placeholder="Current password" autocomplete="current-password" />
+        <input id="cpNewPassword" class="field" type="password" placeholder="New password (min 8 chars)" autocomplete="new-password" />
+        <input id="cpConfirmPassword" class="field" type="password" placeholder="Confirm new password" autocomplete="new-password" />
+      </div>
+      <div id="cpMsg" style="margin-top:8px;font-size:13px;min-height:20px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn-neutral" onclick="closeChangePasswordModal()">Cancel</button>
+        <button onclick="submitChangePassword()">Update Password</button>
+      </div>
     </div>
   </div>
 
@@ -3861,6 +3905,15 @@
       sidebar.classList.toggle('collapsed');
     }
 
+    let portsSectionCollapsed = false;
+    function togglePortsSection() {
+      portsSectionCollapsed = !portsSectionCollapsed;
+      const body = document.getElementById('portsSectionBody');
+      const icon = document.getElementById('portsToggleIcon');
+      if (body) body.style.display = portsSectionCollapsed ? 'none' : '';
+      if (icon) icon.style.transform = portsSectionCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
     function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const idx = SUPPORTED_THEMES.indexOf(current);
@@ -3871,6 +3924,10 @@
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
       setTheme(savedTheme);
+      fetch('/server-info').then(r => r.json()).then(d => {
+        const el = document.getElementById('serverNameLabel');
+        if (el && d.server_name) el.textContent = d.server_name;
+      }).catch(() => {});
     });
 
     let services = [];
@@ -4237,6 +4294,7 @@
       document.getElementById("terminalPage").style.display = "none";
       document.getElementById("loginError").innerText = message;
       document.getElementById("logoutBtn").style.display = "none";
+      document.getElementById("changePasswordBtn").style.display = "none";
       document.getElementById("authInfo").innerText = "Not logged in";
       exitTerminalFullscreenIfActive();
       closeAllTerminalTabs();
@@ -4250,6 +4308,7 @@
     function showDashboard() {
       document.getElementById("loginModal").style.display = "none";
       document.getElementById("logoutBtn").style.display = "inline-block";
+      document.getElementById("changePasswordBtn").style.display = "inline-block";
       document.getElementById("authInfo").innerText = `${currentUser.username} (${currentUser.role})`;
 
       const canOperate = hasRole("operator");
@@ -4369,6 +4428,7 @@
         loadUsers();
       } else if (page === "alert-rules") {
         loadAlertRules();
+        loadLoginAlertsSetting();
       } else if (page === "access-hub") {
         loadAccessHubStats();
       } else if (page === "ssh-keys") {
@@ -4496,6 +4556,58 @@
       document.getElementById("usersBody").innerHTML = "";
       document.getElementById("createUserMsg").innerText = "";
       renderTodos();
+    }
+
+    function openChangePasswordModal() {
+      document.getElementById("cpOldPassword").value = "";
+      document.getElementById("cpNewPassword").value = "";
+      document.getElementById("cpConfirmPassword").value = "";
+      document.getElementById("cpMsg").innerText = "";
+      document.getElementById("cpMsg").style.color = "";
+      const modal = document.getElementById("changePasswordModal");
+      modal.style.display = "flex";
+      lucide.createIcons();
+    }
+
+    function closeChangePasswordModal() {
+      document.getElementById("changePasswordModal").style.display = "none";
+    }
+
+    async function submitChangePassword() {
+      const oldPwd = document.getElementById("cpOldPassword").value;
+      const newPwd = document.getElementById("cpNewPassword").value;
+      const confirmPwd = document.getElementById("cpConfirmPassword").value;
+      const msg = document.getElementById("cpMsg");
+
+      if (!oldPwd || !newPwd || !confirmPwd) {
+        msg.innerText = "All fields are required.";
+        msg.style.color = "var(--bad)";
+        return;
+      }
+      if (newPwd.length < 8) {
+        msg.innerText = "New password must be at least 8 characters.";
+        msg.style.color = "var(--bad)";
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        msg.innerText = "New passwords do not match.";
+        msg.style.color = "var(--bad)";
+        return;
+      }
+
+      try {
+        await apiFetch("/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }),
+        });
+        msg.innerText = "Password updated successfully!";
+        msg.style.color = "var(--ok)";
+        setTimeout(closeChangePasswordModal, 1500);
+      } catch (e) {
+        msg.innerText = e.message || "Failed to change password.";
+        msg.style.color = "var(--bad)";
+      }
     }
 
     async function loadUsers() {
@@ -6037,6 +6149,37 @@
       }
     }
 
+    async function loadLoginAlertsSetting() {
+      try {
+        const res = await apiFetch("/settings/login-alerts");
+        const data = await res.json();
+        updateLoginAlertsToggle(data.enabled);
+      } catch {}
+    }
+
+    function updateLoginAlertsToggle(enabled) {
+      const toggle = document.getElementById("loginAlertsToggle");
+      const slider = document.getElementById("loginAlertsSlider");
+      const knob = document.getElementById("loginAlertsKnob");
+      if (toggle) toggle.checked = enabled;
+      if (slider) slider.style.background = enabled ? 'var(--ok)' : 'var(--bad)';
+      if (knob) knob.style.left = enabled ? '25px' : '3px';
+    }
+
+    async function toggleLoginAlerts(enabled) {
+      try {
+        await apiFetch("/settings/login-alerts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        });
+        updateLoginAlertsToggle(enabled);
+      } catch (e) {
+        alert(e.message || "Failed to update login alerts setting");
+        loadLoginAlertsSetting();
+      }
+    }
+
     async function loadSshKeys() {
       const body = document.getElementById("sshKeysBody");
       renderSshCommandSnippets();
@@ -7435,15 +7578,37 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
         background: linear-gradient(135deg, var(--brand, #2563eb) 0%, #8b5cf6 100%);
-        border-radius: 12px;
+        border-radius: 18px;
         align-items: center;
         justify-content: center;
         color: white;
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
       }
+      .ai-close-btn {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 22px;
+        height: 22px;
+        background: #ef4444;
+        border: 2px solid var(--card, #ffffff);
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10;
+        transition: transform 0.2s;
+      }
+      .ai-close-btn:hover {
+        transform: scale(1.15);
+      }
+      #${PANEL_ID}.collapsed .ai-close-btn { display: flex !important; }
       .ai-header {
         display: flex;
         align-items: center;
@@ -7859,6 +8024,12 @@
         text-align: center;
       }
       </style>
+      <div class="ai-bubble-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      </div>
+      <div class="ai-close-btn" onclick="event.stopPropagation(); hideAIPanel()" title="Close">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </div>
       <div class="ai-header">
         <div class="ai-avatar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
@@ -7873,6 +8044,9 @@
         <div class="ai-header-actions">
           <button class="ai-header-btn" onclick="toggleAIPanel()" title="Minimize">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+          </button>
+          <button class="ai-header-btn" onclick="hideAIPanel()" title="Close" style="color: #ef4444;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
           <button class="ai-header-btn" onclick="startNewChat()" title="New chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -8005,6 +8179,36 @@
       if (isOpen) panel.classList.remove('collapsed');
       else panel.classList.add('collapsed');
     }
+  };
+
+  window.hideAIPanel = function() {
+    isOpen = false;
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) panel.style.display = 'none';
+    let fab = document.getElementById('ai-fab-reopen');
+    if (!fab) {
+      fab = document.createElement('button');
+      fab.id = 'ai-fab-reopen';
+      fab.title = 'Open AI Assistant';
+      fab.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg,var(--brand,#2563eb) 0%,#8b5cf6 100%);border:none;cursor:pointer;z-index:9998;display:flex;align-items:center;justify-content:center;color:white;box-shadow:0 8px 24px rgba(37,99,235,0.3);transition:transform 0.2s;';
+      fab.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+      fab.onmouseenter = function() { fab.style.transform = 'scale(1.1)'; };
+      fab.onmouseleave = function() { fab.style.transform = 'scale(1)'; };
+      fab.onclick = function() { showAIPanel(); };
+      document.body.appendChild(fab);
+    }
+    fab.style.display = 'flex';
+  };
+
+  window.showAIPanel = function() {
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) {
+      panel.style.display = '';
+      panel.classList.add('collapsed');
+      isOpen = false;
+    }
+    const fab = document.getElementById('ai-fab-reopen');
+    if (fab) fab.style.display = 'none';
   };
 
   window.startNewChat = function() {

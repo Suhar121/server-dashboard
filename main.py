@@ -78,6 +78,7 @@ except ImportError:
 # 🔑 TELEGRAM CONFIG
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID", "YOUR_CHAT_ID")
+SERVER_NAME = os.getenv("SERVER_NAME", "").strip()
 SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
 SESSION_TIMEOUT_SECONDS = max(60, SESSION_TIMEOUT_MINUTES * 60)
 SESSION_COOKIE_NAME = "dashboard_session"
@@ -195,6 +196,11 @@ class CreateUserRequest(BaseModel):
 
 class UpdateUserRoleRequest(BaseModel):
     role: str
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
 
 
 class SaveServiceRequest(BaseModel):
@@ -367,6 +373,26 @@ def is_process_running(proc: subprocess.Popen | None) -> bool:
 
 def db_connect():
     return sqlite3.connect(USERS_DB_PATH)
+
+
+def get_setting(key: str, default: str = "") -> str:
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else default
+
+
+def set_setting(key: str, value: str):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, value),
+    )
+    conn.commit()
+    conn.close()
 
 
 def hash_password(password: str, salt: bytes | None = None):
@@ -555,6 +581,15 @@ def init_user_db():
             logs TEXT NOT NULL DEFAULT '',
             created_by TEXT NOT NULL,
             created_at INTEGER NOT NULL
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )
         """
     )
@@ -906,7 +941,7 @@ def create_deployed_app(name: str, template_id: int | None, compose_path: str, p
     cur.execute(
         """INSERT INTO deployed_apps (name, template_id, status, compose_path, ports, env_vars, container_ids, created_by, created_at)
            VALUES (?, ?, 'stopped', ?, ?, ?, '[]', ?, ?)""",
-        (name, template_id, compose_path, json.dumps(ports), json.dumps(env_vars), "[]", created_by, now),
+        (name, template_id, compose_path, json.dumps(ports), json.dumps(env_vars), created_by, now),
     )
     conn.commit()
     app_id = cur.lastrowid
@@ -3354,6 +3389,8 @@ def update_sessions_for_user(username: str, new_role: str | None = None, delete:
 
 def send_telegram(msg):
     try:
+        if SERVER_NAME:
+            msg = f"🖥️ [{SERVER_NAME}]\n{msg}"
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         requests.post(url, json={"chat_id": CHAT_ID, "text": msg})
     except Exception as e:
@@ -3655,29 +3692,32 @@ async def login(data: LoginRequest, request: Request, response: Response):
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
     login_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    login_alerts_on = get_setting("login_alerts_enabled", "true") == "true"
 
     row = get_user_record(username)
 
     if not row:
-        send_telegram(
-            f"🚨 Failed Login Attempt\n"
-            f"Username: {username} (not found)\n"
-            f"Time: {login_time}\n"
-            f"IP: {client_ip}\n"
-            f"User-Agent: {user_agent}"
-        )
+        if login_alerts_on:
+            send_telegram(
+                f"🚨 Failed Login Attempt\n"
+                f"Username: {username} (not found)\n"
+                f"Time: {login_time}\n"
+                f"IP: {client_ip}\n"
+                f"User-Agent: {user_agent}"
+            )
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     _, password_hash, salt, role, _, _ = row
     if not verify_password(data.password, password_hash, salt):
-        send_telegram(
-            f"🚨 Failed Login Attempt\n"
-            f"Username: {username}\n"
-            f"Role: {role}\n"
-            f"Time: {login_time}\n"
-            f"IP: {client_ip}\n"
-            f"User-Agent: {user_agent}"
-        )
+        if login_alerts_on:
+            send_telegram(
+                f"🚨 Failed Login Attempt\n"
+                f"Username: {username}\n"
+                f"Role: {role}\n"
+                f"Time: {login_time}\n"
+                f"IP: {client_ip}\n"
+                f"User-Agent: {user_agent}"
+            )
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     update_user_last_login(username)
@@ -3695,14 +3735,15 @@ async def login(data: LoginRequest, request: Request, response: Response):
         path="/",
     )
 
-    send_telegram(
-        f"🔐 Login Alert\n"
-        f"User: {username}\n"
-        f"Role: {role}\n"
-        f"Time: {login_time}\n"
-        f"IP: {client_ip}\n"
-        f"User-Agent: {user_agent}"
-    )
+    if login_alerts_on:
+        send_telegram(
+            f"🔐 Login Alert\n"
+            f"User: {username}\n"
+            f"Role: {role}\n"
+            f"Time: {login_time}\n"
+            f"IP: {client_ip}\n"
+            f"User-Agent: {user_agent}"
+        )
 
     return {
         "status": "ok",
@@ -3718,6 +3759,33 @@ async def logout(response: Response, user=Depends(get_current_user)):
     active_sessions.pop(user["session_id"], None)
     response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
     return {"status": "logged_out"}
+
+
+@app.post("/auth/change-password")
+async def change_password(data: ChangePasswordRequest, user=Depends(get_current_user)):
+    row = get_user_record(user["username"])
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    _, password_hash, salt, _, _, _ = row
+    if not verify_password(data.old_password, password_hash, salt):
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
+
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    new_hash, new_salt = hash_password(data.new_password)
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET password_hash = ?, salt = ? WHERE username = ?",
+        (new_hash, new_salt, user["username"]),
+    )
+    conn.commit()
+    conn.close()
+
+    log_audit(user["username"], "change_password", "Password changed successfully")
+    return {"status": "ok", "detail": "Password updated"}
 
 
 @app.post("/auth/failed-login-photo")
@@ -4178,6 +4246,14 @@ def battery(user=Depends(require_role("viewer"))):
         return {"percent": percent, "plugged": plugged}
 
     return {"percent": None, "plugged": False}
+
+
+@app.get("/server-info")
+def server_info():
+    return {
+        "server_name": SERVER_NAME or socket.gethostname(),
+        "hostname": socket.gethostname(),
+    }
 
 
 @app.get("/system")
@@ -4744,6 +4820,21 @@ def remove_alert_rule(rule_id: int, user=Depends(require_role("admin"))):
     log_audit(user["username"], "delete_alert_rule", f"Deleted alert rule {rule_id}")
 
     return {"status": "deleted", "id": rule_id}
+
+
+@app.get("/settings/login-alerts")
+def get_login_alerts_setting(user=Depends(require_role("admin"))):
+    return {"enabled": get_setting("login_alerts_enabled", "true") == "true"}
+
+
+@app.patch("/settings/login-alerts")
+def toggle_login_alerts(data: dict, user=Depends(require_role("admin"))):
+    enabled = data.get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="enabled must be a boolean")
+    set_setting("login_alerts_enabled", "true" if enabled else "false")
+    log_audit(user["username"], "toggle_login_alerts", f"Login alerts {'enabled' if enabled else 'disabled'}")
+    return {"enabled": enabled}
 
 
 @app.get("/ssh/keys")
