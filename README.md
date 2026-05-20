@@ -1,194 +1,94 @@
+<div align="center">
+
 # DevOps Control Panel
+
+**A self-hosted, full-stack server management dashboard for monitoring, deployment, and administration.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3](https://img.shields.io/badge/Python-3.9+-yellow.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey.svg)](https://www.sqlite.org/)
+
+<br/>
+
+A lightweight, single-binary operations dashboard built with **FastAPI + SQLite + vanilla HTML/CSS/JS**.
+Manage your servers, monitor system health, deploy applications, and access a browser-based terminal — all from one interface.
+
+[Getting Started](#-getting-started) · [Features](#-features) · [Screenshots](#-screenshots) · [API Reference](#-api-reference) · [Contributing](CONTRIBUTING.md)
+
+</div>
+
+---
+
+## Features
+
+| Category | Capabilities |
+|---|---|
+| **Authentication & RBAC** | Role-based access (`viewer`, `operator`, `admin`), session management, cookie-based auth |
+| **System Monitoring** | Live CPU, RAM, battery metrics, CPU trend charts, threshold-based alerts |
+| **Port Management** | Open port scanning, pinned port health checks, port change detection (new/closed), Telegram alerts |
+| **Docker Visibility** | Container listing, status monitoring via `docker ps` |
+| **Service Control** | Start/stop/restart services, log viewing, persistent log storage |
+| **App Deployment** | Deploy and manage applications from the dashboard |
+| **File Manager** | Browse, read, write, upload, download, chmod, mkdir, Git clone support |
+| **Terminal** | Browser-based terminal via WebSocket + PTY, multi-tab sessions, per-tab command history |
+| **Saved Commands** | Command library with template variables (`{{var}}`), inline variable forms |
+| **Admin Tools** | User lifecycle management, audit logs, SSH key manager, Cloudflared route manager |
+| **Notifications** | Telegram bot integration for alerts and custom notifications |
+
+---
+
+## Screenshots
+
+### Dashboard
 ![Dashboard](docs/screenshots/dashboard.png)
 
-A full-stack operations dashboard built with **FastAPI + SQLite + vanilla HTML/CSS/JS**.
+### App Deployment
+![Deploy Apps](docs/screenshots/deploy_apps.png)
 
-It provides:
-- Role-based login/authentication (`viewer`, `operator`, `admin`)
-- Live system metrics (battery, CPU, RAM)
-- Open ports and Docker visibility
-- Managed service run/stop + logs.
-- To-do tracking for ops tasks
-- Audit logs and alert rules
-- Admin SSH public key manager (writes managed `authorized_keys` block)
-- Admin Cloudflared route manager (writes managed `ingress` block in config)
-- Admin file manager (browse/read/write/upload/download/chmod)
-- File manager Git clone action (clone repos into current folder)
-- Browser terminal via WebSocket + PTY
-- Saved command library with template variables (`{{var}}`)
-- Port change detection (newly opened / recently closed)
-- Telegram alerts when pinned ports go down
+### Docker Manager
+![Docker Manager](docs/screenshots/docker_manager.png)
+
+### File Manager
+![File Manager](docs/screenshots/file_manager.png)
+
+### Terminal
+![Terminal](docs/screenshots/terminal.png)
 
 ---
 
-## Table of Contents
+## Getting Started
 
-1. [Project Overview](#project-overview)
-2. [Tech Stack](#tech-stack)
-3. [Repository Structure](#repository-structure)
-4. [How It Works](#how-it-works)
-5. [Roles and Permissions](#roles-and-permissions)
-6. [Environment Variables](#environment-variables)
-7. [Setup and Run](#setup-and-run)
-8. [API Reference](#api-reference)
-9. [UI Screenshots](#ui-screenshots)
-10. [Frontend Modules](#frontend-modules)
-11. [Database Schema](#database-schema)
-12. [Security Notes](#security-notes)
-13. [Operational Workflows](#operational-workflows)
-14. [Troubleshooting](#troubleshooting)
-15. [Known Limitations](#known-limitations)
-16. [Future Improvements](#future-improvements)
+### Prerequisites
 
----
+- Python 3.9+
+- Linux environment (for `ss`, `docker`, PTY support)
+- (Optional) Telegram bot token for notifications
+- (Optional) Cloudflared for tunnel management
 
-## Project Overview
-
-This project is an operational dashboard intended for local/server administration tasks. It includes:
-
-- **Authentication + RBAC**
-  - Sessions stored in-memory, cookie-based auth
-  - User records in SQLite
-- **Monitoring**
-  - CPU/RAM from `psutil`
-  - Battery state and threshold alerts
-  - Open port scan via `ss -tuln`
-  - Pinned-port health checks (`127.0.0.1:<port>`)
-  - Docker process listing via `docker ps`
-- **Service Control**
-  - Start/stop custom service commands
-  - Log persistence under `logs/`
-- **Admin Management**
-  - User lifecycle
-  - Audit logs
-  - Alert rules
-  - Cloudflared hostname-to-port routes
-  - File manager APIs
-- **Terminal**
-  - Browser terminal over WebSocket and PTY shell
-- **Productivity Features**
-  - Saved commands
-  - Template variables in commands
-  - Port diff/change visualization
-
----
-
-## Tech Stack
-
-### Backend
-- Python 3
-- FastAPI
-- SQLite (`users.db`)
-- `psutil`
-- `requests`
-- Native Linux tools:
-  - `ss` for ports
-  - `docker` CLI for containers
-- PTY terminal utilities (`pty`, `fcntl`, `os`, `signal`)
-
-### Frontend
-- Single-page `index.html` (no framework)
-- Chart.js (CPU trend)
-- xterm.js (web terminal)
-- Lucide icons
-- Responsive CSS + container queries + themed UI
-
----
-
-## Repository Structure
-
-```text
-/home/user/test
-├── main.py                # FastAPI app (API + auth + RBAC + terminal + files + alerts)
-├── index.html             # Full frontend UI and client-side logic
-├── battery.py             # Optional battery monitor script using /notify API
-├── .env.example           # Environment template (copy to .env)
-├── users.db               # SQLite database (local runtime, gitignored)
-├── logs/                  # Service log files (gitignored)
-├── docs/screenshots/      # README UI screenshot assets
-├── cloudflared/
-│   └── config.example.yml # Optional sample cloudflared config template
-├── LICENSE                # Open-source license
-├── CONTRIBUTING.md        # Contribution guidelines
-└── venv/                  # Local Python virtual environment
-```
-
----
-
-## How It Works
-
-1. **Startup**
-   - `main.py` loads `.env`
-   - Initializes DB tables
-   - Bootstraps admin user if missing
-2. **Authentication**
-   - Login creates random session token
-   - Token stored in HTTP-only cookie
-   - Session metadata stored in-memory (`active_sessions`)
-3. **Authorization**
-   - `require_role()` guards endpoints with role ranking
-4. **Frontend**
-   - `GET /` serves `index.html`
-   - JS frontend fetches API routes with cookie credentials
-5. **Monitoring Loop**
-   - Frontend periodically calls refresh endpoints every ~3s once logged in
-6. **Alerts**
-   - CPU/RAM alert thresholds checked in `/system`
-  - Pinned-port down checks also run in `/system`
-   - Telegram notification sent with cooldown logic
-
----
-
-## Roles and Permissions
-
-| Role     | Access |
-|----------|--------|
-| viewer   | Read dashboards, metrics, logs, ports, docker, state |
-| operator | viewer + service run/stop, todo edit, terminal, file download |
-| admin    | operator + users, audit, alert rules, ssh keys, cloudflared routes, file manager read/write/delete/upload/chmod, notify, docs |
-
-### Special behavior
-- Last admin cannot be deleted/demoted.
-- Users cannot delete their own account.
-- API docs (`/docs`, `/redoc`, `/openapi.json`) are restricted to admin.
-
----
-
-## Environment Variables
-
-Defined/used in backend:
-
-- `BOT_TOKEN` — Telegram bot token
-- `CHAT_ID` — Telegram chat ID
-- `SESSION_TIMEOUT_MINUTES` — Session TTL in minutes (minimum effective 1 minute)
-- `USERS_DB_PATH` — SQLite DB file path (default `users.db`)
-- `ADMIN_USERNAME` — bootstrap admin username
-- `ADMIN_PASSWORD` — bootstrap admin password (min 8 chars)
-- `CLOUDFLARED_CONFIG_PATH` — Cloudflared config file path (default `/etc/cloudflared/config.yml`)
-- `CLOUDFLARED_FALLBACK_CONFIG_PATH` — writable fallback path if primary path is not writable (default `./cloudflared/config.yml`)
-- `CLOUDFLARED_TUNNEL_NAME` — tunnel name/UUID for automatic DNS routing from UI
-- `CLOUDFLARED_DNS_AUTO_ROUTE` — auto-run `cloudflared tunnel route dns` on route create (`true` by default)
-- `CLOUDFLARED_BIN_PATH` — cloudflared executable path (default `cloudflared`)
-- `CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS` — DNS command timeout (default `20`)
-
-If writing to `/etc/cloudflared/config.yml` fails (common on non-root setups), the app automatically tries the fallback path.
-
-### Important
-Never commit real credentials. Keep `.env` local and only share placeholder values in `.env.example`.
-
----
-
-## Setup and Run
-
-## 1) Python environment
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/Suhar121/server-dashboard.git
+cd server-dashboard
+
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
-pip install fastapi uvicorn psutil requests python-multipart
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-## 2) Configure `.env`
+### Configuration
+
+```bash
+# Copy the environment template
+cp .env.example .env
+```
+
+Edit `.env` with your values:
 
 ```env
 BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
@@ -199,29 +99,72 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change_this_password
 ```
 
-## 3) Start backend
+### Running
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 4) Open UI
+Open your browser at `http://127.0.0.1:8000/`
 
-- Visit: `http://127.0.0.1:8000/`
-
-## 5) Optional battery monitor script
+### Optional: Battery Monitor
 
 ```bash
 python battery.py
 ```
 
-## 6) Manual update flow
+---
 
-If you want to run everything manually (no CI/CD automation), use this:
+## Environment Variables
 
-```bash
-git pull
-```
+| Variable | Description | Default |
+|---|---|---|
+| `BOT_TOKEN` | Telegram bot token | — |
+| `CHAT_ID` | Telegram chat ID | — |
+| `SESSION_TIMEOUT_MINUTES` | Session TTL in minutes | `30` |
+| `USERS_DB_PATH` | SQLite database file path | `users.db` |
+| `ADMIN_USERNAME` | Bootstrap admin username | — |
+| `ADMIN_PASSWORD` | Bootstrap admin password (min 8 chars) | — |
+| `CLOUDFLARED_CONFIG_PATH` | Cloudflared config file path | `/etc/cloudflared/config.yml` |
+| `CLOUDFLARED_FALLBACK_CONFIG_PATH` | Fallback path if primary is not writable | `./cloudflared/config.yml` |
+| `CLOUDFLARED_TUNNEL_NAME` | Tunnel name/UUID for DNS routing | — |
+| `CLOUDFLARED_DNS_AUTO_ROUTE` | Auto-run `cloudflared tunnel route dns` on route create | `true` |
+| `CLOUDFLARED_BIN_PATH` | Cloudflared executable path | `cloudflared` |
+| `CLOUDFLARED_DNS_ROUTE_TIMEOUT_SECONDS` | DNS command timeout | `20` |
+
+> **Note:** Never commit real credentials. Keep `.env` local and only share placeholder values in `.env.example`.
+
+---
+
+## Tech Stack
+
+### Backend
+- **Python 3** with [FastAPI](https://fastapi.tiangolo.com/)
+- **SQLite** for persistent storage
+- **psutil** for system metrics
+- Native Linux tools: `ss` (ports), `docker` CLI (containers), PTY (`pty`, `fcntl`, `os`, `signal`)
+
+### Frontend
+- Single-page `index.html` (no build step, no framework)
+- [Chart.js](https://www.chartjs.org/) for CPU trend visualization
+- [xterm.js](https://xtermjs.org/) for the web terminal
+- [Lucide](https://lucide.dev/) icons
+- Responsive CSS with container queries and themed UI
+
+---
+
+## Roles and Permissions
+
+| Role | Access Level |
+|---|---|
+| **viewer** | Read dashboards, metrics, logs, ports, Docker status |
+| **operator** | viewer + service run/stop, todo editing, terminal, file download |
+| **admin** | operator + user management, audit logs, alert rules, SSH keys, Cloudflared routes, full file manager, notifications |
+
+**Constraints:**
+- The last admin account cannot be deleted or demoted.
+- Users cannot delete their own account.
+- API docs (`/docs`, `/redoc`, `/openapi.json`) are admin-only.
 
 ---
 
@@ -229,295 +172,214 @@ git pull
 
 Base URL: `http://127.0.0.1:8000`
 
-### Auth
+<details>
+<summary><strong>Authentication</strong></summary>
 
-- `POST /auth/login`
-- `POST /auth/logout`
-- `GET /auth/me`
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/auth/login` | Login and create session |
+| `POST` | `/auth/logout` | Logout and destroy session |
+| `GET` | `/auth/me` | Get current user info |
 
-### User management (admin)
+</details>
 
-- `GET /auth/users`
-- `POST /auth/users`
-- `PATCH /auth/users/{username}/role`
-- `DELETE /auth/users/{username}`
+<details>
+<summary><strong>User Management (admin)</strong></summary>
 
-### App state
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/auth/users` | List all users |
+| `POST` | `/auth/users` | Create a new user |
+| `PATCH` | `/auth/users/{username}/role` | Update user role |
+| `DELETE` | `/auth/users/{username}` | Delete a user |
 
-- `GET /state/services`
-- `POST /state/services`
-- `DELETE /state/services/{service_id}`
-- `GET /state/todos`
-- `POST /state/todos`
-- `PATCH /state/todos/{todo_id}`
-- `DELETE /state/todos/{todo_id}`
+</details>
 
-### Service control + logs
+<details>
+<summary><strong>App State</strong></summary>
 
-- `GET /logs/{service}`
-- `POST /run`
-- `POST /stop`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/state/services` | List pinned services |
+| `POST` | `/state/services` | Add a pinned service |
+| `DELETE` | `/state/services/{service_id}` | Remove a pinned service |
+| `GET` | `/state/todos` | List todos |
+| `POST` | `/state/todos` | Create a todo |
+| `PATCH` | `/state/todos/{todo_id}` | Update a todo |
+| `DELETE` | `/state/todos/{todo_id}` | Delete a todo |
 
-### Notifications & monitoring
+</details>
 
-- `POST /notify` (admin)
-- `GET /battery`
-- `GET /system`
-- `GET /ports`
-- `GET /docker`
-- `GET /check-port/{port}`
+<details>
+<summary><strong>Service Control & Logs</strong></summary>
 
-### Audit & alert rules
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/logs/{service}` | Get service logs |
+| `POST` | `/run` | Start a service |
+| `POST` | `/stop` | Stop a service |
 
-- `GET /audit-logs`
-- `GET /alert-rules`
-- `POST /alert-rules`
-- `PATCH /alert-rules/{rule_id}`
-- `DELETE /alert-rules/{rule_id}`
+</details>
 
-### SSH key manager
+<details>
+<summary><strong>Monitoring & Notifications</strong></summary>
 
-- `GET /ssh/keys`
-- `POST /ssh/keys`
-- `DELETE /ssh/keys/{key_id}`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/system` | System metrics (CPU, RAM, battery) |
+| `GET` | `/ports` | Open ports list |
+| `GET` | `/docker` | Docker containers |
+| `GET` | `/battery` | Battery status |
+| `GET` | `/check-port/{port}` | Check specific port health |
+| `POST` | `/notify` | Send Telegram notification (admin) |
 
-### Cloudflared route manager
+</details>
 
-- `GET /cloudflared/routes`
-- `POST /cloudflared/routes`
-- `DELETE /cloudflared/routes/{route_id}`
+<details>
+<summary><strong>Audit & Alert Rules</strong></summary>
 
-### File manager
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/audit-logs` | Get audit log entries |
+| `GET` | `/alert-rules` | List alert rules |
+| `POST` | `/alert-rules` | Create an alert rule |
+| `PATCH` | `/alert-rules/{rule_id}` | Update an alert rule |
+| `DELETE` | `/alert-rules/{rule_id}` | Delete an alert rule |
 
-- `GET /files/browse`
-- `POST /files/read`
-- `POST /files/write`
-- `POST /files/delete`
-- `POST /files/mkdir`
-- `POST /files/git-clone`
-- `POST /files/chmod`
-- `GET /files/download`
-- `POST /files/upload`
+</details>
 
-### Terminal
+<details>
+<summary><strong>SSH Key Manager</strong></summary>
 
-- `WS /ws/terminal`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/ssh/keys` | List SSH keys |
+| `POST` | `/ssh/keys` | Add an SSH key |
+| `DELETE` | `/ssh/keys/{key_id}` | Remove an SSH key |
 
-### Frontend shell
+</details>
 
-- `GET /` serves dashboard page
+<details>
+<summary><strong>Cloudflared Route Manager</strong></summary>
 
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/cloudflared/routes` | List routes |
+| `POST` | `/cloudflared/routes` | Create a route |
+| `DELETE` | `/cloudflared/routes/{route_id}` | Delete a route |
 
-## UI Screenshots
+</details>
 
-> Place the screenshot files in `docs/screenshots/` using the filenames below.
+<details>
+<summary><strong>File Manager</strong></summary>
 
-### Dashboard
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/files/browse` | Browse directory |
+| `POST` | `/files/read` | Read file contents |
+| `POST` | `/files/write` | Write file contents |
+| `POST` | `/files/delete` | Delete a file |
+| `POST` | `/files/mkdir` | Create a directory |
+| `POST` | `/files/git-clone` | Clone a Git repository |
+| `POST` | `/files/chmod` | Change file permissions |
+| `GET` | `/files/download` | Download a file |
+| `POST` | `/files/upload` | Upload a file |
 
-![Dashboard](docs/screenshots/dashboard.png)
+</details>
 
-### Terminal
+<details>
+<summary><strong>Terminal</strong></summary>
 
-![Terminal](docs/screenshots/terminal.png)
+| Method | Endpoint | Description |
+|---|---|---|
+| `WS` | `/ws/terminal` | WebSocket terminal session |
 
-### Alert Rules
-
-![Alert Rules](docs/screenshots/alert-rules.png)
-
-### File Manager (with Git Clone)
-
-![File Manager](docs/screenshots/file-manager.png)
-
----
-
-## Frontend Modules
-
-All in `index.html`:
-
-- **Topbar**: navigation, theme switcher, session badge
-- **Dashboard cards**:
-  - Battery / CPU / RAM
-  - CPU trend chart
-  - Pinned services
-  - Open ports
-  - Docker containers
-  - To-do list
-- **Open Ports advanced features**:
-  - Minimize/expand
-  - Diff strip (open/new/closed)
-  - Recently closed list
-  - New-port row highlighting
-- **Saved Commands module**:
-  - Save/copy/paste/run commands
-  - Template placeholders (`{{key}}`)
-  - Inline variable form and “Run Filled”
-- **Terminal page**:
-  - Multi-tab xterm sessions
-  - command history per tab
-- **Admin pages**:
-  - User management
-  - Audit logs
-  - Alert rules
-  - File manager + editor + permissions modal
+</details>
 
 ---
 
-## Database Schema
+## Repository Structure
 
-SQLite DB (`users.db`) tables:
-
-1. `users`
-   - `username` (PK)
-   - `password_hash`, `salt`
-   - `role`
-   - `created_at`, `last_login_at`
-
-2. `pinned_services`
-   - `id` (PK)
-   - `name` (UNIQUE)
-   - `port`, `command`, `created_at`
-
-3. `todos`
-   - `id` (PK)
-   - `text`, `done`, `created_at`
-
-4. `audit_logs`
-   - `id` (PK)
-   - `username`, `action`, `details`, `timestamp`
-
-5. `alert_rules`
-   - `id` (PK)
-   - `metric_type` (`cpu`/`ram`)
-   - `threshold`
-   - `enabled`
-   - `created_at`
-
-6. `cloudflared_routes`
-  - `id` (PK)
-  - `hostname` (UNIQUE)
-  - `service_scheme` (`http`/`https`/`tcp`)
-  - `service_host`
-  - `service_port`
-  - `created_by`
-  - `created_at`
+```
+server-dashboard/
+├── main.py                    # FastAPI app (API + auth + RBAC + terminal + files + alerts)
+├── index.html                 # Full frontend UI and client-side logic
+├── battery.py                 # Optional battery monitor script using /notify API
+├── .env.example               # Environment template (copy to .env)
+├── requirements.txt           # Python dependencies
+├── users.db                   # SQLite database (local runtime, gitignored)
+├── logs/                      # Service log files (gitignored)
+├── docs/
+│   └── screenshots/           # README UI screenshot assets
+├── tests/                     # Test suite
+├── ai/                        # AI integration modules
+├── .github/                   # GitHub workflows and config
+├── LICENSE                    # MIT License
+└── CONTRIBUTING.md            # Contribution guidelines
+```
 
 ---
 
-## Security Notes
+## Security
 
-- Passwords are hashed with PBKDF2-HMAC-SHA256 (`150,000` iterations + random salt).
-- Session tokens are random and stored server-side in-memory.
-- Session cookie is HTTP-only (`secure=False` currently; change in HTTPS production).
-- Docs are admin-restricted by middleware.
-- File manager has safety checks (`is_safe_path`) but still permits broad filesystem access except specific blocked paths.
+- Passwords are hashed with **PBKDF2-HMAC-SHA256** (150,000 iterations + random salt)
+- Session tokens are cryptographically random, stored server-side in-memory
+- Session cookie is HTTP-only (`secure=False` currently; set `True` under HTTPS)
+- API docs are admin-restricted by middleware
+- File manager uses path safety checks (`is_safe_path`)
 
-### Strong recommendations before production
+### Production Hardening Checklist
 
-1. Rotate Telegram token/chat values.
-2. Set cookie `secure=True` under HTTPS.
-3. Move session storage to persistent/shared backend (Redis/DB).
-4. Harden file-path policy (allowlist over denylist).
-5. Add rate limiting and CSRF protections.
-
----
-
-## Operational Workflows
-
-### Add and run a pinned service
-1. Add service in dashboard (name, port, command)
-2. Click **Start**
-3. Use **View Logs** to tail output
-4. Use **Stop/Restart** controls as needed
-
-### Build command templates
-1. Save command with placeholders, e.g.:
-   - `ssh -i {{key}} {{user}}@{{host}} -p {{port}}`
-2. Click **Template** on the command
-3. Fill generated fields
-4. Choose **Paste Filled** or **Run Filled**
-
-### Investigate port changes
-1. Watch Open Ports diff strip
-2. Review newly opened rows (`NEW` badge)
-3. Check recently closed list for churn/flapping
+- [ ] Rotate Telegram token/chat values
+- [ ] Set cookie `secure=True` under HTTPS
+- [ ] Move session storage to Redis or database
+- [ ] Implement strict allowlist-based file path policy
+- [ ] Add rate limiting and CSRF protections
 
 ---
 
 ## Troubleshooting
 
-### Login fails
-- Verify admin bootstrap credentials in `.env`.
-- Ensure `users.db` is writable.
-- Check session timeout config.
-
-### No Docker data
-- Ensure Docker is installed and `docker ps` works for the running user.
-
-### Port list empty
-- Ensure `ss` command exists and works.
-- Check Linux permissions/container restrictions.
-
-### Terminal won’t connect
-- Requires `operator` or `admin` role.
-- Ensure shell exists (`$SHELL` or `/bin/bash`/`/bin/sh`).
-
-### Telegram notifications not sending
-- Check `BOT_TOKEN`, `CHAT_ID`.
-- Ensure the port is pinned in the dashboard (only pinned ports are monitored for down alerts).
-- Confirm network egress to Telegram API.
+| Issue | Solution |
+|---|---|
+| Login fails | Verify admin credentials in `.env`, ensure `users.db` is writable |
+| No Docker data | Ensure Docker is installed and `docker ps` works for the running user |
+| Port list empty | Ensure `ss` command exists; check Linux permissions |
+| Terminal won't connect | Requires `operator` or `admin` role; ensure shell exists (`$SHELL`) |
+| Telegram not sending | Check `BOT_TOKEN` and `CHAT_ID`; ensure port is pinned in dashboard |
 
 ---
 
 ## Known Limitations
 
-- Sessions are in-memory (lost on restart).
-- `run` uses `shell=True` (powerful but risky).
-- File safety checks are denylist-based, not strict allowlist.
-- No pagination UI for very large file directories.
-- No built-in backup/restore for DB.
+- Sessions are in-memory (lost on server restart)
+- `run` endpoint uses `shell=True` (powerful but risky)
+- File safety checks are denylist-based, not strict allowlist
+- No pagination for large directory listings
+- No built-in backup/restore for the database
 
 ---
 
-## Future Improvements
+## Contributing
 
-- Redis-backed sessions + refresh tokens
-- Command risk scoring and approval workflow
-- Better path sandbox for file operations
-- Metrics/history persistence and incident timeline
-- Multi-node deployment support
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
----
-
-## Push Readiness Checklist (GitHub)
-
-Before first push:
-
-1. Confirm `.gitignore` is present (includes `.env`, `venv/`, `logs/`, `users.db`, caches).
-2. Ensure no secrets are in tracked files.
-3. Keep local `.env` private; optionally create `.env.example` with placeholders.
-4. Run a quick syntax check:
-  - `python3 -m py_compile main.py`
-5. Review status:
-  - `git status`
-
-### Typical first push flow
-
-```bash
-git add .
-git commit -m "Initial dashboard setup"
-git branch -M main
-git remote add origin <your-repo-url>
-git push -u origin main
-```
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## Maintainer Notes
+## License
 
-If you want, create a `/docs` folder next and split this README into:
-- `docs/architecture.md`
-- `docs/api.md`
-- `docs/frontend.md`
-- `docs/security.md`
-for long-term maintainability.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Built with FastAPI, SQLite, and vanilla JS**
+
+</div>
