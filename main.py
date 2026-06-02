@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Cookie, Response, Depends, Request, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Cookie, Response, Depends, Request, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel
@@ -5596,6 +5596,52 @@ async def upload_file(path: str, file: UploadFile = File(...), user=Depends(requ
         return {"status": "uploaded", "path": target_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+
+@app.post("/files/upload-folder")
+async def upload_folder(path: str, files: list[UploadFile] = File(...), paths: list[str] = Form(default=[]), user=Depends(require_role("admin"))):
+    """Upload multiple files/folders to the specified directory (admin only)"""
+    if not is_safe_path(path):
+        raise HTTPException(status_code=403, detail="Access to this path is forbidden")
+
+    if not os.path.exists(path) or not os.path.isdir(path):
+        raise HTTPException(status_code=404, detail="Target directory not found")
+
+    relative_paths = [p.strip() for p in paths if p.strip()] if paths else []
+
+    if len(relative_paths) != len(files):
+        relative_paths = [f.filename for f in files]
+
+    uploaded = []
+    errors = []
+    for file_obj, rel_path in zip(files, relative_paths):
+        try:
+            safe_rel = rel_path.replace("\\", "/")
+            while safe_rel.startswith("/"):
+                safe_rel = safe_rel[1:]
+            if ".." in safe_rel.split("/"):
+                errors.append({"file": rel_path, "error": "Path traversal not allowed"})
+                continue
+
+            target_path = os.path.join(path, safe_rel)
+            if not is_safe_path(target_path):
+                errors.append({"file": rel_path, "error": "Access to target path is forbidden"})
+                continue
+
+            target_dir = os.path.dirname(target_path)
+            os.makedirs(target_dir, exist_ok=True)
+
+            with open(target_path, "wb") as buffer:
+                shutil.copyfileobj(file_obj.file, buffer)
+
+            uploaded.append(target_path)
+        except Exception as e:
+            errors.append({"file": rel_path, "error": str(e)})
+
+    if uploaded:
+        log_audit(user["username"], "upload_folder", f"Uploaded {len(uploaded)} file(s) to {path}")
+
+    return {"status": "completed", "uploaded": len(uploaded), "errors": len(errors), "files": uploaded, "error_details": errors}
 
 
 @app.websocket("/ws/terminal")

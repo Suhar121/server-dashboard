@@ -3244,7 +3244,7 @@
     </div>
   </section>
 
-  <section class="admin-page" id="fileManagerPage">
+  <section class="admin-page" id="fileManagerPage" style="position:relative; overflow:hidden;">
     <div class="file-manager-wrapper">
       <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="hard-drive"></i> File Manager</h3>
       <div class="muted" style="margin-top: 6px;">Browse and edit server files</div>
@@ -3285,6 +3285,8 @@
         <button class="btn-neutral" onclick="openCurrentFolderInTerminal()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="terminal-square" style="width:16px;height:16px;"></i> Open in Terminal</div></button>
         <button class="btn-neutral" onclick="document.getElementById('uploadFileInput').click()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="upload" style="width:16px;height:16px;"></i> Upload File</div></button>
         <input type="file" id="uploadFileInput" style="display:none;" onchange="uploadSelectedFile(event)" />
+        <button class="btn-neutral" onclick="document.getElementById('uploadFolderInput').click()"><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="folder-up" style="width:16px;height:16px;"></i> Upload Folder</div></button>
+        <input type="file" id="uploadFolderInput" style="display:none;" webkitdirectory directory multiple onchange="uploadSelectedFolder(event)" />
         <button class="btn-neutral" onclick="refreshCurrentDir()">🔄 Refresh</button>
         <div class="view-toggle" style="margin-left: auto;">
           <button class="view-btn active" id="gridViewBtn" onclick="switchView('grid')">⊞ Grid</button>
@@ -3293,6 +3295,25 @@
       </div>
 
       <div id="fileManagerMsg" class="info-text"></div>
+
+      <div id="uploadProgressArea" style="display:none;margin-bottom:12px;padding:12px;background:var(--card-soft);border:1px solid var(--border);border-radius:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span id="uploadProgressText" style="font-size:13px;font-weight:500;">Uploading...</span>
+          <span id="uploadProgressCount" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+        <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div id="uploadProgressBar" style="width:0%;height:100%;background:var(--brand);border-radius:3px;transition:width 0.2s;"></div>
+        </div>
+        <div id="uploadProgressDetail" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
+      </div>
+
+      <div id="fileDropZone" style="display:none;position:absolute;inset:0;border:2px dashed var(--brand);border-radius:12px;background:var(--brand-soft);align-items:center;justify-content:center;z-index:50;pointer-events:none;">
+        <div style="text-align:center;">
+          <i data-lucide="folder-up" style="width:48px;height:48px;color:var(--brand);opacity:0.7;"></i>
+          <div style="font-size:16px;font-weight:600;margin-top:8px;color:var(--text);">Drop files or folders here</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px;">Files will be uploaded to the current directory</div>
+        </div>
+      </div>
 
       <div id="fileGridView" class="file-grid"></div>
       <ul id="fileListView" class="file-list" style="display:none;"></ul>
@@ -7026,6 +7047,167 @@
 
       fileInput.value = ""; // Reset input
     }
+
+    async function uploadSelectedFolder(event) {
+      const fileInput = event.target;
+      if (!fileInput.files.length) return;
+
+      const files = Array.from(fileInput.files);
+      await uploadFilesWithProgress(files, true);
+      fileInput.value = "";
+    }
+
+    async function uploadFilesWithProgress(files, isFolder) {
+      const paths = isFolder ? files.map(f => f.webkitRelativePath || f.name) : files.map(f => f.name);
+      return uploadFilesWithPaths(files, paths);
+    }
+
+    async function uploadFilesWithPaths(files, paths) {
+      const progressArea = document.getElementById("uploadProgressArea");
+      const progressBar = document.getElementById("uploadProgressBar");
+      const progressText = document.getElementById("uploadProgressText");
+      const progressCount = document.getElementById("uploadProgressCount");
+      const progressDetail = document.getElementById("uploadProgressDetail");
+      const msg = document.getElementById("fileManagerMsg");
+
+      progressArea.style.display = "block";
+      progressBar.style.width = "0%";
+      progressText.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`;
+      progressCount.textContent = `0 / ${files.length}`;
+      progressDetail.textContent = "";
+      msg.innerText = "";
+
+      const BATCH_SIZE = 20;
+      let uploaded = 0;
+      let errors = 0;
+
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const batchFiles = files.slice(i, i + BATCH_SIZE);
+        const batchPaths = paths.slice(i, i + BATCH_SIZE);
+        const formData = new FormData();
+
+        batchFiles.forEach((f, idx) => {
+          formData.append("files", f);
+          formData.append("paths", batchPaths[idx]);
+        });
+
+        try {
+          const response = await fetch(`/files/upload-folder?path=${encodeURIComponent(currentPath)}`, {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+          });
+
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Upload failed");
+          }
+
+          const result = await response.json();
+          uploaded += result.uploaded || 0;
+          errors += result.errors || 0;
+        } catch (e) {
+          errors += batchFiles.length;
+          progressDetail.textContent = `Error: ${e.message}`;
+        }
+
+        const done = Math.min(i + BATCH_SIZE, files.length);
+        const pct = Math.round((done / files.length) * 100);
+        progressBar.style.width = pct + "%";
+        progressCount.textContent = `${done} / ${files.length}`;
+      }
+
+      progressBar.style.width = "100%";
+      progressText.textContent = `Upload complete`;
+      progressCount.textContent = `${uploaded} uploaded, ${errors} failed`;
+      msg.innerText = `Uploaded ${uploaded} file(s) to ${currentPath}${errors ? `, ${errors} failed` : ""}`;
+      browseFiles(currentPath);
+
+      setTimeout(() => { progressArea.style.display = "none"; }, 4000);
+    }
+
+    (function initDropZone() {
+      const fm = document.getElementById("fileManagerPage");
+      if (!fm) return;
+
+      let dragCounter = 0;
+
+      fm.addEventListener("dragenter", (e) => {
+        e.preventDefault();
+        dragCounter++;
+        const dz = document.getElementById("fileDropZone");
+        dz.style.display = "flex";
+      });
+
+      fm.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          document.getElementById("fileDropZone").style.display = "none";
+        }
+      });
+
+      fm.addEventListener("dragover", (e) => {
+        e.preventDefault();
+      });
+
+      fm.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        document.getElementById("fileDropZone").style.display = "none";
+
+        const items = e.dataTransfer.items;
+        if (!items || !items.length) return;
+
+        const allFiles = [];
+        const allPaths = [];
+
+        async function traverseEntry(entry, basePath) {
+          if (entry.isFile) {
+            const file = await new Promise((resolve) => entry.file(resolve));
+            allFiles.push(file);
+            allPaths.push(basePath + file.name);
+          } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const entries = await new Promise((resolve) => {
+              const batch = [];
+              function readBatch() {
+                reader.readEntries((results) => {
+                  if (results.length === 0) {
+                    resolve(batch);
+                  } else {
+                    batch.push(...results);
+                    readBatch();
+                  }
+                });
+              }
+              readBatch();
+            });
+            for (const child of entries) {
+              await traverseEntry(child, basePath + entry.name + "/");
+            }
+          }
+        }
+
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+          if (entry) {
+            await traverseEntry(entry, "");
+          } else {
+            const file = items[i].getAsFile();
+            if (file) {
+              allFiles.push(file);
+              allPaths.push(file.name);
+            }
+          }
+        }
+
+        if (allFiles.length > 0) {
+          await uploadFilesWithPaths(allFiles, allPaths);
+        }
+      });
+    })();
 
     let currentPermsFile = null;
 
