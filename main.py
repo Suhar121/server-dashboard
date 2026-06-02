@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query, Cookie, Response, Depends, Request, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 import psutil
 import subprocess
@@ -5534,6 +5535,44 @@ def download_file(path: str, user=Depends(require_role("operator"))):
 
     log_audit(user["username"], "download_file", f"Downloaded file: {path}")
     return FileResponse(path, filename=os.path.basename(path))
+
+
+@app.get("/files/download-folder")
+def download_folder(path: str, user=Depends(require_role("operator"))):
+    """Download a directory as a zip archive (operator/admin)"""
+    if not is_safe_path(path):
+        raise HTTPException(status_code=403, detail="Access to this path is forbidden")
+
+    if not os.path.exists(path) or not os.path.isdir(path):
+        raise HTTPException(status_code=404, detail="Directory not found")
+
+    folder_name = os.path.basename(path.rstrip(os.sep)) or "folder"
+    tmp_zip = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp_zip_path = tmp_zip.name
+    tmp_zip.close()
+
+    try:
+        shutil.make_archive(tmp_zip_path.replace(".zip", ""), "zip", path)
+        log_audit(user["username"], "download_folder", f"Downloaded folder: {path}")
+
+        def _cleanup():
+            try:
+                os.unlink(tmp_zip_path)
+            except OSError:
+                pass
+
+        return FileResponse(
+            tmp_zip_path,
+            media_type="application/zip",
+            filename=f"{folder_name}.zip",
+            background=BackgroundTask(_cleanup),
+        )
+    except Exception as e:
+        try:
+            os.unlink(tmp_zip_path)
+        except OSError:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to create zip: {str(e)}")
 
 
 @app.post("/files/upload")

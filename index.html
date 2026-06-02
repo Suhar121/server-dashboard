@@ -6694,7 +6694,9 @@
         const size = item.is_directory ? "Folder" : formatFileSize(item.size);
         const perms = item.permissions || "---";
 
-        const downloadAction = !item.is_directory ? `<button title="Download" onclick="downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>` : '';
+        const downloadAction = item.is_directory
+          ? `<button title="Download Folder" onclick="downloadFolder('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>`
+          : `<button title="Download" onclick="downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>`;
 
         return `
           <div class="file-item" onclick="handleFileClick('${esc(item.path)}', ${item.is_directory})" ondblclick="handleFileDoubleClick('${esc(item.path)}', ${item.is_directory})">
@@ -6725,7 +6727,9 @@
         const modified = new Date(item.modified * 1000).toLocaleString();
         const perms = item.permissions || "---";
 
-        const downloadAction = !item.is_directory ? `<button class="btn-neutral" onclick="event.stopPropagation(); downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>` : '';
+        const downloadAction = item.is_directory
+          ? `<button class="btn-neutral" onclick="event.stopPropagation(); downloadFolder('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>`
+          : `<button class="btn-neutral" onclick="event.stopPropagation(); downloadFile('${esc(item.path)}')"><i data-lucide="download" style="width:14px;height:14px;"></i></button>`;
 
         return `
           <li class="file-list-item" onclick="handleFileClick('${esc(item.path)}', ${item.is_directory})" ondblclick="handleFileDoubleClick('${esc(item.path)}', ${item.is_directory})">
@@ -6985,6 +6989,10 @@
 
     function downloadFile(path) {
       window.open(`/files/download?path=${encodeURIComponent(path)}`, '_blank');
+    }
+
+    function downloadFolder(path) {
+      window.open(`/files/download-folder?path=${encodeURIComponent(path)}`, '_blank');
     }
 
     async function uploadSelectedFile(event) {
