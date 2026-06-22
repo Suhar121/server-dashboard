@@ -3739,7 +3739,7 @@
   <div class="topbar-enterprise">
     <div class="topbar-left">
       <div class="topbar-breadcrumb">
-        <span class="topbar-breadcrumb-item active">Dashboard</span>
+        <span class="topbar-breadcrumb-item active" id="topbarBreadcrumb">Dashboard</span>
       </div>
     </div>
     <div class="topbar-right">
@@ -5939,6 +5939,21 @@
       }
 
       currentPage = page;
+      const breadcrumbLabels = {
+        "dashboard": "Dashboard",
+        "terminal": "Terminal",
+        "docker": "Docker Manager",
+        "admin": "Team",
+        "alert-rules": "Alert Rules",
+        "access-hub": "Access & Tunnels",
+        "ssh-keys": "SSH Keys",
+        "cloudflared": "Cloudflared",
+        "secrets": "Secrets Vault",
+        "file-manager": "File Manager",
+        "deploy": "Deploy Apps",
+      };
+      const bc = document.getElementById("topbarBreadcrumb");
+      if (bc) bc.textContent = breadcrumbLabels[page] || page.charAt(0).toUpperCase() + page.slice(1);
       renderPage();
       if (page === "admin") {
         loadUsers();
