@@ -306,9 +306,20 @@
     }
 
     /* Mobile menu button - hidden on desktop */
-    .mobile-menu-btn {
-      display: none;
+    .app-sidebar .mobile-menu-btn {
+      display: none !important;
       width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+    }
       height: 32px;
       border-radius: 8px;
       border: none;
@@ -2552,7 +2563,7 @@
       .sidebar-footer { display: none !important; }
       .sidebar-collapse-btn { display: none !important; }
 
-      .mobile-menu-btn { display: flex !important; }
+      .app-sidebar .mobile-menu-btn { display: flex !important; }
 
       .sidebar-scroll { display: none !important; }
       .sidebar-nav { flex-direction: row; padding: 0; gap: 2px; }
