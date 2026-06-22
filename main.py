@@ -3686,6 +3686,10 @@ async def restrict_docs_to_admin(request: Request, call_next):
 def dashboard():
     return FileResponse("index.html")
 
+@app.get("/logo")
+def logo():
+    return FileResponse("gridcore.jpg", media_type="image/jpeg")
+
 
 @app.post("/auth/login")
 async def login(data: LoginRequest, request: Request, response: Response):
@@ -3754,6 +3758,47 @@ async def login(data: LoginRequest, request: Request, response: Response):
     }
 
 
+@app.post("/auth/register")
+async def register(data: LoginRequest, request: Request, response: Response):
+    username = data.username.strip()
+    password = data.password
+
+    if not USERNAME_PATTERN.match(username):
+        raise HTTPException(status_code=400, detail="Username must be 3-64 chars (letters, numbers, underscore, dash, dot)")
+
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing = get_user_record(username)
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already exists")
+
+    user_count = len(list_users())
+    role = "admin" if user_count == 0 else "viewer"
+
+    create_user_record(username=username, password=password, role=role)
+    log_audit(username, "register", f"Registered with role: {role}")
+
+    update_user_last_login(username)
+    token = create_session(username=username, role=role)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=SESSION_TIMEOUT_SECONDS,
+        path="/",
+    )
+
+    return {
+        "status": "ok",
+        "username": username,
+        "role": role,
+        "session_timeout_seconds": SESSION_TIMEOUT_SECONDS,
+    }
+
+
 @app.post("/auth/logout")
 async def logout(response: Response, user=Depends(get_current_user)):
     log_audit(user["username"], "logout", "User logged out")
@@ -3804,6 +3849,15 @@ async def failed_login_photo(photo: UploadFile = File(...), username: str = ""):
     except Exception as e:
         print("Failed login photo error:", e)
     return {"status": "ok"}
+
+
+@app.get("/auth/status")
+def auth_status():
+    user_count = len(list_users())
+    return {
+        "has_users": user_count > 0,
+        "needs_setup": user_count == 0,
+    }
 
 
 @app.get("/auth/me")

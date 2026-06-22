@@ -1,6 +1,6 @@
 <div align="center">
 
-# DevOps Control Panel
+# GridCore
 
 **A self-hosted, full-stack server management dashboard for monitoring, deployment, and administration.**
 
@@ -24,7 +24,7 @@ Manage your servers, monitor system health, deploy applications, and access a br
 
 | Category | Capabilities |
 |---|---|
-| **Authentication & RBAC** | Role-based access (`viewer`, `operator`, `admin`), session management, cookie-based auth |
+| **Authentication & RBAC** | Login/signup pages (Dokploy-style), role-based access (`viewer`, `operator`, `admin`), session management, cookie-based auth, self-registration |
 | **System Monitoring** | Live CPU, RAM, battery metrics, CPU trend charts, threshold-based alerts |
 | **Port Management** | Open port scanning, pinned port health checks, port change detection (new/closed), Telegram alerts |
 | **Docker Visibility** | Container listing, status monitoring via `docker ps` |
@@ -107,6 +107,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 Open your browser at `http://127.0.0.1:8000/`
 
+The first user to register becomes the **admin**. Subsequent users register as **viewers**.
+
 ### Optional: Battery Monitor
 
 ```bash
@@ -178,8 +180,11 @@ Base URL: `http://127.0.0.1:8000`
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/auth/login` | Login and create session |
+| `POST` | `/auth/register` | Self-registration (first user becomes admin) |
 | `POST` | `/auth/logout` | Logout and destroy session |
 | `GET` | `/auth/me` | Get current user info |
+| `GET` | `/auth/status` | Check if any users exist (needs_setup) |
+| `POST` | `/auth/change-password` | Change current user password |
 
 </details>
 
@@ -307,6 +312,7 @@ server-dashboard/
 ├── battery.py                 # Optional battery monitor script using /notify API
 ├── .env.example               # Environment template (copy to .env)
 ├── requirements.txt           # Python dependencies
+├── gridcore.jpg               # GridCore logo
 ├── users.db                   # SQLite database (local runtime, gitignored)
 ├── logs/                      # Service log files (gitignored)
 ├── docs/
