@@ -820,294 +820,231 @@
       align-items: start;
     }
 
-    /* ─── Enterprise Dashboard ─── */
+    /* ─── Premium Dashboard (Dokploy-style) ─── */
     #dashboardContent {
       display: none;
     }
 
-    /* Status Bar */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 32px;
-      padding: 0 12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.78rem;
+    .dash-outer {
+      background: var(--card-soft);
+      padding: 3px;
+      border-radius: var(--radius-xl);
+      min-height: 80vh;
     }
 
-    .status-bar-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .status-bar-right {
-      color: var(--muted);
-      font-size: 0.72rem;
-    }
-
-    .status-bar-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 2px 10px;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 600;
-    }
-
-    .status-ok { background: var(--ok-soft); color: var(--ok); }
-    .status-warn { background: var(--warn-soft); color: var(--warn); }
-    .status-err { background: var(--bad-soft); color: var(--bad); }
-
-    .status-bar-sep {
-      width: 1px;
-      height: 14px;
-      background: var(--border);
-    }
-
-    .status-bar-item {
-      color: var(--text-secondary);
-    }
-
-    .status-bar-item strong {
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    /* Metric Cells */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-
-    .metric-cell {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
+    .dash-inner {
+      background: var(--bg);
+      border-radius: calc(var(--radius-xl) - 2px);
+      box-shadow: var(--shadow-md);
+      padding: 28px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 24px;
     }
 
-    .metric-label {
-      font-size: 0.68rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
+    .dash-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
     }
 
-    .metric-value {
+    .dash-heading {
       font-size: 1.5rem;
       font-weight: 600;
       letter-spacing: -0.02em;
-      line-height: 1;
-      color: var(--text);
     }
 
-    .metric-bar {
-      height: 3px;
-      background: var(--card-soft);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .metric-bar-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: var(--brand);
-      transition: width 0.5s ease;
-    }
-
-    .metric-bar-ram { background: var(--ok); }
-    .metric-bar-bat { background: var(--warn); }
-
-    .metric-sub {
-      font-size: 0.72rem;
+    .dash-subheading {
       color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
     }
 
-    /* Dashboard main grid */
-    .dash-main-grid {
+    .dash-kpi-grid {
       display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: 8px;
-      align-items: start;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
     }
 
-    .dash-col-wide {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .dash-col-narrow {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .dash-subgrid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    /* Section Block */
-    .section-block {
+    .stat-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-
-    .section-block-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-block-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-
-    .section-block-badge {
-      font-size: 0.68rem;
-      font-weight: 500;
-      color: var(--muted);
-      background: var(--card-soft);
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-
-    .section-block-body {
-      padding: 10px 12px;
-    }
-
-    /* Enterprise Data Tables */
-    .dt {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
-    }
-
-    .dt thead th {
-      text-align: left;
-      padding: 6px 8px;
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dt tbody td {
-      padding: 6px 8px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-
-    .dt tbody tr:last-child td { border-bottom: none; }
-    .dt tbody tr:hover td { background: var(--nav-hover); }
-
-    .dt-compact tbody td { padding: 4px 6px; font-size: 0.75rem; }
-
-    /* Todo list compact */
-    .todo-list-compact {
-      list-style: none;
-      margin: 6px 0 0;
-      padding: 0;
+      padding: 20px;
+      min-height: 120px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      justify-content: space-between;
+      gap: 8px;
+      transition: border-color 0.15s;
     }
 
-    .todo-list-compact li {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 6px;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
-      border: 1px solid var(--border);
-      background: var(--bg);
-    }
-
-    .todo-list-compact li:hover {
+    .stat-card:hover {
       border-color: var(--brand);
     }
 
-    /* Port activity compact */
-    .port-activity-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 6px;
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
     }
 
-    .port-activity-list > div {
-      padding: 4px 6px;
-      font-size: 0.72rem;
-      border-radius: var(--radius-sm);
+    .stat-value {
+      font-size: 2.25rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      font-family: var(--font-display);
+      line-height: 1;
+    }
+
+    .stat-value-sm {
+      font-size: 1.75rem;
+    }
+
+    .stat-delta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .dash-section-card {
       border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+      padding: 20px;
+    }
+
+    .dash-section-header {
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: space-between;
+      margin-bottom: 4px;
     }
 
-    /* Inline form */
+    .dash-section-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dash-section-icon {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .dash-section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .dash-section-badge {
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: var(--card-soft);
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    .dash-section-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+      margin-bottom: 12px;
+    }
+
+    .dash-chart-wrap {
+      margin-top: 4px;
+    }
+
+    .dash-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .dash-cols {
+        grid-template-columns: 1fr;
+      }
+      .dash-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .dash-inner {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .dash-kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .dash-inline-form {
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      margin: 12px 0;
     }
 
     .dash-inline-form .field {
       flex: 1;
-      height: 28px;
-      padding: 0 8px;
-      font-size: 0.78rem;
     }
 
-    .btn-ghost-sm {
-      height: 24px;
-      padding: 0 8px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-secondary);
+    .dash-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.88rem;
+    }
+
+    .dash-table thead th {
+      text-align: left;
+      padding: 10px 8px;
       font-size: 0.72rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: inline-flex;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dash-table tbody td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .dash-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .dash-table tbody tr:hover td {
+      background: var(--nav-hover);
+    }
+
+    .dash-activity-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    .dash-todo-meta {
+      margin-top: 8px;
+      font-size: 0.82rem;
+    }
+
+    .dash-chevron {
+      display: flex;
       align-items: center;
-      gap: 4px;
-      transition: all 0.1s;
-      font-family: inherit;
-    }
-
-    .btn-ghost-sm:hover {
-      border-color: var(--brand);
-      color: var(--brand);
-      background: var(--brand-soft);
-    }
-
-    @media (max-width: 900px) {
-      .dash-main-grid { grid-template-columns: 1fr; }
-      .dash-subgrid { grid-template-columns: 1fr; }
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 480px) {
-      .metrics-grid { grid-template-columns: 1fr; }
-      .status-bar-right { display: none; }
+      transition: transform 0.2s;
+      margin-left: auto;
     }
 
     #menuDrawer {
@@ -2279,57 +2216,138 @@
 
     .terminal-page {
       display: none;
+      border: none;
+      padding: 0;
+      background: transparent;
+      min-height: 0;
     }
 
     .terminal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 10px;
-      flex-wrap: wrap;
+    }
+
+    .terminal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .terminal-header-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .terminal-header-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .terminal-header-desc {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .terminal-header-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .terminal-header-actions button {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 0.78rem;
+      font-weight: 500;
     }
 
     .terminal-tabs {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+      gap: 4px;
+      margin-bottom: 0;
+      background: #0d1117;
+      border: 1px solid #1e293b;
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 6px 8px 0;
     }
 
     .terminal-tab {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--card);
-      color: var(--text);
+      gap: 6px;
+      padding: 5px 12px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      background: transparent;
+      color: #8b949e;
       cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.15s;
+      font-size: 0.78rem;
+      font-family: inherit;
+      transition: all 0.1s;
+      position: relative;
+      bottom: -1px;
     }
 
     .terminal-tab:hover {
-      border-color: var(--brand);
+      color: #e6edf3;
+      background: rgba(255,255,255,0.03);
     }
 
     .terminal-tab.active {
-      border-color: var(--brand);
-      background: var(--brand-soft);
-      color: var(--brand);
-      font-weight: 600;
+      color: #e6edf3;
+      background: #020817;
+      border-color: #1e293b;
+      font-weight: 500;
+    }
+
+    .terminal-tab-close {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      border: none;
+      background: transparent;
+      color: #8b949e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 0.6rem;
+      line-height: 1;
+      opacity: 0;
+      transition: all 0.1s;
+    }
+
+    .terminal-tab:hover .terminal-tab-close {
+      opacity: 0.6;
+    }
+
+    .terminal-tab-close:hover {
+      opacity: 1 !important;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .terminal-tab.active .terminal-tab-close {
+      opacity: 0.4;
+    }
+
+    .terminal-body {
+      border: 1px solid #1e293b;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
+      background: #020817;
     }
 
     .terminal-shell {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: #020817;
       height: 440px;
       min-height: 440px;
       overflow: hidden;
-      box-shadow: inset 0 0 0 1px rgba(20, 45, 90, 0.35);
       display: flex;
       flex-direction: column;
     }
@@ -2360,50 +2378,90 @@
       z-index: 1200;
       display: flex !important;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       overflow: hidden;
-      padding: 16px;
+      padding: 14px;
       box-sizing: border-box;
+      background: var(--bg);
     }
 
     #terminalPage:fullscreen .terminal-shell,
     #terminalPage.terminal-fallback-fullscreen .terminal-shell {
-      height: calc(100vh - 250px);
+      height: calc(100vh - 180px);
       min-height: 280px;
       flex: 1;
     }
 
     #terminalPage:fullscreen .terminal-history,
     #terminalPage.terminal-fallback-fullscreen .terminal-history {
-      max-height: 150px;
+      max-height: 120px;
     }
 
     .terminal-history {
       margin-top: 10px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--card-soft);
-      padding: 10px;
-      max-height: 180px;
+      border: 1px solid #1e293b;
+      border-radius: var(--radius-sm);
+      background: #0d1117;
+      padding: 10px 12px;
+      max-height: 160px;
       overflow-y: auto;
+    }
+
+    .terminal-history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .terminal-history-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #8b949e;
+    }
+
+    .terminal-history-clear {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: #8b949e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      opacity: 0.5;
+      transition: opacity 0.1s;
+    }
+
+    .terminal-history-clear:hover {
+      opacity: 1;
     }
 
     .terminal-history ul {
       list-style: none;
       padding: 0;
-      margin: 6px 0 0;
+      margin: 0;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
     }
 
     .terminal-history li {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.82rem;
-      color: var(--text);
-      border-bottom: 1px dashed var(--border);
-      padding-bottom: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #e6edf3;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
       word-break: break-word;
+    }
+
+    .terminal-history li:last-child {
+      border-bottom: none;
     }
 
     *:focus-visible {
@@ -3706,133 +3764,135 @@
 
 
   <div id="dashboardContent" style="display:none;">
-    <!-- Status Bar -->
-    <div class="status-bar">
-      <div class="status-bar-left">
-        <span class="status-bar-pill status-ok">● Operational</span>
-        <span class="status-bar-sep"></span>
-        <span class="status-bar-item">Uptime: <strong id="dashUptime">--</strong></span>
-        <span class="status-bar-sep"></span>
-        <span class="status-bar-item">Containers: <strong id="dashContainerCount">0</strong></span>
-        <span class="status-bar-sep"></span>
-        <span class="status-bar-item">Ports Open: <strong id="dashPortCount">0</strong></span>
-      </div>
-      <div class="status-bar-right">
-        <span class="status-bar-item" id="dashLastUpdated">Last updated: --</span>
-      </div>
-    </div>
-
-    <!-- Metrics Row -->
-    <div class="metrics-grid">
-      <div class="metric-cell">
-        <span class="metric-label">CPU</span>
-        <span class="metric-value" id="cpuValue">--%</span>
-        <div class="metric-bar"><div class="metric-bar-fill" id="cpuBar" style="width:0%"></div></div>
-      </div>
-      <div class="metric-cell">
-        <span class="metric-label">RAM</span>
-        <span class="metric-value" id="ramValue">--%</span>
-        <div class="metric-bar"><div class="metric-bar-fill metric-bar-ram" id="ramBar" style="width:0%"></div></div>
-      </div>
-      <div class="metric-cell">
-        <span class="metric-label">Battery</span>
-        <span class="metric-value" id="batteryValue">--%</span>
-        <div class="metric-bar"><div class="metric-bar-fill metric-bar-bat" id="batteryBar" style="width:0%"></div></div>
-        <span class="metric-sub" id="batteryMode">Checking...</span>
-      </div>
-      <div class="metric-cell">
-        <span class="metric-label">Docker</span>
-        <span class="metric-value" id="dockerStatValue">0</span>
-        <span class="metric-sub" id="dockerStatRunning">0 running</span>
-      </div>
-    </div>
-
-    <!-- Main Layout: 3-col -->
-    <div class="dash-main-grid">
-      <!-- Left: Chart -->
-      <div class="dash-col-wide">
-        <div class="section-block">
-          <div class="section-block-header">
-            <h3 class="section-block-title">System Resources</h3>
-            <span class="section-block-badge">3h window</span>
-          </div>
-          <div class="section-block-body">
-            <canvas id="cpuChart" height="88"></canvas>
+    <!-- Nested card shell like Dokploy -->
+    <div class="dash-outer">
+      <div class="dash-inner">
+        <!-- Header row -->
+        <div class="dash-header">
+          <div>
+            <h1 class="dash-heading">Dashboard</h1>
+            <p class="dash-subheading">Monitor your infrastructure in real time.</p>
           </div>
         </div>
 
-        <!-- Two-col subgrid inside wide column -->
-        <div class="dash-subgrid">
+        <!-- KPI Grid -->
+        <div class="dash-kpi-grid">
+          <div class="stat-card">
+            <span class="stat-label">Battery</span>
+            <span class="stat-value" id="batteryValue">--%</span>
+            <span class="stat-delta" id="batteryMode">Checking...</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">CPU Usage</span>
+            <span class="stat-value" id="cpuValue">--%</span>
+            <span class="stat-delta">Live processor usage</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">RAM Usage</span>
+            <span class="stat-value" id="ramValue">--%</span>
+            <span class="stat-delta">Current memory consumption</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Docker</span>
+            <span class="stat-value stat-value-sm" id="dockerStatValue">0</span>
+            <span class="stat-delta" id="dockerStatRunning">0 running</span>
+          </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="dash-section-card">
+          <div class="dash-section-header">
+            <div class="dash-section-title-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <h2 class="dash-section-title">System Trend</h2>
+            </div>
+            <span class="dash-section-badge">Last 3 hours</span>
+          </div>
+          <p class="dash-section-desc">CPU, RAM &amp; Battery over time</p>
+          <div class="dash-chart-wrap">
+            <canvas id="cpuChart" height="120"></canvas>
+          </div>
+        </div>
+
+        <!-- Two-column row -->
+        <div class="dash-cols">
           <!-- Pinned Ports -->
-          <div class="section-block">
-            <div class="section-block-header">
-              <h3 class="section-block-title">Pinned Ports</h3>
-              <button id="addPinnedPortBtn" onclick="addPinnedPort()" class="btn-ghost-sm">+ Add</button>
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <h2 class="dash-section-title">Pinned Ports</h2>
+              </div>
             </div>
-            <div class="dash-inline-form" style="margin-bottom:8px;">
-              <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port" />
+            <div class="dash-inline-form">
+              <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port e.g. 8000" />
+              <button id="addPinnedPortBtn" onclick="addPinnedPort()" class="btn-outline" style="white-space:nowrap;">Pin Port</button>
             </div>
-            <table class="dt" id="pinnedPortsTable">
-              <thead><tr><th>Port</th><th>Alias</th><th>Status</th><th></th></tr></thead>
+            <table class="dash-table" id="pinnedPortsTable">
+              <thead>
+                <tr><th>Port</th><th>Alias</th><th>Status</th><th></th></tr>
+              </thead>
               <tbody id="pinnedPortsBody"></tbody>
             </table>
           </div>
 
           <!-- Docker -->
-          <div class="section-block">
-            <div class="section-block-header">
-              <h3 class="section-block-title">Containers</h3>
-              <span class="section-block-badge" id="dockerTableCount">0</span>
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                <h2 class="dash-section-title">Docker Containers</h2>
+              </div>
             </div>
-            <table class="dt" id="dockerTable">
-              <thead><tr><th>Name</th><th>Status</th><th>Ports</th></tr></thead>
+            <table class="dash-table" id="dockerTable">
+              <thead>
+                <tr><th>Name</th><th>Status</th><th>Ports</th></tr>
+              </thead>
               <tbody id="dockerBody"></tbody>
             </table>
           </div>
         </div>
-      </div>
 
-      <!-- Right: Activity & Tasks -->
-      <div class="dash-col-narrow">
-        <!-- To-Do -->
-        <div class="section-block">
-          <div class="section-block-header">
-            <h3 class="section-block-title">Tasks</h3>
-            <span class="section-block-badge" id="todoMeta">0</span>
-          </div>
-          <div class="section-block-body" style="padding-top:0;">
-            <div class="dash-inline-form" id="todoComposer">
-              <input id="todoInput" class="field" placeholder="Add task..." />
-              <button id="addTodoBtn" onclick="addTodo()" class="btn-ghost-sm">Add</button>
+        <!-- Two-column row 2 -->
+        <div class="dash-cols">
+          <!-- Open Ports -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row" style="cursor:pointer;user-select:none;" onclick="togglePortsSection()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M10 3H3v7l7 7v7l11-11V3h-7"/><path d="M17 7h.01"/></svg>
+                <h2 class="dash-section-title">Open Ports</h2>
+                <span id="portsToggleIcon" class="dash-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+              </div>
             </div>
-            <ul id="todoList" class="todo-list-compact"></ul>
+            <div id="portsSectionBody">
+              <table class="dash-table" id="portsTable">
+                <thead>
+                  <tr><th>Protocol</th><th>State</th><th>Local Address</th><th>Alias</th><th></th></tr>
+                </thead>
+                <tbody id="portsBody"></tbody>
+              </table>
+              <div class="dash-activity-label">Recent Port Activity</div>
+              <div id="recentPortsList" class="recent-ports-list"></div>
+            </div>
+          </div>
+
+          <!-- To-Do -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <h2 class="dash-section-title">Operations To-Do</h2>
+              </div>
+            </div>
+            <div class="dash-inline-form" id="todoComposer">
+              <input id="todoInput" class="field" placeholder="Add task e.g. rotate nginx logs" />
+              <button id="addTodoBtn" onclick="addTodo()" class="btn-outline" style="white-space:nowrap;">Add Task</button>
+            </div>
+            <div id="todoMeta" class="dash-todo-meta muted">0 total • 0 done • 0 pending</div>
+            <ul id="todoList" class="todo-list"></ul>
           </div>
         </div>
 
-        <!-- Port Activity -->
-        <div class="section-block" style="margin-top:8px;">
-          <div class="section-block-header" style="cursor:pointer;user-select:none;" onclick="togglePortsSection()">
-            <h3 class="section-block-title">Port Activity</h3>
-            <span id="portsToggleIcon" style="display:flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
-          </div>
-          <div class="section-block-body" id="portsSectionBody" style="padding-top:0;">
-            <div id="recentPortsList" class="port-activity-list"></div>
-          </div>
-        </div>
-
-        <!-- Open Ports summary -->
-        <div class="section-block" style="margin-top:8px;">
-          <div class="section-block-header">
-            <h3 class="section-block-title">Open Ports</h3>
-            <span class="section-block-badge" id="openPortsCount">0</span>
-          </div>
-          <div class="section-block-body" style="padding-top:0;max-height:200px;overflow-y:auto;">
-            <table class="dt dt-compact" id="portsTable">
-              <thead><tr><th>Port</th><th>State</th></tr></thead>
-              <tbody id="portsBody"></tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -4462,25 +4522,43 @@
     </table>
   </section>
 
-  <section class="card terminal-page" id="terminalPage">
+  <section class="terminal-page" id="terminalPage">
     <div class="terminal-header">
-      <div>
-        <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="terminal"></i> Web Terminal</h3>
-        <div class="muted" style="margin-top: 4px;">Browser terminal with multi-tab and command history</div>
+      <div class="terminal-header-left">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="terminal-header-icon"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <div>
+          <div class="terminal-header-title">Terminal</div>
+          <div class="terminal-header-desc">Multi-tab shell with command history</div>
+        </div>
       </div>
-      <div class="actions">
-        <button onclick="createTerminalTab()">➕ New Tab</button>
-        <button id="terminalFullscreenBtn" class="btn-neutral" onclick="toggleTerminalFullscreen()"><i data-lucide="maximize" style="width:16px;height:16px;"></i> Full Screen</button>
-        <button class="btn-neutral" onclick="clearTerminalHistory()">🧹 Clear History</button>
+      <div class="terminal-header-actions">
+        <button onclick="createTerminalTab()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Tab
+        </button>
+        <button id="terminalFullscreenBtn" class="btn-outline" onclick="toggleTerminalFullscreen()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          Full Screen
+        </button>
+        <button class="btn-outline" onclick="clearTerminalHistory()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Clear History
+        </button>
       </div>
     </div>
 
-    <div class="terminal-tabs" id="terminalTabs"></div>
-
-    <div class="terminal-shell" id="terminalShell"></div>
+    <div class="terminal-body">
+      <div class="terminal-tabs" id="terminalTabs"></div>
+      <div class="terminal-shell" id="terminalShell"></div>
+    </div>
 
     <div class="terminal-history">
-      <div class="muted">Recent commands (active tab)</div>
+      <div class="terminal-history-header">
+        <span class="terminal-history-label">Command History</span>
+        <button class="terminal-history-clear" onclick="clearTerminalHistory()" title="Clear">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <ul id="terminalHistoryList"></ul>
     </div>
   </section>
@@ -7395,8 +7473,6 @@
         lastBatteryPercent = Number(data.percent);
         document.getElementById("batteryValue").innerText = `${lastBatteryPercent.toFixed(1)}%`;
         document.getElementById("batteryMode").innerText = data.plugged ? "Charging" : "On battery";
-        const batBar = document.getElementById("batteryBar");
-        if (batBar) batBar.style.width = `${Math.min(lastBatteryPercent, 100)}%`;
       } catch {
         lastBatteryPercent = null;
         document.getElementById("batteryValue").innerText = "--%";
@@ -7414,14 +7490,6 @@
 
         document.getElementById("cpuValue").innerText = `${cpu.toFixed(1)}%`;
         document.getElementById("ramValue").innerText = `${ram.toFixed(1)}%`;
-        const cpuBar = document.getElementById("cpuBar");
-        const ramBar = document.getElementById("ramBar");
-        if (cpuBar) cpuBar.style.width = `${Math.min(cpu, 100)}%`;
-        if (ramBar) ramBar.style.width = `${Math.min(ram, 100)}%`;
-        const uptimeEl = document.getElementById("dashUptime");
-        if (uptimeEl && data.uptime) uptimeEl.textContent = data.uptime;
-        const updatedEl = document.getElementById("dashLastUpdated");
-        if (updatedEl) updatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 
         const nowMs = Date.now();
         if (nowMs - lastTrendPointAt >= TREND_SAMPLE_INTERVAL_MS) {
@@ -7466,11 +7534,6 @@
         lastPortSnapshot = snapshot;
         renderRecentPortActivity();
 
-        const portCountEl = document.getElementById("dashPortCount");
-        const openCountEl = document.getElementById("openPortsCount");
-        if (portCountEl) portCountEl.textContent = String(normalized.length);
-        if (openCountEl) openCountEl.textContent = String(normalized.length);
-
         if (!normalized.length) {
           body.innerHTML = `<tr><td colspan="5" class="muted">No open ports found.</td></tr>`;
           return;
@@ -7511,34 +7574,20 @@
         const res = await apiFetch("/docker");
         const containers = await res.json();
 
-        const count = (containers || []).length;
-        const running = (containers || []).filter(c => String(c.status || "").toLowerCase().includes("up")).length;
-
-        const statVal = document.getElementById("dockerStatValue");
-        const statRun = document.getElementById("dockerStatRunning");
-        const tableCount = document.getElementById("dockerTableCount");
-        const containerCount = document.getElementById("dashContainerCount");
-        if (statVal) statVal.textContent = String(count);
-        if (statRun) statRun.textContent = `${running} running`;
-        if (tableCount) tableCount.textContent = String(count);
-        if (containerCount) containerCount.textContent = String(count);
-
-        if (!count) {
-          if (body) body.innerHTML = `<tr><td colspan="3" class="muted">No containers.</td></tr>`;
+        if (!containers.length) {
+          body.innerHTML = `<tr><td colspan="3" class="muted">No running containers.</td></tr>`;
           return;
         }
 
-        if (body) {
-          body.innerHTML = containers.map(c => `
-            <tr>
-              <td>${esc(c.name)}</td>
-              <td>${esc(c.status)}</td>
-              <td>${esc(c.ports)}</td>
-            </tr>
-          `).join("");
-        }
+        body.innerHTML = containers.map(c => `
+          <tr>
+            <td>${esc(c.name)}</td>
+            <td>${esc(c.status)}</td>
+            <td>${esc(c.ports)}</td>
+          </tr>
+        `).join("");
       } catch {
-        if (body) body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load Docker.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load Docker status.</td></tr>`;
       }
     }
 
@@ -8971,7 +9020,9 @@
       tabsWrap.innerHTML = terminalTabs.map((tab) => `
         <button class="terminal-tab ${tab.id === activeTerminalTabId ? "active" : ""}" onclick="switchTerminalTab('${tab.id}')">
           <span>Tab ${tab.index}</span>
-          <span onclick="event.stopPropagation(); closeTerminalTab('${tab.id}')">✕</span>
+          <span class="terminal-tab-close" onclick="event.stopPropagation(); closeTerminalTab('${tab.id}')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
         </button>
       `).join("");
     }
