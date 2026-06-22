@@ -4648,6 +4648,18 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         <span>Access & Tunnels</span>
       </button>
+      <button id="mobileSshKeysMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('ssh-keys'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>SSH Keys</span>
+      </button>
+      <button id="mobileCloudflaredMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('cloudflared'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Cloudflared</span>
+      </button>
+      <button id="mobileSecretsMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('secrets'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Secrets Vault</span>
+      </button>
 
       <div class="sidebar-divider" style="margin:6px 16px;"></div>
       <div class="sidebar-group-label" style="padding:4px 16px;">Development</div>
@@ -5891,6 +5903,16 @@
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("deployMenuItem").style.display = canOperate ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
+      // Sync mobile drawer menu items
+      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileSshKeysMenuItem","mobileCloudflaredMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem","mobileSecretsMenuItem"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (id === "mobileTerminalMenuItem" || id === "mobileDeployMenuItem") {
+          el.style.display = canOperate ? "flex" : "none";
+        } else {
+          el.style.display = isAdmin ? "flex" : "none";
+        }
+      });
 
       if (!canOperate && currentPage === "terminal") {
         currentPage = "dashboard";
