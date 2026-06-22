@@ -2490,9 +2490,7 @@
   
     /* Mobile Responsive Optimizations */
     @media (max-width: 768px) {
-      html {
-        overflow-x: hidden;
-      }
+      html { overflow-x: hidden; }
       
       body {
         flex-direction: column;
@@ -2502,12 +2500,13 @@
         overflow-y: auto;
       }
 
+      /* ── Sidebar becomes top nav bar ── */
       .app-sidebar {
         width: 100% !important;
         height: auto;
         flex-direction: row;
         align-items: center;
-        padding: 8px 12px;
+        padding: 6px 10px;
         border-right: none;
         border-bottom: 1px solid var(--sidebar-border);
         position: sticky;
@@ -2515,370 +2514,147 @@
         z-index: 200;
         background: var(--sidebar-bg);
         flex-shrink: 0;
+        gap: 8px;
       }
 
-      .app-sidebar.collapsed {
-        height: auto;
-      }
+      .app-sidebar.collapsed { height: auto; width: 100% !important; }
+      .app-sidebar.collapsed .sidebar-org-header { padding: 0; }
+      .app-sidebar.collapsed .sidebar-org-logo { width: 28px; height: 28px; }
 
-      .toggle-sidebar-btn {
-        display: none !important;
-      }
+      .sidebar-org { border-bottom: none; padding: 0; }
+      .sidebar-org-header { gap: 8px; }
+      .sidebar-org-info { display: flex !important; align-items: center; gap: 6px; }
+      .sidebar-org-name { font-size: 0.82rem; }
+      .sidebar-org-server { display: none; }
+      .sidebar-collapse-btn { display: none !important; }
+      .sidebar-env-row { display: none !important; }
+      .sidebar-search-wrap { display: none !important; }
+      .sidebar-scroll { display: none !important; }
+      .sidebar-footer { display: none !important; }
 
-      .sidebar-header {
-        padding: 0;
-        flex-shrink: 0;
+      /* ── Topbar ── */
+      .topbar-enterprise {
+        padding: 0 12px;
+        height: 38px;
       }
-      
-      .sidebar-header .title {
-        display: none !important;
+      .topbar-time { font-size: 0.7rem; }
+      .topbar-icon-btn { width: 28px; height: 28px; }
+      .topbar-badge { top: 4px; right: 4px; width: 12px; height: 12px; font-size: 0.5rem; }
+
+      /* ── Main content ── */
+      .app-main { height: auto; min-height: 0; overflow-y: visible; overflow-x: hidden; }
+      .app-content-wrapper { padding: 10px 10px; gap: 10px; max-width: 100%; }
+
+      /* ── Dashboard ── */
+      .dash-outer { padding: 2px; }
+      .dash-inner { padding: 14px; gap: 16px; }
+      .dash-heading { font-size: 1.2rem; }
+      .dash-subheading { font-size: 0.78rem; }
+      .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stat-card { padding: 14px; min-height: 90px; }
+      .stat-label { font-size: 0.65rem; }
+      .stat-value { font-size: 1.5rem; }
+      .stat-value-sm { font-size: 1.3rem; }
+      .stat-delta { font-size: 0.7rem; }
+      .dash-cols { grid-template-columns: 1fr; gap: 10px; }
+      .dash-section-card { padding: 14px; }
+      .dash-section-title { font-size: 0.85rem; }
+      .dash-section-desc { font-size: 0.75rem; }
+      .dash-section-badge { font-size: 0.6rem; padding: 2px 8px; }
+      .dash-table thead th { font-size: 0.65rem; padding: 6px 6px; }
+      .dash-table tbody td { padding: 6px 6px; font-size: 0.78rem; }
+      .dash-inline-form { flex-direction: column; gap: 6px; }
+      .dash-chart-wrap canvas { height: 80px !important; }
+
+      /* ── Admin pages ── */
+      .admin-page { padding: 10px; }
+      .admin-page .cmd-card { max-width: 100% !important; }
+
+      /* ── Docker page ── */
+      .gh-deploy-header { gap: 10px; }
+      .gh-deploy-header h4 { font-size: 0.9rem; }
+
+      /* ── File Manager ── */
+      .file-manager-wrapper { max-width: 100%; }
+      .file-actions { gap: 6px; flex-wrap: wrap; }
+      .file-actions button { padding: 6px 8px; font-size: 0.72rem; height: 32px; border-radius: 6px; }
+      .file-actions button svg { width: 12px; height: 12px; }
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; }
+      .file-item { padding: 8px 4px; }
+      .file-icon svg { width: 20px; height: 20px; }
+      .file-name { font-size: 0.68rem; }
+      .file-meta { font-size: 0.6rem; }
+      .file-list-item {
+        grid-template-columns: 28px 1fr;
+        gap: 6px;
+        padding: 6px 8px;
       }
-      
-      .sidebar-nav {
-        flex-direction: row;
-        overflow-x: auto;
-        padding: 0;
-        margin: 0 0 0 8px;
-        gap: 4px;
-        flex: 1;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .sidebar-nav::-webkit-scrollbar {
+      .file-list-item > *:not(:first-child):not(:nth-child(2)) {
         display: none;
       }
-      
-      .top-nav-item {
-        width: auto;
-        white-space: nowrap;
-        padding: 8px 10px;
-        font-size: 0;
-        gap: 0;
-      }
-      
-      .top-nav-item i {
-        font-size: 1.1rem;
-      }
-      
-      .top-nav-item span {
-        display: none;
-      }
-      
-      .app-main {
-        height: auto;
-        min-height: 0;
-        overflow-y: visible;
-        overflow-x: hidden;
-      }
+      .breadcrumb { font-size: 0.75rem; padding: 6px 8px; border-radius: 6px; }
+      .view-toggle { margin-left: 0 !important; }
+      .view-btn { padding: 4px 8px; }
 
-      .app-content-wrapper {
-        padding: 12px 10px;
-        gap: 12px;
-        max-width: 100%;
-      }
-      
-      .page-title {
-        font-size: 1.2rem;
-      }
+      /* ── Terminal ── */
+      .terminal-shell { height: 280px; min-height: 220px; }
+      .terminal-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .terminal-header-actions { width: 100%; flex-wrap: wrap; }
+      .terminal-header-actions button { flex: 1; min-width: 0; font-size: 0.72rem; padding: 6px 8px; height: 30px; }
+      .terminal-tabs { gap: 3px; padding: 4px 6px 0; overflow-x: auto; }
+      .terminal-tab { padding: 4px 8px; font-size: 0.72rem; }
+      .terminal-history { max-height: 120px; padding: 8px 10px; }
+      .terminal-history li { font-size: 0.72rem; }
 
-      .page-subtitle {
-        font-size: 0.82rem;
-      }
+      /* ── Deploy page ── */
+      .gh-deploy-box { padding: 12px; }
+      .gh-input-row { flex-direction: column; }
+      .gh-branch-input { width: 100%; }
+      .gh-form-grid { grid-template-columns: 1fr; }
+      .gh-stepper { flex-wrap: wrap; gap: 8px; justify-content: center; }
+      .gh-stepper::before { display: none; }
+      .gh-step { flex: 0 0 auto; }
+      .gh-actions { flex-wrap: wrap; }
+      .gh-actions button { flex: 1; }
+      .gh-env-key { min-width: 80px; font-size: 0.7rem; }
+      #deployTemplateGrid { grid-template-columns: 1fr !important; }
 
-      .card {
-        padding: 14px;
-        min-height: auto;
-        border-radius: 12px;
-      }
-      
-      .card:hover {
-        transform: none;
-      }
-      
-      .grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      
-      .kpi, .panel-wide, .panel-side, .panel-half, .panel-full {
-        grid-column: span 1 !important;
-      }
-      
-      .kpi .value {
-        font-size: 1.6rem;
-      }
+      /* ── Access hub ── */
+      .access-tabs { gap: 4px; padding: 4px; }
+      .access-tab-btn { padding: 5px 8px; font-size: 0.72rem; gap: 4px; }
+      .access-hub-stats { grid-template-columns: 1fr; }
 
+      /* ── Cloudflared ── */
+      .cloudflared-kpis { grid-template-columns: 1fr; }
+      .cloudflared-grid-2 { grid-template-columns: 1fr; }
+
+      /* ── Tables ── */
       .services-table, .data-table, .cloudflared-table-wrap {
         display: block;
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
-      
       .services-table th, .services-table td,
       .data-table th, .data-table td {
-        padding: 8px 6px;
-        font-size: 0.8rem;
+        padding: 6px 6px;
+        font-size: 0.75rem;
         white-space: nowrap;
       }
 
-      .field, select, button {
-        min-height: 44px;
-        font-size: 0.9rem;
-      }
-      
-      button {
-        padding: 10px 14px;
-      }
+      /* ── Form elements ── */
+      .field, select, button { min-height: 40px; font-size: 0.85rem; }
+      button { padding: 8px 12px; }
 
-      .cloudflared-grid-2 {
-        grid-template-columns: 1fr;
-      }
-      
-      .sidebar-footer-extra, .sidebar-user-actions {
-        display: none !important;
-      }
+      /* ── Card overrides ── */
+      .card { padding: 12px; min-height: auto; border-radius: var(--radius); }
+      .card:hover { transform: none; }
+      .grid { grid-template-columns: 1fr; gap: 10px; }
 
-      /* Modals */
-      #cloudflaredEditBox, #fileEditorBox, #permissionsBox, #loginBox {
-        width: 95%;
-        max-width: 95vw;
-        padding: 14px;
-        max-height: 85vh;
-        overflow-y: auto;
-      }
-
-      #logModal {
-        padding: 8px;
-      }
-      #logBox {
-        max-width: 100%;
-        height: min(90vh, 100%);
-        padding: 10px;
-      }
-
-      #deployWizardModal, #deployLogsModal {
-        padding: 8px;
-      }
-      #deployWizardBox {
-        max-width: 100%;
-        max-height: 92vh;
-        padding: 16px;
-      }
-      #deployLogsBox {
-        max-width: 100%;
-        max-height: 92vh;
-        padding: 14px;
-      }
-      #deployLogsContent {
-        max-height: 60vh;
-      }
-
-      #fileEditorModal {
-        padding: 6px;
-      }
-      #fileEditorBox {
-        max-width: 100%;
-        height: min(95vh, 100%);
-        margin: 0;
-        padding: 10px;
-        border-radius: 12px;
-      }
-      #fileEditorContent {
-        font-size: 0.8rem;
-      }
-
-      /* Admin pages */
-      .admin-page {
-        padding: 14px;
-        border-radius: 12px;
-      }
-      .admin-page .stack {
-        max-width: 100% !important;
-      }
-      .admin-page .cmd-card {
-        max-width: 100% !important;
-      }
-
-      /* File Manager */
-      .file-manager-wrapper {
-        max-width: 100%;
-      }
-      .file-actions {
-        gap: 6px;
-      }
-      .file-actions button {
-        padding: 8px 10px;
-        font-size: 0.78rem;
-      }
-      .file-grid {
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-        gap: 8px;
-      }
-      .file-item {
-        padding: 10px 6px;
-      }
-      .file-icon {
-        font-size: 2rem;
-      }
-      .file-name {
-        font-size: 0.72rem;
-      }
-      .file-list-item {
-        grid-template-columns: 32px 1fr;
-        gap: 8px;
-        padding: 8px;
-      }
-      .file-list-item > *:not(:first-child):not(:nth-child(2)) {
-        display: none;
-      }
-      .breadcrumb {
-        font-size: 0.8rem;
-        padding: 8px;
-      }
-      .view-toggle {
-        margin-left: 0 !important;
-      }
-
-      /* Terminal */
-      .terminal-shell {
-        height: 300px;
-        min-height: 250px;
-        border-radius: 10px;
-      }
-      .terminal-header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .terminal-header .actions {
-        width: 100%;
-        flex-wrap: wrap;
-      }
-      .terminal-header .actions button {
-        flex: 1;
-        min-width: 0;
-        font-size: 0.78rem;
-        padding: 8px 6px;
-      }
-      .terminal-tabs {
-        gap: 4px;
-      }
-      .terminal-tab {
-        padding: 6px 8px;
-        font-size: 0.78rem;
-      }
-
-      /* Deploy page */
-      .gh-deploy-box {
-        padding: 14px;
-      }
-      .gh-input-row {
-        flex-direction: column;
-      }
-      .gh-branch-input {
-        width: 100%;
-      }
-      .gh-form-grid {
-        grid-template-columns: 1fr;
-      }
-      .gh-stepper {
-        flex-wrap: wrap;
-        gap: 12px;
-        justify-content: center;
-      }
-      .gh-stepper::before {
-        display: none;
-      }
-      .gh-step {
-        flex: 0 0 auto;
-      }
-      .gh-actions {
-        flex-wrap: wrap;
-      }
-      .gh-actions button {
-        flex: 1;
-      }
-      .gh-env-key {
-        min-width: 100px;
-        font-size: 0.75rem;
-      }
-
-      #deployTemplateGrid {
-        grid-template-columns: 1fr !important;
-      }
-
-      /* Access hub */
-      .access-tabs {
-        gap: 4px;
-        padding: 4px;
-      }
-      .access-tab-btn {
-        padding: 6px 8px;
-        font-size: 0.78rem;
-        gap: 4px;
-      }
-      .access-hub-stats {
-        grid-template-columns: 1fr;
-      }
-
-      /* Cloudflared KPIs */
-      .cloudflared-kpis {
-        grid-template-columns: 1fr;
-      }
-
-      /* To-do */
-      .todo-row {
-        grid-template-columns: 1fr;
-      }
-      .todo-item {
-        padding: 8px;
-      }
-
-      /* SSH / Forms */
-      .cmd-card {
-        padding: 10px;
-        max-width: 100% !important;
-      }
-      .cmd-line {
-        font-size: 0.75rem;
-      }
-
-      /* Context menu */
-      .file-context-menu {
-        min-width: 150px;
-      }
-      .context-menu-item {
-        padding: 12px 10px;
-        font-size: 0.85rem;
-      }
-
-      /* Port action menu */
-      .port-menu-dropdown {
-        min-width: 110px;
-      }
-
-      /* Permissions grid */
-      .perms-grid {
-        grid-template-columns: 1fr repeat(3, 1fr);
-        font-size: 0.8rem;
-      }
-
-      /* Recent ports */
-      .recent-port-item {
-        padding: 6px 8px;
-      }
-
-      /* Details/summary elements */
-      details pre {
-        max-height: 150px;
-        font-size: 0.7rem;
-      }
-
-      /* Scrollbar on mobile */
-      ::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
-      }
+      /* ── Auth pages ── */
+      .auth-brand-panel { display: none; }
+      .auth-form-panel { max-width: 100%; padding: 20px; }
+      .auth-form-title { font-size: 1.4rem; }
     }
 
     /* --- Custom Global Scrollbar --- */
