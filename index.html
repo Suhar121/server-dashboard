@@ -1942,10 +1942,7 @@
 
         .admin-page {
       display: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--card);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-xs);
       padding: 24px;
     }
 
@@ -3891,48 +3888,59 @@
   </div>
 
   
-  <section class="card admin-page" id="dockerPage">
-    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="box"></i> Docker Orchestration</h3>
-    <div class="muted" style="margin-top: 6px;">Manage containers, images, and observe live logs.</div>
-    
-    <div class="cloudflared-kpis" style="margin-top: 16px;">
-      <div class="cloudflared-kpi">
-        <div class="cloudflared-kpi-label">Containers</div>
-        <div class="cloudflared-kpi-value" id="dockerKpiTotal">0</div>
-        <div class="cloudflared-kpi-note" id="dockerKpiRunning">0 running</div>
+  <section class="admin-page" id="dockerPage">
+    <div class="dash-section-card" style="border:none;padding:0;background:transparent;">
+      <div class="gh-deploy-header" style="margin-bottom:20px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 8h1"/><path d="M14 8h1"/><path d="M9 12h1"/><path d="M14 12h1"/><path d="M9 16h1"/><path d="M14 16h1"/></svg>
+        </div>
+        <div>
+          <h4 style="margin:0;font-weight:600;">Docker Manager</h4>
+          <div class="muted" style="font-size:0.82rem;">Manage containers, images, and live logs</div>
+        </div>
       </div>
-      <div class="cloudflared-kpi">
-        <div class="cloudflared-kpi-label">Images</div>
-        <div class="cloudflared-kpi-value" id="dockerKpiImages">0</div>
-        <div class="cloudflared-kpi-note">Local cached images</div>
-      </div>
-      <div class="cloudflared-kpi" style="border-color: var(--brand); background: var(--brand-soft); align-items:flex-start; justify-content: center; cursor: pointer;" onclick="pruneDocker()">
-        <div style="font-weight: 600; color: var(--brand); display: flex; align-items: center; gap: 6px;"><i data-lucide="trash-2" style="width:20px;height:20px;"></i> System Prune</div>
-        <div class="cloudflared-kpi-note" style="margin-top:4px; color: var(--brand);">Reclaim disk space</div>
-      </div>
-    </div>
 
-    <div class="cloudflared-panel" style="margin-top: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-        <h4><i data-lucide="server"></i> Active Containers</h4>
-        <button class="btn-neutral" onclick="loadDockerContainers()"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Refresh</button>
+      <div class="dash-kpi-grid" style="margin-bottom:16px;">
+        <div class="stat-card">
+          <span class="stat-label">Containers</span>
+          <span class="stat-value stat-value-sm" id="dockerKpiTotal">0</span>
+          <span class="stat-delta" id="dockerKpiRunning">0 running</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Images</span>
+          <span class="stat-value stat-value-sm" id="dockerKpiImages">0</span>
+          <span class="stat-delta">Local cached images</span>
+        </div>
+        <div class="stat-card" style="cursor:pointer;border-color:var(--border);" onclick="pruneDocker()">
+          <span class="stat-label" style="color:var(--warn);">System Prune</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <span style="font-size:0.85rem;font-weight:600;color:var(--warn);">Reclaim disk space</span>
+          </div>
+        </div>
       </div>
-      <div class="cloudflared-table-wrap">
-        <table class="data-table" id="dockerFullTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Image</th>
-              <th>Status</th>
-              <th>Ports</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="dockerFullBody">
-             <tr><td colspan="6" class="muted">Loading containers...</td></tr>
-          </tbody>
-        </table>
+
+      <div class="dash-section-card">
+        <div class="dash-section-header" style="margin-bottom:12px;">
+          <div class="dash-section-title-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
+            <h2 class="dash-section-title">Active Containers</h2>
+          </div>
+          <button class="btn-outline" onclick="loadDockerContainers()" style="height:30px;padding:0 10px;font-size:0.78rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="cloudflared-table-wrap">
+          <table class="dash-table" id="dockerFullTable">
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Image</th><th>Status</th><th>Ports</th><th></th></tr>
+            </thead>
+            <tbody id="dockerFullBody">
+               <tr><td colspan="6" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading containers...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>
@@ -4859,42 +4867,46 @@
 
           const portsRaw = String(c.ports || "").split(",").map(p => p.trim()).filter(Boolean);
           const portsHtml = portsRaw.length > 0 
-            ? portsRaw.map(p => `<span class="docker-port-badge"><i data-lucide="zap" style="width:10px;height:10px;margin-right:4px;"></i>${esc(p)}</span>`).join("")
-            : `<span class="muted" style="font-size:0.8rem;">No exposed ports</span>`;
+            ? portsRaw.map(p => `<span class="docker-port-badge">${esc(p)}</span>`).join("")
+            : `<span class="muted" style="font-size:0.78rem;">No exposed ports</span>`;
 
           const idShort = id ? esc(id.substring(0, 12)) : "--";
 
+          const restartSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+          const stopSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+          const startSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+          const logsSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+          const consoleSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>';
+
           const actionButtons = id
             ? (isRunning
-              ? `<button class="btn-warn" onclick="dockerAction('${esc(id)}', 'restart')" title="Restart"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i></button>
-                 <button class="btn-danger" onclick="dockerAction('${esc(id)}', 'stop')" title="Stop"><i data-lucide="square" style="width:14px;height:14px;"></i></button>`
-              : `<button class="btn-success" onclick="dockerAction('${esc(id)}', 'start')" title="Start"><i data-lucide="play" style="width:14px;height:14px;"></i></button>`)
+              ? `<button class="btn-warn" onclick="dockerAction('${esc(id)}', 'restart')" title="Restart" style="height:28px;width:28px;padding:0;">${restartSvg}</button>
+                 <button class="btn-danger" onclick="dockerAction('${esc(id)}', 'stop')" title="Stop" style="height:28px;width:28px;padding:0;">${stopSvg}</button>`
+              : `<button class="btn-success" onclick="dockerAction('${esc(id)}', 'start')" title="Start" style="height:28px;width:28px;padding:0;">${startSvg}</button>`)
             : "";
 
           return `
             <tr>
-              <td style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.8rem; color: var(--text-damped);">${idShort}</td>
-              <td style="font-weight: 600; color: var(--text);">${esc(c.name || "--")}</td>
-              <td><span class="cloudflared-pill" style="font-size:0.75rem;">${esc(c.image || "--")}</span></td>
+              <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--muted);">${idShort}</td>
+              <td style="font-weight:500;">${esc(c.name || "--")}</td>
+              <td><span style="font-size:0.78rem;color:var(--text-secondary);">${esc(c.image || "--")}</span></td>
               <td>
-                <div style="display:flex; flex-direction:column; gap:4px; max-width: max-content;">
+                <div style="display:flex;flex-direction:column;gap:3px;">
                   <span class="${statusBadgeClass}">${esc(statusText)}</span>
-                  <span style="font-size:0.7rem; color:var(--text-damped);">${esc(c.status || "--")}</span>
+                  <span style="font-size:0.68rem;color:var(--muted);">${esc(c.status || "--")}</span>
                 </div>
               </td>
-              <td><div style="display:flex; flex-wrap:wrap; gap:6px;">${portsHtml}</div></td>
+              <td><div style="display:flex;flex-wrap:wrap;gap:4px;">${portsHtml}</div></td>
               <td>
-                <div class="actions" style="gap:6px;">
+                <div style="display:flex;gap:4px;align-items:center;">
                   ${actionButtons}
-                  ${id ? `<button class="btn-neutral" onclick="dockerLogs('${esc(id)}')" title="Logs"><i data-lucide="file-text" style="width:14px;height:14px;"></i></button>` : ""}
-                  ${isRunning && id ? `<button class="btn-neutral" onclick="dockerExec('${esc(id)}')" title="Console"><i data-lucide="terminal" style="width:14px;height:14px;"></i></button>` : ""}
+                  ${id ? `<button class="btn-outline" onclick="dockerLogs('${esc(id)}')" title="Logs" style="height:28px;width:28px;padding:0;">${logsSvg}</button>` : ""}
+                  ${isRunning && id ? `<button class="btn-outline" onclick="dockerExec('${esc(id)}')" title="Console" style="height:28px;width:28px;padding:0;">${consoleSvg}</button>` : ""}
                 </div>
               </td>
             </tr>
           `;
         }).join("");
-
-        lucide.createIcons();
       } catch (e) {
         body.innerHTML = `<tr><td colspan="6" class="error-text">Failed to load docker list: ${esc(e.message)}</td></tr>`;
       }
