@@ -244,32 +244,63 @@
       width: 72px;
     }
 
-    .app-sidebar.collapsed .title,
+    .app-sidebar.collapsed .sidebar-brand-text,
     .app-sidebar.collapsed .top-nav-item span,
-    .app-sidebar.collapsed .auth-badge div:not(:first-child),
-    .app-sidebar.collapsed .theme-select,
-    .app-sidebar.collapsed #logoutBtn span {
+    .app-sidebar.collapsed .sidebar-navgroup-label,
+    .app-sidebar.collapsed .sidebar-user-info,
+    .app-sidebar.collapsed .sidebar-user-actions,
+    .app-sidebar.collapsed .sidebar-footer-extra,
+    .app-sidebar.collapsed .toggle-sidebar-btn {
       display: none;
     }
     
     .app-sidebar.collapsed .sidebar-header {
       justify-content: center;
-      padding: 20px 0;
+      padding: 16px 0;
+      border-bottom: none;
+    }
+
+    .app-sidebar.collapsed .sidebar-logo-wrap {
+      width: 32px;
+      height: 32px;
+    }
+
+    .app-sidebar.collapsed .sidebar-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+
+    .app-sidebar.collapsed .sidebar-nav {
+      padding: 0 6px;
+    }
+
+    .app-sidebar.collapsed .sidebar-navgroup {
+      gap: 1px;
     }
 
     .app-sidebar.collapsed .top-nav-item {
       justify-content: center;
-      padding: 10px 0;
-      margin: 0 10px;
+      padding: 9px 0;
+      margin: 0 4px;
     }
-    
-    .app-sidebar.collapsed .top-nav-item i {
+
+    .app-sidebar.collapsed .top-nav-item svg {
       margin: 0;
     }
+
+    .app-sidebar.collapsed .top-nav-item.active::before {
+      display: none;
+    }
     
-    .app-sidebar.collapsed .auth-badge {
+    .app-sidebar.collapsed .sidebar-user {
       justify-content: center;
-      padding: 12px 0;
+    }
+
+    .app-sidebar.collapsed .sidebar-user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
     }
 
     .toggle-sidebar-btn {
@@ -315,27 +346,140 @@
     }
 
     .sidebar-header {
-      padding: 24px 20px;
+      padding: 20px 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-logo-wrap {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sidebar-brand-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar-server-name {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0;
     }
 
     .sidebar-nav {
-      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
       padding: 0 10px;
+    }
+
+    .sidebar-navgroup {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      overflow-y: auto;
+    }
+
+    .sidebar-navgroup-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 4px 12px 6px;
     }
 
     .sidebar-footer {
-      padding: 16px 20px;
       border-top: 1px solid var(--sidebar-border);
+      padding: 12px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
+    }
+
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--brand-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--brand);
+      flex-shrink: 0;
+    }
+
+    .sidebar-user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar-user-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      display: block;
+    }
+
+    .sidebar-user-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .sidebar-icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: none;
+      transition: all 0.15s;
+    }
+
+    .sidebar-icon-btn:hover {
+      background: var(--nav-hover);
+      color: var(--text);
+      box-shadow: none;
+      transform: none;
+    }
+
+    .sidebar-footer-extra {
+      display: flex;
+      gap: 6px;
     }
 
     h1, h2, h3, h4 {
@@ -358,28 +502,25 @@
     .top-nav-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 9px 14px;
+      gap: 10px;
+      padding: 8px 12px;
       border-radius: var(--radius);
       border: none;
       background: transparent;
       color: var(--text-secondary);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.12s ease;
       width: 100%;
       text-align: left;
       position: relative;
     }
 
-    .top-nav-item i {
+    .top-nav-item svg {
       color: var(--muted);
-      transition: color 0.15s ease;
-      width: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      transition: color 0.12s ease;
+      flex-shrink: 0;
     }
 
     .top-nav-item:hover {
@@ -387,7 +528,7 @@
       color: var(--text);
     }
 
-    .top-nav-item:hover i {
+    .top-nav-item:hover svg {
       color: var(--text);
     }
 
@@ -397,7 +538,7 @@
       font-weight: 600;
     }
 
-    .top-nav-item.active i {
+    .top-nav-item.active svg {
       color: var(--brand);
     }
 
@@ -408,7 +549,7 @@
       top: 50%;
       transform: translateY(-50%);
       width: 3px;
-      height: 20px;
+      height: 18px;
       border-radius: 0 3px 3px 0;
       background: var(--brand);
     }
@@ -2214,7 +2355,7 @@
         grid-template-columns: 1fr;
       }
       
-      .auth-badge, .sidebar-footer {
+      .sidebar-footer-extra, .sidebar-user-actions {
         display: none !important;
       }
 
@@ -3197,48 +3338,94 @@
   
 <div class="app-sidebar" id="appSidebar">
   <div class="sidebar-header">
-    <img src="/logo" alt="GridCore" style="width: 36px; height: 36px; border-radius: 8px; object-fit: cover;" />
-    <div style="flex: 1; min-width: 0;">
-      <div class="title">GridCore</div>
-      <div id="serverNameLabel" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <div class="sidebar-logo-wrap">
+      <img src="/logo" alt="GridCore" class="sidebar-logo" />
     </div>
-    <button class="toggle-sidebar-btn" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></button>
+    <div class="sidebar-brand-text">
+      <div class="title">GridCore</div>
+      <div id="serverNameLabel" class="sidebar-server-name"></div>
+    </div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Collapse sidebar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
   </div>
   
-  <nav class="sidebar-nav" aria-label="Page navigation">
-    <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
-    <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')"><i data-lucide="terminal-square"></i> <span>Terminal</span></button>
-        <button id="dockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker')"><i data-lucide="box"></i> <span>Docker Manager</span></button>
-    <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')"><i data-lucide="users"></i> <span>Team</span></button>
-    <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')"><i data-lucide="bell"></i> <span>Alert Rules</span></button>
-    <button id="accessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub')"><i data-lucide="waypoints"></i> <span>Access & Tunnels</span></button>
-    <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')"><i data-lucide="folder-tree"></i> <span>File Manager</span></button>
-    <button id="deployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy')"><i data-lucide="rocket"></i> <span>Deploy Apps</span></button>
-  </nav>
+  <div class="sidebar-scroll">
+    <nav class="sidebar-nav" aria-label="Page navigation">
+      <div class="sidebar-navgroup">
+        <div class="sidebar-navgroup-label">Home</div>
+        <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+          <span>Terminal</span>
+        </button>
+      </div>
+
+      <div class="sidebar-navgroup">
+        <div class="sidebar-navgroup-label">Management</div>
+        <button id="dockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+          <span>Docker Manager</span>
+        </button>
+        <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Team</span>
+        </button>
+        <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span>Alert Rules</span>
+        </button>
+        <button id="accessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>Access & Tunnels</span>
+        </button>
+      </div>
+
+      <div class="sidebar-navgroup">
+        <div class="sidebar-navgroup-label">Tools</div>
+        <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          <span>File Manager</span>
+        </button>
+        <button id="deployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+          <span>Deploy Apps</span>
+        </button>
+      </div>
+    </nav>
+  </div>
 
   <div class="sidebar-footer">
-    <div class="auth-badge" style="background: var(--card-soft); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 12px; width: 100%;">
-      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--brand-soft); display: flex; align-items: center; justify-content: center; color: var(--brand);">
-        <i data-lucide="user"></i>
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
-      <div style="flex: 1; min-width: 0; display:flex; flex-direction: column;">
-        <span id="authInfo" style="font-weight: 600; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Not logged in</span>
+      <div class="sidebar-user-info">
+        <span id="authInfo" class="sidebar-user-name">Not logged in</span>
+      </div>
+      <div class="sidebar-user-actions">
+        <button id="changePasswordBtn" onclick="openChangePasswordModal()" title="Change Password" class="sidebar-icon-btn" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </button>
+        <button id="logoutBtn" onclick="logout()" title="Log out" class="sidebar-icon-btn" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        </button>
       </div>
     </div>
-    
-    <div style="display: flex; gap: 8px;">
-      
-      <select id="themeSelect" class="theme-select" style="flex: 1;" onchange="setTheme(this.value)">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="car">Car Theme</option>
-        <option value="batman">Batman Theme</option>
-        <option value="builder">Builder Theme</option>
-        <option value="coding">Coding Theme</option>
-        <option value="networking">Networking Theme</option>
+
+    <div class="sidebar-footer-extra">
+      <select id="themeSelect" class="theme-select" onchange="setTheme(this.value)">
+        <option value="light">☀ Light</option>
+        <option value="dark">🌙 Dark</option>
+        <option value="car">🏎 Car</option>
+        <option value="batman">🦇 Batman</option>
+        <option value="builder">🔨 Builder</option>
+        <option value="coding">💻 Coding</option>
+        <option value="networking">🌐 Network</option>
       </select>
-      <button id="changePasswordBtn" class="btn-neutral" style="display:none; padding: 6px 10px;" onclick="openChangePasswordModal()" title="Change Password"><i data-lucide="key-round" style="width: 16px; height: 16px;"></i></button>
-      <button id="logoutBtn" class="btn-neutral" style="display:none; padding: 6px 10px;" onclick="logout()"><i data-lucide="log-out" style="width: 16px; height: 16px;"></i></button>
     </div>
   </div>
 </div>
