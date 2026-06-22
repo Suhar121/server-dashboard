@@ -306,20 +306,9 @@
     }
 
     /* Mobile menu button - hidden on desktop */
-    .app-sidebar .mobile-menu-btn {
-      display: none !important;
+    .mobile-menu-btn {
+      display: none;
       width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      flex-shrink: 0;
-    }
       height: 32px;
       border-radius: 8px;
       border: none;
@@ -1579,14 +1568,13 @@
     }
 
     .auth-brand-panel {
-      flex: 1;
+      flex: 0 0 380px;
       background: linear-gradient(135deg, var(--brand, #2563eb) 0%, #1e40af 100%);
       display: flex;
       flex-direction: column;
-      padding: 48px;
+      padding: 40px;
       position: relative;
       overflow: hidden;
-      max-width: 50%;
     }
 
     .auth-brand-panel::before {
@@ -1628,15 +1616,15 @@
     }
 
     .auth-brand-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.15);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 24px;
+      font-size: 18px;
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
@@ -2563,7 +2551,7 @@
       .sidebar-footer { display: none !important; }
       .sidebar-collapse-btn { display: none !important; }
 
-      .app-sidebar .mobile-menu-btn { display: flex !important; }
+      .mobile-menu-btn { display: flex !important; }
 
       .sidebar-scroll { display: none !important; }
       .sidebar-nav { flex-direction: row; padding: 0; gap: 2px; }
@@ -4711,7 +4699,7 @@
         <div class="auth-brand-content">
           <div class="auth-brand-header">
             <div class="auth-brand-icon">
-              <img src="/logo" alt="GridCore" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover;" />
+              <img src="/logo" alt="GridCore" style="width: 24px; height: 24px; border-radius: 6px; object-fit: cover;" />
             </div>
             <div>
               <div class="auth-brand-title">GridCore</div>
@@ -4767,7 +4755,7 @@
         <div class="auth-brand-content">
           <div class="auth-brand-header">
             <div class="auth-brand-icon">
-              <img src="/logo" alt="GridCore" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover;" />
+              <img src="/logo" alt="GridCore" style="width: 24px; height: 24px; border-radius: 6px; object-fit: cover;" />
             </div>
             <div>
               <div class="auth-brand-title">GridCore</div>
