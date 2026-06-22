@@ -820,192 +820,188 @@
       align-items: start;
     }
 
-    /* ─── Premium Dashboard (Dokploy-style) ─── */
+    /* ─── Enterprise Dashboard ─── */
     #dashboardContent {
       display: none;
     }
 
-    .dash-outer {
-      background: var(--card-soft);
-      padding: 3px;
-      border-radius: var(--radius-xl);
-      min-height: 80vh;
-    }
-
-    .dash-inner {
-      background: var(--bg);
-      border-radius: calc(var(--radius-xl) - 2px);
-      box-shadow: var(--shadow-md);
-      padding: 28px;
+    /* Status Bar */
+    .status-bar {
       display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .dash-header {
-      display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
+      height: 32px;
+      padding: 0 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.78rem;
     }
 
-    .dash-heading {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+    .status-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .dash-subheading {
+    .status-bar-right {
       color: var(--muted);
-      font-size: 0.9rem;
-      margin-top: 4px;
+      font-size: 0.72rem;
     }
 
-    .dash-kpi-grid {
+    .status-bar-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .status-ok { background: var(--ok-soft); color: var(--ok); }
+    .status-warn { background: var(--warn-soft); color: var(--warn); }
+    .status-err { background: var(--bad-soft); color: var(--bad); }
+
+    .status-bar-sep {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+    }
+
+    .status-bar-item {
+      color: var(--text-secondary);
+    }
+
+    .status-bar-item strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Metric Cells */
+    .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
     }
 
-    .stat-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+    .metric-cell {
       background: var(--card);
-      padding: 20px;
-      min-height: 120px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 8px;
-      transition: border-color 0.15s;
+      gap: 6px;
     }
 
-    .stat-card:hover {
-      border-color: var(--brand);
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
+    .metric-label {
+      font-size: 0.68rem;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-    }
-
-    .stat-value {
-      font-size: 2.25rem;
-      font-weight: 600;
-      letter-spacing: -0.03em;
-      font-family: var(--font-display);
-      line-height: 1;
-    }
-
-    .stat-value-sm {
-      font-size: 1.75rem;
-    }
-
-    .stat-delta {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .dash-section-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--card);
-      padding: 20px;
-    }
-
-    .dash-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-    }
-
-    .dash-section-title-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dash-section-icon {
-      color: var(--muted);
-      flex-shrink: 0;
-    }
-
-    .dash-section-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .dash-section-badge {
-      font-size: 0.7rem;
-      font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--muted);
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .metric-bar {
+      height: 3px;
       background: var(--card-soft);
-      padding: 3px 10px;
       border-radius: 999px;
-      border: 1px solid var(--border);
+      overflow: hidden;
     }
 
-    .dash-section-desc {
-      font-size: 0.8rem;
+    .metric-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--brand);
+      transition: width 0.5s ease;
+    }
+
+    .metric-bar-ram { background: var(--ok); }
+    .metric-bar-bat { background: var(--warn); }
+
+    .metric-sub {
+      font-size: 0.72rem;
       color: var(--muted);
-      margin-top: 2px;
-      margin-bottom: 12px;
     }
 
-    .dash-chart-wrap {
-      margin-top: 4px;
+    /* Dashboard main grid */
+    .dash-main-grid {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 8px;
+      align-items: start;
     }
 
-    .dash-cols {
+    .dash-col-wide {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dash-col-narrow {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dash-subgrid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    @media (max-width: 900px) {
-      .dash-cols {
-        grid-template-columns: 1fr;
-      }
-      .dash-kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .dash-inner {
-        padding: 20px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .dash-kpi-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .dash-inline-form {
-      display: flex;
       gap: 8px;
-      margin: 12px 0;
     }
 
-    .dash-inline-form .field {
-      flex: 1;
+    /* Section Block */
+    .section-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
     }
 
-    .dash-table {
+    .section-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-block-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .section-block-badge {
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--card-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .section-block-body {
+      padding: 10px 12px;
+    }
+
+    /* Enterprise Data Tables */
+    .dt {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 0.88rem;
+      border-collapse: collapse;
+      font-size: 0.8rem;
     }
 
-    .dash-table thead th {
+    .dt thead th {
       text-align: left;
-      padding: 10px 8px;
-      font-size: 0.72rem;
+      padding: 6px 8px;
+      font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.04em;
@@ -1013,38 +1009,105 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .dash-table tbody td {
-      padding: 10px 8px;
+    .dt tbody td {
+      padding: 6px 8px;
       border-bottom: 1px solid var(--border);
       vertical-align: middle;
     }
 
-    .dash-table tbody tr:last-child td {
-      border-bottom: none;
+    .dt tbody tr:last-child td { border-bottom: none; }
+    .dt tbody tr:hover td { background: var(--nav-hover); }
+
+    .dt-compact tbody td { padding: 4px 6px; font-size: 0.75rem; }
+
+    /* Todo list compact */
+    .todo-list-compact {
+      list-style: none;
+      margin: 6px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .dash-table tbody tr:hover td {
-      background: var(--nav-hover);
-    }
-
-    .dash-activity-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--muted);
-      margin-top: 14px;
-      margin-bottom: 6px;
-    }
-
-    .dash-todo-meta {
-      margin-top: 8px;
-      font-size: 0.82rem;
-    }
-
-    .dash-chevron {
+    .todo-list-compact li {
       display: flex;
       align-items: center;
-      transition: transform 0.2s;
-      margin-left: auto;
+      gap: 6px;
+      padding: 5px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .todo-list-compact li:hover {
+      border-color: var(--brand);
+    }
+
+    /* Port activity compact */
+    .port-activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .port-activity-list > div {
+      padding: 4px 6px;
+      font-size: 0.72rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Inline form */
+    .dash-inline-form {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dash-inline-form .field {
+      flex: 1;
+      height: 28px;
+      padding: 0 8px;
+      font-size: 0.78rem;
+    }
+
+    .btn-ghost-sm {
+      height: 24px;
+      padding: 0 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.1s;
+      font-family: inherit;
+    }
+
+    .btn-ghost-sm:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+      background: var(--brand-soft);
+    }
+
+    @media (max-width: 900px) {
+      .dash-main-grid { grid-template-columns: 1fr; }
+      .dash-subgrid { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .metrics-grid { grid-template-columns: 1fr; }
+      .status-bar-right { display: none; }
     }
 
     #menuDrawer {
@@ -3643,135 +3706,133 @@
 
 
   <div id="dashboardContent" style="display:none;">
-    <!-- Nested card shell like Dokploy -->
-    <div class="dash-outer">
-      <div class="dash-inner">
-        <!-- Header row -->
-        <div class="dash-header">
-          <div>
-            <h1 class="dash-heading">Dashboard</h1>
-            <p class="dash-subheading">Monitor your infrastructure in real time.</p>
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-bar-left">
+        <span class="status-bar-pill status-ok">● Operational</span>
+        <span class="status-bar-sep"></span>
+        <span class="status-bar-item">Uptime: <strong id="dashUptime">--</strong></span>
+        <span class="status-bar-sep"></span>
+        <span class="status-bar-item">Containers: <strong id="dashContainerCount">0</strong></span>
+        <span class="status-bar-sep"></span>
+        <span class="status-bar-item">Ports Open: <strong id="dashPortCount">0</strong></span>
+      </div>
+      <div class="status-bar-right">
+        <span class="status-bar-item" id="dashLastUpdated">Last updated: --</span>
+      </div>
+    </div>
+
+    <!-- Metrics Row -->
+    <div class="metrics-grid">
+      <div class="metric-cell">
+        <span class="metric-label">CPU</span>
+        <span class="metric-value" id="cpuValue">--%</span>
+        <div class="metric-bar"><div class="metric-bar-fill" id="cpuBar" style="width:0%"></div></div>
+      </div>
+      <div class="metric-cell">
+        <span class="metric-label">RAM</span>
+        <span class="metric-value" id="ramValue">--%</span>
+        <div class="metric-bar"><div class="metric-bar-fill metric-bar-ram" id="ramBar" style="width:0%"></div></div>
+      </div>
+      <div class="metric-cell">
+        <span class="metric-label">Battery</span>
+        <span class="metric-value" id="batteryValue">--%</span>
+        <div class="metric-bar"><div class="metric-bar-fill metric-bar-bat" id="batteryBar" style="width:0%"></div></div>
+        <span class="metric-sub" id="batteryMode">Checking...</span>
+      </div>
+      <div class="metric-cell">
+        <span class="metric-label">Docker</span>
+        <span class="metric-value" id="dockerStatValue">0</span>
+        <span class="metric-sub" id="dockerStatRunning">0 running</span>
+      </div>
+    </div>
+
+    <!-- Main Layout: 3-col -->
+    <div class="dash-main-grid">
+      <!-- Left: Chart -->
+      <div class="dash-col-wide">
+        <div class="section-block">
+          <div class="section-block-header">
+            <h3 class="section-block-title">System Resources</h3>
+            <span class="section-block-badge">3h window</span>
+          </div>
+          <div class="section-block-body">
+            <canvas id="cpuChart" height="88"></canvas>
           </div>
         </div>
 
-        <!-- KPI Grid -->
-        <div class="dash-kpi-grid">
-          <div class="stat-card">
-            <span class="stat-label">Battery</span>
-            <span class="stat-value" id="batteryValue">--%</span>
-            <span class="stat-delta" id="batteryMode">Checking...</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">CPU Usage</span>
-            <span class="stat-value" id="cpuValue">--%</span>
-            <span class="stat-delta">Live processor usage</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">RAM Usage</span>
-            <span class="stat-value" id="ramValue">--%</span>
-            <span class="stat-delta">Current memory consumption</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Docker</span>
-            <span class="stat-value stat-value-sm" id="dockerStatValue">0</span>
-            <span class="stat-delta" id="dockerStatRunning">0 running</span>
-          </div>
-        </div>
-
-        <!-- Chart Section -->
-        <div class="dash-section-card">
-          <div class="dash-section-header">
-            <div class="dash-section-title-row">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <h2 class="dash-section-title">System Trend</h2>
-            </div>
-            <span class="dash-section-badge">Last 3 hours</span>
-          </div>
-          <p class="dash-section-desc">CPU, RAM &amp; Battery over time</p>
-          <div class="dash-chart-wrap">
-            <canvas id="cpuChart" height="120"></canvas>
-          </div>
-        </div>
-
-        <!-- Two-column row -->
-        <div class="dash-cols">
+        <!-- Two-col subgrid inside wide column -->
+        <div class="dash-subgrid">
           <!-- Pinned Ports -->
-          <div class="dash-section-card">
-            <div class="dash-section-header">
-              <div class="dash-section-title-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
-                <h2 class="dash-section-title">Pinned Ports</h2>
-              </div>
+          <div class="section-block">
+            <div class="section-block-header">
+              <h3 class="section-block-title">Pinned Ports</h3>
+              <button id="addPinnedPortBtn" onclick="addPinnedPort()" class="btn-ghost-sm">+ Add</button>
             </div>
-            <div class="dash-inline-form">
-              <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port e.g. 8000" />
-              <button id="addPinnedPortBtn" onclick="addPinnedPort()" class="btn-outline" style="white-space:nowrap;">Pin Port</button>
+            <div class="dash-inline-form" style="margin-bottom:8px;">
+              <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port" />
             </div>
-            <table class="dash-table" id="pinnedPortsTable">
-              <thead>
-                <tr><th>Port</th><th>Alias</th><th>Status</th><th></th></tr>
-              </thead>
+            <table class="dt" id="pinnedPortsTable">
+              <thead><tr><th>Port</th><th>Alias</th><th>Status</th><th></th></tr></thead>
               <tbody id="pinnedPortsBody"></tbody>
             </table>
           </div>
 
           <!-- Docker -->
-          <div class="dash-section-card">
-            <div class="dash-section-header">
-              <div class="dash-section-title-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-                <h2 class="dash-section-title">Docker Containers</h2>
-              </div>
+          <div class="section-block">
+            <div class="section-block-header">
+              <h3 class="section-block-title">Containers</h3>
+              <span class="section-block-badge" id="dockerTableCount">0</span>
             </div>
-            <table class="dash-table" id="dockerTable">
-              <thead>
-                <tr><th>Name</th><th>Status</th><th>Ports</th></tr>
-              </thead>
+            <table class="dt" id="dockerTable">
+              <thead><tr><th>Name</th><th>Status</th><th>Ports</th></tr></thead>
               <tbody id="dockerBody"></tbody>
             </table>
           </div>
         </div>
+      </div>
 
-        <!-- Two-column row 2 -->
-        <div class="dash-cols">
-          <!-- Open Ports -->
-          <div class="dash-section-card">
-            <div class="dash-section-header">
-              <div class="dash-section-title-row" style="cursor:pointer;user-select:none;" onclick="togglePortsSection()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M10 3H3v7l7 7v7l11-11V3h-7"/><path d="M17 7h.01"/></svg>
-                <h2 class="dash-section-title">Open Ports</h2>
-                <span id="portsToggleIcon" class="dash-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
-              </div>
-            </div>
-            <div id="portsSectionBody">
-              <table class="dash-table" id="portsTable">
-                <thead>
-                  <tr><th>Protocol</th><th>State</th><th>Local Address</th><th>Alias</th><th></th></tr>
-                </thead>
-                <tbody id="portsBody"></tbody>
-              </table>
-              <div class="dash-activity-label">Recent Port Activity</div>
-              <div id="recentPortsList" class="recent-ports-list"></div>
-            </div>
+      <!-- Right: Activity & Tasks -->
+      <div class="dash-col-narrow">
+        <!-- To-Do -->
+        <div class="section-block">
+          <div class="section-block-header">
+            <h3 class="section-block-title">Tasks</h3>
+            <span class="section-block-badge" id="todoMeta">0</span>
           </div>
-
-          <!-- To-Do -->
-          <div class="dash-section-card">
-            <div class="dash-section-header">
-              <div class="dash-section-title-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                <h2 class="dash-section-title">Operations To-Do</h2>
-              </div>
-            </div>
+          <div class="section-block-body" style="padding-top:0;">
             <div class="dash-inline-form" id="todoComposer">
-              <input id="todoInput" class="field" placeholder="Add task e.g. rotate nginx logs" />
-              <button id="addTodoBtn" onclick="addTodo()" class="btn-outline" style="white-space:nowrap;">Add Task</button>
+              <input id="todoInput" class="field" placeholder="Add task..." />
+              <button id="addTodoBtn" onclick="addTodo()" class="btn-ghost-sm">Add</button>
             </div>
-            <div id="todoMeta" class="dash-todo-meta muted">0 total • 0 done • 0 pending</div>
-            <ul id="todoList" class="todo-list"></ul>
+            <ul id="todoList" class="todo-list-compact"></ul>
           </div>
         </div>
 
+        <!-- Port Activity -->
+        <div class="section-block" style="margin-top:8px;">
+          <div class="section-block-header" style="cursor:pointer;user-select:none;" onclick="togglePortsSection()">
+            <h3 class="section-block-title">Port Activity</h3>
+            <span id="portsToggleIcon" style="display:flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+          </div>
+          <div class="section-block-body" id="portsSectionBody" style="padding-top:0;">
+            <div id="recentPortsList" class="port-activity-list"></div>
+          </div>
+        </div>
+
+        <!-- Open Ports summary -->
+        <div class="section-block" style="margin-top:8px;">
+          <div class="section-block-header">
+            <h3 class="section-block-title">Open Ports</h3>
+            <span class="section-block-badge" id="openPortsCount">0</span>
+          </div>
+          <div class="section-block-body" style="padding-top:0;max-height:200px;overflow-y:auto;">
+            <table class="dt dt-compact" id="portsTable">
+              <thead><tr><th>Port</th><th>State</th></tr></thead>
+              <tbody id="portsBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -7334,6 +7395,8 @@
         lastBatteryPercent = Number(data.percent);
         document.getElementById("batteryValue").innerText = `${lastBatteryPercent.toFixed(1)}%`;
         document.getElementById("batteryMode").innerText = data.plugged ? "Charging" : "On battery";
+        const batBar = document.getElementById("batteryBar");
+        if (batBar) batBar.style.width = `${Math.min(lastBatteryPercent, 100)}%`;
       } catch {
         lastBatteryPercent = null;
         document.getElementById("batteryValue").innerText = "--%";
@@ -7351,6 +7414,14 @@
 
         document.getElementById("cpuValue").innerText = `${cpu.toFixed(1)}%`;
         document.getElementById("ramValue").innerText = `${ram.toFixed(1)}%`;
+        const cpuBar = document.getElementById("cpuBar");
+        const ramBar = document.getElementById("ramBar");
+        if (cpuBar) cpuBar.style.width = `${Math.min(cpu, 100)}%`;
+        if (ramBar) ramBar.style.width = `${Math.min(ram, 100)}%`;
+        const uptimeEl = document.getElementById("dashUptime");
+        if (uptimeEl && data.uptime) uptimeEl.textContent = data.uptime;
+        const updatedEl = document.getElementById("dashLastUpdated");
+        if (updatedEl) updatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 
         const nowMs = Date.now();
         if (nowMs - lastTrendPointAt >= TREND_SAMPLE_INTERVAL_MS) {
@@ -7395,6 +7466,11 @@
         lastPortSnapshot = snapshot;
         renderRecentPortActivity();
 
+        const portCountEl = document.getElementById("dashPortCount");
+        const openCountEl = document.getElementById("openPortsCount");
+        if (portCountEl) portCountEl.textContent = String(normalized.length);
+        if (openCountEl) openCountEl.textContent = String(normalized.length);
+
         if (!normalized.length) {
           body.innerHTML = `<tr><td colspan="5" class="muted">No open ports found.</td></tr>`;
           return;
@@ -7435,20 +7511,34 @@
         const res = await apiFetch("/docker");
         const containers = await res.json();
 
-        if (!containers.length) {
-          body.innerHTML = `<tr><td colspan="3" class="muted">No running containers.</td></tr>`;
+        const count = (containers || []).length;
+        const running = (containers || []).filter(c => String(c.status || "").toLowerCase().includes("up")).length;
+
+        const statVal = document.getElementById("dockerStatValue");
+        const statRun = document.getElementById("dockerStatRunning");
+        const tableCount = document.getElementById("dockerTableCount");
+        const containerCount = document.getElementById("dashContainerCount");
+        if (statVal) statVal.textContent = String(count);
+        if (statRun) statRun.textContent = `${running} running`;
+        if (tableCount) tableCount.textContent = String(count);
+        if (containerCount) containerCount.textContent = String(count);
+
+        if (!count) {
+          if (body) body.innerHTML = `<tr><td colspan="3" class="muted">No containers.</td></tr>`;
           return;
         }
 
-        body.innerHTML = containers.map(c => `
-          <tr>
-            <td>${esc(c.name)}</td>
-            <td>${esc(c.status)}</td>
-            <td>${esc(c.ports)}</td>
-          </tr>
-        `).join("");
+        if (body) {
+          body.innerHTML = containers.map(c => `
+            <tr>
+              <td>${esc(c.name)}</td>
+              <td>${esc(c.status)}</td>
+              <td>${esc(c.ports)}</td>
+            </tr>
+          `).join("");
+        }
       } catch {
-        body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load Docker status.</td></tr>`;
+        if (body) body.innerHTML = `<tr><td colspan="3" class="muted">Failed to load Docker.</td></tr>`;
       }
     }
 
