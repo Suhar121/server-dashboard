@@ -2529,8 +2529,39 @@
       .sidebar-collapse-btn { display: none !important; }
       .sidebar-env-row { display: none !important; }
       .sidebar-search-wrap { display: none !important; }
-      .sidebar-scroll { display: none !important; }
       .sidebar-footer { display: none !important; }
+
+      .sidebar-scroll {
+        display: flex !important;
+        flex: none;
+        padding: 0;
+        overflow: visible;
+        margin-left: auto;
+      }
+      .sidebar-nav {
+        flex-direction: row;
+        padding: 0;
+        gap: 2px;
+        overflow-x: auto;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .sidebar-nav::-webkit-scrollbar { display: none; }
+      .sidebar-group { flex-direction: row; gap: 1px; }
+      .sidebar-group-label { display: none; }
+      .sidebar-divider { display: none; }
+      .top-nav-item {
+        width: auto;
+        white-space: nowrap;
+        padding: 6px 8px;
+        font-size: 0;
+        gap: 0;
+        border-radius: 6px;
+      }
+      .top-nav-item svg { width: 16px; height: 16px; margin: 0; }
+      .top-nav-item span { display: none; }
+      .top-nav-item.active::before { display: none; }
+      .top-nav-item.active { background: var(--brand-soft); }
 
       /* ── Topbar ── */
       .topbar-enterprise {
