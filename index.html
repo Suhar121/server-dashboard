@@ -305,6 +305,26 @@
       gap: 20px;
     }
 
+    /* Mobile menu button - hidden on desktop */
+    .mobile-menu-btn {
+      display: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .mobile-menu-btn:hover {
+      background: var(--nav-hover);
+      color: var(--text);
+    }
+
     /* ─── Enterprise Sidebar Components ─── */
 
     .sidebar-org {
@@ -2530,23 +2550,12 @@
       .sidebar-env-row { display: none !important; }
       .sidebar-search-wrap { display: none !important; }
       .sidebar-footer { display: none !important; }
+      .sidebar-collapse-btn { display: none !important; }
 
-      .sidebar-scroll {
-        display: flex !important;
-        flex: none;
-        padding: 0;
-        overflow: visible;
-        margin-left: auto;
-      }
-      .sidebar-nav {
-        flex-direction: row;
-        padding: 0;
-        gap: 2px;
-        overflow-x: auto;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .sidebar-nav::-webkit-scrollbar { display: none; }
+      .mobile-menu-btn { display: flex !important; }
+
+      .sidebar-scroll { display: none !important; }
+      .sidebar-nav { flex-direction: row; padding: 0; gap: 2px; }
       .sidebar-group { flex-direction: row; gap: 1px; }
       .sidebar-group-label { display: none; }
       .sidebar-divider { display: none; }
@@ -2562,6 +2571,83 @@
       .top-nav-item svg { width: 14px; height: 14px; flex-shrink: 0; }
       .top-nav-item.active::before { display: none; }
       .top-nav-item.active { background: var(--brand-soft); }
+
+      /* Mobile Drawer */
+      .mobile-drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 500;
+        display: none;
+      }
+      .mobile-drawer-overlay.open { display: block; }
+
+      .mobile-drawer {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 260px;
+        height: 100vh;
+        background: var(--sidebar-bg);
+        z-index: 510;
+        display: flex;
+        flex-direction: column;
+        transition: left 0.2s ease;
+        border-right: 1px solid var(--sidebar-border);
+      }
+      .mobile-drawer.open { left: 0; }
+
+      .mobile-drawer-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px;
+        border-bottom: 1px solid var(--sidebar-border);
+      }
+      .mobile-drawer-logo { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+      .mobile-drawer-title { font-weight: 700; font-size: 1rem; flex: 1; }
+      .mobile-drawer-close {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .mobile-drawer-close:hover { background: var(--nav-hover); color: var(--text); }
+
+      .mobile-drawer-env {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--sidebar-border);
+      }
+
+      .mobile-drawer-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+      }
+      .mobile-drawer-nav .top-nav-item {
+        width: 100%;
+        border-radius: 0;
+        padding: 10px 16px;
+        font-size: 0.88rem;
+      }
+      .mobile-drawer-nav .top-nav-item span { display: inline; }
+
+      .mobile-drawer-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--sidebar-border);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
 
       /* ── Topbar ── */
       .topbar-enterprise {
@@ -3423,7 +3509,12 @@
 </head>
 <body>
   
-<div class="app-sidebar" id="appSidebar">
+  <div class="app-sidebar" id="appSidebar">
+  <!-- Mobile hamburger -->
+  <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" title="Menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
   <!-- Enterprise Context Header -->
   <div class="sidebar-org">
     <div class="sidebar-org-header">
@@ -4510,6 +4601,86 @@
 
   </main>
 
+  <!-- Mobile Drawer -->
+  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div class="mobile-drawer-header">
+      <img src="/logo" alt="GridCore" class="mobile-drawer-logo" />
+      <span class="mobile-drawer-title">GridCore</span>
+      <button class="mobile-drawer-close" onclick="closeMobileDrawer()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="mobile-drawer-env">
+      <span class="sidebar-env-badge">Production</span>
+      <span class="sidebar-health-dot" style="display:inline-block;"></span>
+      <span class="sidebar-health-text">Healthy</span>
+    </div>
+    <nav class="mobile-drawer-nav">
+      <div class="sidebar-group-label" style="padding:12px 16px 4px;">Home</div>
+      <button class="top-nav-item active" onclick="goToPage('dashboard'); closeMobileDrawer()" id="mobileDashboardNavItem">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button id="mobileTerminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <span>Terminal</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Infrastructure</div>
+      <button id="mobileDockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
+        <span>Docker Manager</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Operations</div>
+      <button id="mobileAdminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Team</span>
+      </button>
+      <button id="mobileAlertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span>Alert Rules</span>
+      </button>
+      <button id="mobileAccessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Access & Tunnels</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Development</div>
+      <button id="mobileFileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+        <span>File Manager</span>
+      </button>
+      <button id="mobileDeployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+        <span>Deploy Apps</span>
+      </button>
+    </nav>
+    <div class="mobile-drawer-footer">
+      <div class="sidebar-user" style="padding:0;">
+        <div class="sidebar-user-avatar" style="width:26px;height:26px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="sidebar-user-info">
+          <span id="mobileAuthInfo" class="sidebar-user-name">Not logged in</span>
+        </div>
+      </div>
+      <select id="mobileThemeSelect" class="theme-select" onchange="setTheme(this.value)" style="width:100%;">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="car">Car</option>
+        <option value="batman">Batman</option>
+        <option value="builder">Builder</option>
+        <option value="coding">Coding</option>
+        <option value="networking">Network</option>
+      </select>
+    </div>
+  </div>
+
   <!-- ─── Login Page (Dokploy-style) ─── -->
   <div id="loginPage">
     <div class="auth-layout">
@@ -5189,6 +5360,8 @@
 
       const select = document.getElementById('themeSelect');
       if (select) select.value = selected;
+      const mSelect = document.getElementById('mobileThemeSelect');
+      if (mSelect) mSelect.value = selected;
 
       if (typeof updateChartColors === 'function') {
         updateChartColors(selected);
@@ -5201,6 +5374,16 @@
     function toggleSidebar() {
       const sidebar = document.querySelector('.app-sidebar');
       sidebar.classList.toggle('collapsed');
+    }
+
+    function toggleMobileDrawer() {
+      document.getElementById('mobileDrawer').classList.toggle('open');
+      document.getElementById('mobileDrawerOverlay').classList.toggle('open');
+    }
+
+    function closeMobileDrawer() {
+      document.getElementById('mobileDrawer').classList.remove('open');
+      document.getElementById('mobileDrawerOverlay').classList.remove('open');
     }
 
     let portsSectionCollapsed = false;
@@ -5613,6 +5796,8 @@
       document.getElementById("logoutBtn").style.display = "none";
       document.getElementById("changePasswordBtn").style.display = "none";
       document.getElementById("authInfo").innerText = "Not logged in";
+      const mInfo = document.getElementById("mobileAuthInfo");
+      if (mInfo) mInfo.textContent = "Not logged in";
       exitTerminalFullscreenIfActive();
       closeAllTerminalTabs();
       closeMenu();
@@ -5690,6 +5875,8 @@
       document.getElementById("logoutBtn").style.display = "inline-block";
       document.getElementById("changePasswordBtn").style.display = "inline-block";
       document.getElementById("authInfo").innerText = `${currentUser.username} (${currentUser.role})`;
+      const mInfo = document.getElementById("mobileAuthInfo");
+      if (mInfo) mInfo.textContent = `${currentUser.username} (${currentUser.role})`;
 
       const canOperate = hasRole("operator");
       const isAdmin = hasRole("admin");
