@@ -5928,5 +5928,426 @@ async def ai_conversations(
     )
     rows = cursor.fetchall()
     conn.close()
+    rows = cursor.fetchall()
+    conn.close()
     return {"conversations": [{"id": r[0], "action": r[1], "details": r[2], "timestamp": r[3]} for r in rows]}
+
+
+# ─── PM2 Manager Integration ──────────────────────────────────────────────────
+
+def get_pm2_cmd() -> str:
+    # Try finding globally on system path
+    pm2_path = shutil.which("pm2")
+    if pm2_path:
+        return pm2_path
+    
+    # Try common Windows global npm path
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        win_path = os.path.join(appdata, "npm", "pm2.cmd")
+        if os.path.exists(win_path):
+            return win_path
+            
+    # Try Unix npm global path or fallback
+    return "pm2"
+
+
+def parse_pm2_jlist(output: str) -> list:
+    # Filter out [PM2] status messages
+    lines = []
+    for line in output.splitlines():
+        if line.strip().startswith("[PM2]"):
+            continue
+        lines.append(line)
+    clean_output = "\n".join(lines).strip()
+    # Find start of JSON array
+    start_idx = clean_output.find("[")
+    if start_idx != -1:
+        clean_output = clean_output[start_idx:]
+    if not clean_output:
+        return []
+    return json.loads(clean_output)
+
+
+def validate_app_name(name: str):
+    if not name or not re.match(r"^[a-zA-Z0-9\-_.]+$", name):
+        raise HTTPException(status_code=400, detail="Invalid application name. Only alphanumeric characters, dashes, underscores, and dots are allowed.")
+
+
+def validate_path(path: str):
+    if not path:
+        return
+    # Allow safe characters for file paths on Windows/Linux (letters, digits, slash, backslash, colon, dot, space, dash, underscore)
+    if not re.match(r"^[a-zA-Z0-9\-_./\\: ]+$", path):
+        raise HTTPException(status_code=400, detail="Invalid path characters.")
+
+
+class PM2StartRequest(BaseModel):
+    name: str
+    script: str
+    cwd: str | None = None
+    interpreter: str | None = None
+    args: str | None = None
+    env_vars: dict | None = None
+    autorestart: bool = True
+    watch: bool = False
+    instances: int | None = None
+    max_memory_restart: str | None = None
+    startup_delay: int | None = None
+    cron_restart: str | None = None
+
+
+class PM2ActionRequest(BaseModel):
+    action: str  # start, stop, restart, delete, reload, restart_all, stop_all, save, reload_pm2, kill, startup
+    app_name: str | None = None  # target app name or id (if applicable)
+
+
+@app.get("/api/pm2/list")
+async def pm2_list(user: dict = Depends(require_role("admin"))):
+    pm2_cmd = get_pm2_cmd()
+    try:
+        # Run pm2 jlist
+        result = subprocess.run(
+            [pm2_cmd, "jlist"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr or "PM2 jlist execution failed")
+        
+        apps = parse_pm2_jlist(result.stdout)
+        
+        formatted = []
+        for app in apps:
+            pm2_env = app.get("pm2_env", {})
+            monit = app.get("monit", {})
+            
+            cpu = monit.get("cpu", 0)
+            memory = monit.get("memory", 0)
+            
+            uptime = 0
+            pm_uptime = pm2_env.get("pm_uptime", 0)
+            if pm_uptime:
+                uptime = int(time.time() * 1000) - pm_uptime
+                if uptime < 0:
+                    uptime = 0
+            
+            formatted.append({
+                "id": app.get("pm_id"),
+                "name": app.get("name"),
+                "pid": app.get("pid"),
+                "status": pm2_env.get("status"),
+                "cpu": cpu,
+                "memory": memory,
+                "uptime": uptime,
+                "restarts": pm2_env.get("restart_time", 0),
+                "version": pm2_env.get("version", "N/A"),
+                "cwd": pm2_env.get("pm_cwd") or pm2_env.get("cwd") or "N/A",
+                "script": pm2_env.get("pm_exec_path", "N/A"),
+                "instances": pm2_env.get("instances", 1),
+                "node_version": pm2_env.get("node_version", "N/A"),
+                "out_log": pm2_env.get("pm_out_log_path"),
+                "err_log": pm2_env.get("pm_err_log_path"),
+            })
+        return formatted
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="PM2 command timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to query PM2: {str(e)}")
+
+
+@app.post("/api/pm2/action")
+async def pm2_action(data: PM2ActionRequest, user: dict = Depends(require_role("admin"))):
+    pm2_cmd = get_pm2_cmd()
+    action = data.action
+    app_name = data.app_name
+    
+    if app_name:
+        if not app_name.isdigit():
+            validate_app_name(app_name)
+            
+    cmd_args = [pm2_cmd]
+    
+    if action == "start":
+        if not app_name:
+            raise HTTPException(status_code=400, detail="App name is required for start action")
+        cmd_args.extend(["start", app_name])
+        audit_desc = f"Started PM2 app: {app_name}"
+    elif action == "stop":
+        if not app_name:
+            raise HTTPException(status_code=400, detail="App name is required for stop action")
+        cmd_args.extend(["stop", app_name])
+        audit_desc = f"Stopped PM2 app: {app_name}"
+    elif action == "restart":
+        if not app_name:
+            raise HTTPException(status_code=400, detail="App name is required for restart action")
+        cmd_args.extend(["restart", app_name])
+        audit_desc = f"Restarted PM2 app: {app_name}"
+    elif action == "delete":
+        if not app_name:
+            raise HTTPException(status_code=400, detail="App name is required for delete action")
+        cmd_args.extend(["delete", app_name])
+        audit_desc = f"Deleted PM2 app: {app_name}"
+    elif action == "reload":
+        if not app_name:
+            raise HTTPException(status_code=400, detail="App name is required for reload action")
+        cmd_args.extend(["reload", app_name])
+        audit_desc = f"Reloaded PM2 app: {app_name}"
+    elif action == "restart_all":
+        cmd_args.extend(["restart", "all"])
+        audit_desc = "Restarted all PM2 apps"
+    elif action == "stop_all":
+        cmd_args.extend(["stop", "all"])
+        audit_desc = "Stopped all PM2 apps"
+    elif action == "save":
+        cmd_args.extend(["save"])
+        audit_desc = "Saved PM2 process list"
+    elif action == "reload_pm2":
+        cmd_args.extend(["reload", "all"])
+        audit_desc = "Reloaded PM2 daemon/all processes"
+    elif action == "kill":
+        cmd_args.extend(["kill"])
+        audit_desc = "Killed PM2 daemon"
+    elif action == "startup":
+        cmd_args.extend(["startup"])
+        audit_desc = "Ran PM2 startup configuration"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported action: {action}")
+        
+    try:
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=30
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr or result.stdout or f"PM2 {action} failed")
+        
+        log_audit(user["username"], f"pm2_{action}", audit_desc)
+        return {"status": "success", "message": result.stdout}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="PM2 command timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pm2/start-app")
+async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role("admin"))):
+    pm2_cmd = get_pm2_cmd()
+    
+    validate_app_name(data.name)
+    validate_path(data.script)
+    if data.cwd:
+        validate_path(data.cwd)
+        
+    cmd_args = [pm2_cmd, "start", data.script, "--name", data.name]
+    
+    if data.interpreter and data.interpreter.lower() != "auto":
+        valid_interpreters = {"node", "node.js", "python", "python3", "bun", "bash", "php"}
+        interpreter_val = data.interpreter.lower()
+        if interpreter_val in valid_interpreters or re.match(r"^[a-zA-Z0-9\-./\\_]+$", data.interpreter):
+            cmd_args.extend(["--interpreter", data.interpreter])
+            
+    if data.cwd:
+        cmd_args.extend(["--cwd", data.cwd])
+        
+    if not data.autorestart:
+        cmd_args.append("--no-autorestart")
+        
+    if data.watch:
+        cmd_args.append("--watch")
+        
+    if data.instances is not None:
+        cmd_args.extend(["-i", str(data.instances)])
+        
+    if data.max_memory_restart:
+        if re.match(r"^\d+[KMGkmg]$", data.max_memory_restart):
+            cmd_args.extend(["--max-memory-restart", data.max_memory_restart])
+            
+    if data.startup_delay:
+        cmd_args.extend(["--restart-delay", str(data.startup_delay * 1000)])
+        
+    if data.cron_restart:
+        if re.match(r"^[0-9\s*/,\-]+$", data.cron_restart):
+            cmd_args.extend(["--cron-restart", data.cron_restart])
+            
+    if data.args:
+        cmd_args.extend(["--args", data.args])
+        
+    env = os.environ.copy()
+    if data.env_vars:
+        for k, v in data.env_vars.items():
+            if re.match(r"^[a-zA-Z0-9_]+$", k):
+                env[k] = str(v)
+                
+    try:
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            env=env,
+            timeout=30
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr or result.stdout or "Failed to start application")
+            
+        log_audit(user["username"], "pm2_start_app", f"Started PM2 application: {data.name}")
+        return {"status": "success", "message": result.stdout}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="PM2 command timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pm2/logs/{app_name}")
+async def pm2_get_logs(
+    app_name: str,
+    limit: int = Query(default=100, ge=1, le=5000),
+    user: dict = Depends(require_role("admin"))
+):
+    pm2_cmd = get_pm2_cmd()
+    
+    if not app_name.isdigit():
+        validate_app_name(app_name)
+        
+    # Attempt direct file reading first for better performance
+    try:
+        # Find paths via jlist
+        jlist_res = subprocess.run(
+            [pm2_cmd, "jlist"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=10
+        )
+        apps = parse_pm2_jlist(jlist_res.stdout)
+        target_app = None
+        for app in apps:
+            if str(app.get("pm_id")) == app_name or app.get("name") == app_name:
+                target_app = app
+                break
+                
+        if target_app:
+            pm2_env = target_app.get("pm2_env", {})
+            out_path = pm2_env.get("pm_out_log_path")
+            err_path = pm2_env.get("pm_err_log_path")
+            
+            logs = []
+            def read_file_tail(path, label):
+                if path and os.path.exists(path):
+                    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                        lines = f.readlines()
+                        return f"--- {label} (last {min(len(lines), limit)} lines) ---\n" + "".join(lines[-limit:])
+                return ""
+                
+            stdout_logs = read_file_tail(out_path, "STDOUT")
+            stderr_logs = read_file_tail(err_path, "STDERR")
+            
+            if stdout_logs:
+                logs.append(stdout_logs)
+            if stderr_logs:
+                logs.append(stderr_logs)
+                
+            if logs:
+                return {"logs": "\n\n".join(logs)}
+    except Exception:
+        pass
+
+    # Fallback to execution
+    try:
+        result = subprocess.run(
+            [pm2_cmd, "logs", app_name, "--lines", str(limit), "--raw", "--no-colors"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15
+        )
+        return {"logs": result.stdout or result.stderr or "No logs retrieved."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read logs: {str(e)}")
+
+
+@app.websocket("/ws/pm2/logs/{app_name}/stream")
+async def ws_pm2_logs_stream(websocket: WebSocket, app_name: str):
+    session_id = websocket.cookies.get(SESSION_COOKIE_NAME)
+    session = get_valid_session(session_id)
+    if not session or ROLE_ORDER.get(session.get("role", ""), 0) < ROLE_ORDER["admin"]:
+        await websocket.close(code=4403, reason="Admin role required")
+        return
+        
+    if not app_name.isdigit():
+        try:
+            validate_app_name(app_name)
+        except Exception:
+            await websocket.close(code=4400, reason="Invalid app name")
+            return
+            
+    await websocket.accept()
+    
+    pm2_cmd = get_pm2_cmd()
+    proc = None
+    try:
+        proc = subprocess.Popen(
+            [pm2_cmd, "logs", app_name, "--raw", "--no-colors"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            bufsize=1
+        )
+        
+        loop = asyncio.get_event_loop()
+        
+        async def read_stdout():
+            while True:
+                line = await loop.run_in_executor(None, proc.stdout.readline)
+                if not line:
+                    break
+                await websocket.send_text(line)
+                
+        async def receive_messages():
+            try:
+                while True:
+                    data = await websocket.receive_text()
+                    if data == "ping":
+                        await websocket.send_text("pong")
+            except WebSocketDisconnect:
+                pass
+                
+        await asyncio.gather(
+            read_stdout(),
+            receive_messages(),
+            return_exceptions=True
+        )
+        
+    except Exception as e:
+        try:
+            await websocket.send_text(f"Error starting log stream: {str(e)}")
+        except Exception:
+            pass
+    finally:
+        if proc:
+            try:
+                proc.terminate()
+                proc.wait(timeout=2)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 

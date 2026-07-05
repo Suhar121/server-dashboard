@@ -3581,6 +3581,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
           <span>Docker Manager</span>
         </button>
+        <button id="pm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>PM2 Manager</span>
+        </button>
       </div>
 
       <div class="sidebar-divider"></div>
@@ -3805,6 +3809,55 @@
   </div>
 
   
+
+  <!-- ─── PM2 Manager Section ─── -->
+  <section class="admin-page" id="pm2Page" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <h4 style="margin:0;font-weight:600;">PM2 Process Manager</h4>
+          <div class="muted" style="font-size:0.82rem;">Monitor and manage local Node, Python, and script applications</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-neutral" onclick="openStartPm2AppModal()"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Start New App</button>
+        <button class="btn-neutral" onclick="pm2GlobalAction('restart_all')"><i data-lucide="refresh-cw" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Restart All</button>
+        <button class="btn-danger" style="background:var(--bad);" onclick="pm2GlobalAction('stop_all')"><i data-lucide="square" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Stop All</button>
+        <button class="btn-success" onclick="pm2GlobalAction('save')"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Save List</button>
+        <button class="btn-neutral" onclick="pm2GlobalAction('reload_pm2')"><i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Reload PM2</button>
+        <button class="btn-neutral" style="background:#4b5563;color:white;" onclick="pm2GlobalAction('startup')"><i data-lucide="power" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Startup Setup</button>
+        <button class="btn-danger" style="background:#b91c1c;" onclick="pm2GlobalAction('kill')"><i data-lucide="skull" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Kill PM2</button>
+      </div>
+    </div>
+
+    <!-- Processes Table -->
+    <div class="cloudflared-table-wrap">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>PID</th>
+            <th>Status</th>
+            <th>CPU</th>
+            <th>Memory</th>
+            <th>Uptime</th>
+            <th>Restarts</th>
+            <th>Version</th>
+            <th>Working Dir</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pm2ProcessBody">
+          <tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading PM2 processes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="admin-page" id="dockerPage">
     <div class="dash-section-card" style="border:none;padding:0;background:transparent;">
       <div class="gh-deploy-header" style="margin-bottom:20px;">
@@ -4618,6 +4671,7 @@
     </div>
   </div>
 
+  </div>
   </main>
 
   <!-- Mobile Drawer -->
@@ -4651,6 +4705,10 @@
       <button id="mobileDockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker'); closeMobileDrawer()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
         <span>Docker Manager</span>
+      </button>
+      <button id="mobilePm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>PM2 Manager</span>
       </button>
 
       <div class="sidebar-divider" style="margin:6px 16px;"></div>
@@ -4839,6 +4897,128 @@
     </div>
   </div>
 
+  <!-- ─── PM2 Start App Modal ─── -->
+  <div id="startPm2AppModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card" style="max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: var(--shadow-md); display:flex; flex-direction:column; gap:16px; background:var(--card); border:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:4px;">
+        <h3 style="margin:0; font-weight:700;">Start New PM2 Application</h3>
+        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closeStartPm2AppModal()">✕</button>
+      </div>
+      
+      <div class="auth-form-stack" style="gap:12px; display:flex; flex-direction:column;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">App Name *</label>
+            <input id="pm2AppName" class="field auth-form-input" type="text" placeholder="e.g. my-node-service" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Start Script / Command *</label>
+            <input id="pm2AppScript" class="field auth-form-input" type="text" placeholder="e.g. app.js or main.py" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Working Directory</label>
+            <input id="pm2AppCwd" class="field auth-form-input" type="text" placeholder="Auto (optional)" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Interpreter</label>
+            <select id="pm2AppInterpreter" class="field auth-form-input" style="height:38px; width:100%; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm); padding:0 10px;">
+              <option value="auto">Auto (Detect)</option>
+              <option value="node">Node.js</option>
+              <option value="python">Python</option>
+              <option value="bun">Bun</option>
+              <option value="bash">Bash</option>
+              <option value="php">PHP</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Arguments (space separated)</label>
+          <input id="pm2AppArgs" class="field auth-form-input" type="text" placeholder="e.g. --port 3000 --production" />
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Environment Variables (JSON format)</label>
+          <textarea id="pm2AppEnv" class="field auth-form-input" style="height:60px; font-family:monospace; font-size:0.82rem; width:100%; padding:8px 10px;" placeholder='e.g. {"PORT": 3000, "NODE_ENV": "production"}'></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Instances Count</label>
+            <input id="pm2AppInstances" class="field auth-form-input" type="number" min="1" placeholder="1" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Max Memory Restart</label>
+            <input id="pm2AppMaxMemory" class="field auth-form-input" type="text" placeholder="e.g. 500M or 1G" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Startup Delay (seconds)</label>
+            <input id="pm2AppDelay" class="field auth-form-input" type="number" min="0" placeholder="0" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Cron Restart Pattern</label>
+            <input id="pm2AppCron" class="field auth-form-input" type="text" placeholder="e.g. */5 * * * *" />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:16px; margin-top:4px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input id="pm2AppAutorestart" type="checkbox" checked /> Auto Restart
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input id="pm2AppWatch" type="checkbox" /> Watch Mode (Reload on changes)
+          </label>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+          <button class="btn-neutral" onclick="closeStartPm2AppModal()">Cancel</button>
+          <button class="btn-success" onclick="pm2StartNewApp()">Start Application</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PM2 Logs Modal ─── -->
+  <div id="pm2LogsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="max-width: 900px; width: 100%; height: 80vh; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow-md); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <div>
+          <h3 style="margin:0; font-weight:700;" id="pm2LogsTitle">Application Logs</h3>
+          <div class="muted" style="font-size:0.82rem;" id="pm2LogsSubtitle">Tailing real-time process output...</div>
+        </div>
+        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closePm2LogsModal()">✕</button>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select id="pm2LogsLinesLimit" class="field" style="width:110px; height:32px; padding:0 8px; font-size:0.82rem; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm);" onchange="reloadPm2Logs()">
+            <option value="50">50 lines</option>
+            <option value="100" selected>100 lines</option>
+            <option value="250">250 lines</option>
+            <option value="500">500 lines</option>
+            <option value="1000">1000 lines</option>
+          </select>
+          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="reloadPm2Logs()"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Reload</button>
+          <button class="btn-neutral" id="pm2LogsStreamToggle" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:var(--ok-soft); color:var(--ok);" onclick="togglePm2LogsStream()"><i data-lucide="play" style="width:12px;height:12px;"></i> Streaming</button>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:360px;">
+          <input id="pm2LogsSearch" class="field" type="text" style="height:32px; font-size:0.82rem; width:100%;" placeholder="Search logs..." oninput="filterPm2Logs()" />
+          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="clearPm2LogsDisplay()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> Clear Screen</button>
+          <button class="btn-success" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="downloadPm2Logs()"><i data-lucide="download" style="width:12px;height:12px;"></i> Download</button>
+        </div>
+      </div>
+
+      <pre id="pm2LogsContent" style="flex:1; margin:0; background:#030814; color:#7ef5b8; font-family:'Monaco', 'Courier New', monospace; font-size:0.82rem; line-height:1.5; padding:12px; border-radius:10px; border:1px solid var(--border); overflow:auto; white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+
   <div id="permissionsModal">
     <div id="permissionsBox">
       <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key"></i> File Permissions</h3>
@@ -5001,6 +5181,364 @@
 
     function pruneDocker() {
       alert("Manual mode: run this in your terminal -> docker image prune -f");
+    }
+
+    // ─── PM2 Manager JS Functions ───
+    let pm2LogsWs = null;
+    let pm2LogsAppName = null;
+    let pm2LogsFullContent = "";
+
+    async function loadPm2Processes() {
+      const body = document.getElementById("pm2ProcessBody");
+      if (!body) return;
+
+      try {
+        const res = await apiFetch("/api/pm2/list");
+        if (res.status === 403) {
+          body.innerHTML = `<tr><td colspan="11" class="error-text">Forbidden: Administrator access required.</td></tr>`;
+          return;
+        }
+        const data = await res.json();
+        
+        if (!data || data.length === 0) {
+          body.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">No PM2 applications running.</td></tr>`;
+          return;
+        }
+
+        body.innerHTML = data.map(app => {
+          let statusBadge = "";
+          const status = String(app.status || "").toLowerCase();
+          if (status === "online") {
+            statusBadge = `<span class="docker-status-badge docker-status-up" style="background:var(--ok-soft);color:var(--ok);">online</span>`;
+          } else if (status === "stopped") {
+            statusBadge = `<span class="docker-status-badge docker-status-down" style="background:var(--muted-soft);color:var(--muted);">stopped</span>`;
+          } else {
+            statusBadge = `<span class="docker-status-badge docker-status-down" style="background:var(--bad-soft);color:var(--bad);">${esc(status)}</span>`;
+          }
+
+          const memoryFormatted = formatBytes(app.memory || 0);
+          const cpuFormatted = `${app.cpu || 0}%`;
+          const uptimeFormatted = app.uptime ? formatDuration(app.uptime) : "0s";
+          const versionFormatted = esc(app.version || "N/A");
+          const workingDir = esc(app.cwd || "N/A");
+
+          return `
+            <tr>
+              <td><strong>${esc(app.id)}</strong></td>
+              <td><span style="font-weight:600;color:var(--brand);">${esc(app.name)}</span></td>
+              <td class="muted">${esc(app.pid || "-")}</td>
+              <td>${statusBadge}</td>
+              <td style="font-family:monospace;">${cpuFormatted}</td>
+              <td style="font-family:monospace;">${memoryFormatted}</td>
+              <td class="muted">${uptimeFormatted}</td>
+              <td class="muted">${esc(app.restarts)}</td>
+              <td class="muted">${versionFormatted}</td>
+              <td><div style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${workingDir}">${workingDir}</div></td>
+              <td>
+                <div style="display:flex;gap:4px;">
+                  ${status !== "online" 
+                    ? `<button class="btn-neutral" style="padding:2px 6px;min-height:0;font-size:0.75rem;" onclick="pm2AppAction('${esc(app.name)}', 'start')">▶ Start</button>`
+                    : `<button class="btn-neutral" style="padding:2px 6px;min-height:0;font-size:0.75rem;" onclick="pm2AppAction('${esc(app.name)}', 'stop')">⏹ Stop</button>`
+                  }
+                  <button class="btn-neutral" style="padding:2px 6px;min-height:0;font-size:0.75rem;" onclick="pm2AppAction('${esc(app.name)}', 'restart')">🔄 Restart</button>
+                  <button class="btn-neutral" style="padding:2px 6px;min-height:0;font-size:0.75rem;" onclick="pm2AppAction('${esc(app.name)}', 'reload')">⚡ Reload</button>
+                  <button class="btn-neutral" style="padding:2px 6px;min-height:0;font-size:0.75rem;" onclick="openPm2LogsModal('${esc(app.name)}')">📋 Logs</button>
+                  <button class="btn-danger" style="padding:2px 6px;min-height:0;font-size:0.75rem;background:var(--bad);" onclick="pm2AppAction('${esc(app.name)}', 'delete')">🗑 Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="11" class="error-text">Failed to fetch PM2 list: ${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    async function pm2GlobalAction(action) {
+      if (action === "kill" && !confirm("Are you sure you want to KILL the PM2 daemon? All running applications will stop.")) {
+        return;
+      }
+      try {
+        const res = await apiFetch("/api/pm2/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          alert(`Global command '${action}' completed successfully.`);
+          loadPm2Processes();
+        } else {
+          alert(`Error: ${result.detail || "Command failed"}`);
+        }
+      } catch (e) {
+        alert(`Failed to execute global action: ${e.message}`);
+      }
+    }
+
+    async function pm2AppAction(appName, action) {
+      if (action === "delete" && !confirm(`Are you sure you want to delete '${appName}'?`)) {
+        return;
+      }
+      try {
+        const res = await apiFetch("/api/pm2/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, app_name: appName })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          loadPm2Processes();
+        } else {
+          alert(`Error: ${result.detail || "App action failed"}`);
+        }
+      } catch (e) {
+        alert(`Failed to execute app action: ${e.message}`);
+      }
+    }
+
+    function openStartPm2AppModal() {
+      document.getElementById("pm2AppName").value = "";
+      document.getElementById("pm2AppScript").value = "";
+      document.getElementById("pm2AppCwd").value = "";
+      document.getElementById("pm2AppInterpreter").value = "auto";
+      document.getElementById("pm2AppArgs").value = "";
+      document.getElementById("pm2AppEnv").value = "";
+      document.getElementById("pm2AppInstances").value = "";
+      document.getElementById("pm2AppMaxMemory").value = "";
+      document.getElementById("pm2AppDelay").value = "";
+      document.getElementById("pm2AppCron").value = "";
+      document.getElementById("pm2AppAutorestart").checked = true;
+      document.getElementById("pm2AppWatch").checked = false;
+      document.getElementById("startPm2AppModal").style.display = "flex";
+    }
+
+    function closeStartPm2AppModal() {
+      document.getElementById("startPm2AppModal").style.display = "none";
+    }
+
+    async function pm2StartNewApp() {
+      const name = document.getElementById("pm2AppName").value.trim();
+      const script = document.getElementById("pm2AppScript").value.trim();
+      
+      if (!name || !script) {
+        alert("App Name and Start Script are required.");
+        return;
+      }
+
+      const cwd = document.getElementById("pm2AppCwd").value.trim() || null;
+      const interpreter = document.getElementById("pm2AppInterpreter").value;
+      const args = document.getElementById("pm2AppArgs").value.trim() || null;
+      const envRaw = document.getElementById("pm2AppEnv").value.trim();
+      const instancesRaw = document.getElementById("pm2AppInstances").value;
+      const maxMemory = document.getElementById("pm2AppMaxMemory").value.trim() || null;
+      const delayRaw = document.getElementById("pm2AppDelay").value;
+      const cron = document.getElementById("pm2AppCron").value.trim() || null;
+      const autorestart = document.getElementById("pm2AppAutorestart").checked;
+      const watch = document.getElementById("pm2AppWatch").checked;
+
+      let env_vars = null;
+      if (envRaw) {
+        try {
+          env_vars = JSON.parse(envRaw);
+        } catch (e) {
+          alert("Invalid JSON format in Environment Variables field.");
+          return;
+        }
+      }
+
+      const instances = instancesRaw ? parseInt(instancesRaw, 10) : null;
+      const startup_delay = delayRaw ? parseInt(delayRaw, 10) : null;
+
+      const payload = {
+        name,
+        script,
+        cwd,
+        interpreter,
+        args,
+        env_vars,
+        autorestart,
+        watch,
+        instances,
+        max_memory_restart: maxMemory,
+        startup_delay,
+        cron_restart: cron
+      };
+
+      try {
+        const res = await apiFetch("/api/pm2/start-app", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (res.ok) {
+          closeStartPm2AppModal();
+          loadPm2Processes();
+        } else {
+          alert(`Failed to start application: ${result.detail || "Error"}`);
+        }
+      } catch (e) {
+        alert(`Failed to start application: ${e.message}`);
+      }
+    }
+
+    function openPm2LogsModal(appName) {
+      pm2LogsAppName = appName;
+      document.getElementById("pm2LogsTitle").innerText = `📋 PM2 Logs: ${appName}`;
+      document.getElementById("pm2LogsContent").textContent = "Loading logs...";
+      document.getElementById("pm2LogsModal").style.display = "flex";
+      
+      pm2LogsFullContent = "";
+      reloadPm2Logs();
+      startPm2LogsStream(appName);
+    }
+
+    function closePm2LogsModal() {
+      stopPm2LogsStream();
+      document.getElementById("pm2LogsModal").style.display = "none";
+    }
+
+    async function reloadPm2Logs() {
+      if (!pm2LogsAppName) return;
+      const limit = document.getElementById("pm2LogsLinesLimit").value;
+      
+      try {
+        const res = await apiFetch(`/api/pm2/logs/${encodeURIComponent(pm2LogsAppName)}?limit=${limit}`);
+        const data = await res.json();
+        if (res.ok) {
+          pm2LogsFullContent = data.logs || "No logs available.";
+          displayPm2Logs();
+        } else {
+          pm2LogsFullContent = `Error loading logs: ${data.detail || "Unknown error"}`;
+          displayPm2Logs();
+        }
+      } catch (e) {
+        pm2LogsFullContent = `Error loading logs: ${e.message}`;
+        displayPm2Logs();
+      }
+    }
+
+    function startPm2LogsStream(appName) {
+      stopPm2LogsStream();
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws/pm2/logs/${encodeURIComponent(appName)}/stream`;
+      
+      pm2LogsWs = new WebSocket(wsUrl);
+      
+      pm2LogsWs.onopen = () => {
+        console.log("PM2 logs stream connected.");
+        document.getElementById("pm2LogsSubtitle").innerText = "Streaming real-time logs...";
+        setPm2LogsStreamBtnState(true);
+      };
+
+      pm2LogsWs.onmessage = (event) => {
+        pm2LogsFullContent += event.data;
+        displayPm2Logs();
+      };
+
+      pm2LogsWs.onclose = (event) => {
+        console.log("PM2 logs stream closed:", event.reason);
+        document.getElementById("pm2LogsSubtitle").innerText = "Stream paused/disconnected.";
+        setPm2LogsStreamBtnState(false);
+      };
+
+      pm2LogsWs.onerror = (err) => {
+        console.error("PM2 logs stream error:", err);
+      };
+    }
+
+    function stopPm2LogsStream() {
+      if (pm2LogsWs) {
+        pm2LogsWs.close();
+        pm2LogsWs = null;
+      }
+      setPm2LogsStreamBtnState(false);
+    }
+
+    function togglePm2LogsStream() {
+      if (pm2LogsWs) {
+        stopPm2LogsStream();
+        document.getElementById("pm2LogsSubtitle").innerText = "Stream paused.";
+      } else {
+        if (pm2LogsAppName) {
+          startPm2LogsStream(pm2LogsAppName);
+        }
+      }
+    }
+
+    function setPm2LogsStreamBtnState(active) {
+      const btn = document.getElementById("pm2LogsStreamToggle");
+      if (!btn) return;
+      if (active) {
+        btn.style.background = "var(--ok-soft)";
+        btn.style.color = "var(--ok)";
+        btn.innerHTML = `<i data-lucide="play" style="width:12px;height:12px;"></i> Streaming`;
+      } else {
+        btn.style.background = "var(--border)";
+        btn.style.color = "var(--text)";
+        btn.innerHTML = `<i data-lucide="pause" style="width:12px;height:12px;"></i> Paused`;
+      }
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    }
+
+    function clearPm2LogsDisplay() {
+      pm2LogsFullContent = "";
+      displayPm2Logs();
+    }
+
+    function displayPm2Logs() {
+      const container = document.getElementById("pm2LogsContent");
+      if (!container) return;
+
+      const filterText = document.getElementById("pm2LogsSearch").value.toLowerCase().trim();
+      if (!filterText) {
+        container.textContent = pm2LogsFullContent;
+      } else {
+        const lines = pm2LogsFullContent.split("\n");
+        const filtered = lines.filter(line => line.toLowerCase().includes(filterText));
+        container.textContent = filtered.join("\n");
+      }
+      
+      // Auto-scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function filterPm2Logs() {
+      displayPm2Logs();
+    }
+
+    function downloadPm2Logs() {
+      if (!pm2LogsAppName) return;
+      const element = document.createElement("a");
+      const file = new Blob([pm2LogsFullContent], {type: "text/plain"});
+      element.href = URL.createObjectURL(file);
+      element.download = `pm2_${pm2LogsAppName}_logs.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }
+
+    function formatDuration(ms) {
+      if (!ms || ms < 0) return "0s";
+      const seconds = Math.floor(ms / 1000);
+      const m = Math.floor(seconds / 60);
+      const h = Math.floor(m / 60);
+      const d = Math.floor(h / 24);
+
+      if (d > 0) return `${d}d ${h % 24}h`;
+      if (h > 0) return `${h}h ${m % 60}m`;
+      if (m > 0) return `${m}m ${seconds % 60}s`;
+      return `${seconds}s`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return "0 B";
+      const k = 1024;
+      const sizes = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     }
 
     // --- Secrets Vault logic ---
@@ -5457,6 +5995,7 @@
     let currentLogService = null;
     let logTimer = null;
     let refreshTimer = null;
+    let pm2RefreshTimer = null;
     let sessionTimer = null;
     let currentUser = null;
     let currentPage = "dashboard";
@@ -5929,11 +6468,12 @@
       document.getElementById("alertRulesMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("accessHubMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("dockerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
+      document.getElementById("pm2MenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("deployMenuItem").style.display = canOperate ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
       // Sync mobile drawer menu items
-      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem"].forEach(id => {
+      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobilePm2MenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (id === "mobileTerminalMenuItem" || id === "mobileDeployMenuItem") {
@@ -5947,7 +6487,7 @@
         currentPage = "dashboard";
       }
 
-      if (!isAdmin && (currentPage === "admin" || currentPage === "alert-rules" || currentPage === "access-hub" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager")) {
+      if (!isAdmin && (currentPage === "admin" || currentPage === "alert-rules" || currentPage === "access-hub" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager" || currentPage === "pm2")) {
         currentPage = "dashboard";
       }
 
@@ -5972,6 +6512,7 @@
         "ssh-keys": "accessHubMenuItem",
         "cloudflared": "accessHubMenuItem",
         "docker": "dockerMenuItem",
+        "pm2": "pm2MenuItem",
         "secrets": "fileManagerMenuItem",
         "file-manager": "fileManagerMenuItem",
         "deploy": "deployMenuItem",
@@ -5991,6 +6532,7 @@
       const showCloudflared = currentPage === "cloudflared" && hasRole("admin");
       const showFileManager = currentPage === "file-manager" && hasRole("admin");
       const showDocker = currentPage === "docker" && hasRole("admin");
+      const showPm2 = currentPage === "pm2" && hasRole("admin");
       const showSecrets = currentPage === "secrets" && hasRole("admin");
       const showDeploy = currentPage === "deploy" && hasRole("operator");
       const showTerminal = currentPage === "terminal" && hasRole("operator");
@@ -6004,6 +6546,7 @@
       document.getElementById("cloudflaredPage").style.display = showCloudflared ? "block" : "none";
       document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
       document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
+      document.getElementById("pm2Page").style.display = showPm2 ? "block" : "none";
       document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("deployPage").style.display = showDeploy ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
@@ -6023,7 +6566,7 @@
         page = "alert-rules";
       }
 
-      if ((page === "admin" || page === "alert-rules" || page === "access-hub" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "secrets") && !hasRole("admin")) {
+      if ((page === "admin" || page === "alert-rules" || page === "access-hub" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "pm2" || page === "secrets") && !hasRole("admin")) {
         alert("Admin role required.");
         return;
       }
@@ -6040,11 +6583,18 @@
         exitTerminalFullscreenIfActive();
       }
 
+      // Handle PM2 Timer teardown
+      if (pm2RefreshTimer) {
+        clearInterval(pm2RefreshTimer);
+        pm2RefreshTimer = null;
+      }
+
       currentPage = page;
       const breadcrumbLabels = {
         "dashboard": "Dashboard",
         "terminal": "Terminal",
         "docker": "Docker Manager",
+        "pm2": "PM2 Manager",
         "admin": "Team",
         "alert-rules": "Alert Rules",
         "access-hub": "Access & Tunnels",
@@ -6068,9 +6618,12 @@
         loadSshKeys();
       } else if (page === "docker") {
         loadDockerContainers();
+      } else if (page === "pm2") {
+        loadPm2Processes();
+        pm2RefreshTimer = setInterval(loadPm2Processes, 5000);
       } else if (page === "secrets") {
         // sync state if needed
-        } else if (page === "cloudflared") {
+      } else if (page === "cloudflared") {
         loadCloudflaredRoutes();
       } else if (page === "file-manager") {
         browseFiles(currentPath);
