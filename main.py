@@ -6199,7 +6199,11 @@ async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role
             cmd_args.extend(["--cron-restart", data.cron_restart])
             
     if actual_args:
-        cmd_args.extend(["--args", actual_args])
+        try:
+            split_args = shlex.split(actual_args)
+        except Exception:
+            split_args = actual_args.split()
+        cmd_args.extend(["--", *split_args])
         
     env = os.environ.copy()
     if data.env_vars:
