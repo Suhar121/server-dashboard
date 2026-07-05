@@ -5977,8 +5977,8 @@ def validate_app_name(name: str):
 def validate_path(path: str):
     if not path:
         return
-    # Allow safe characters for file paths on Windows/Linux (letters, digits, slash, backslash, colon, dot, space, dash, underscore)
-    if not re.match(r"^[a-zA-Z0-9\-_./\\: ]+$", path):
+    # Allow safe characters for file paths on Windows/Linux (letters, digits, slash, backslash, colon, dot, space, dash, underscore, tilde, at-sign)
+    if not re.match(r"^[a-zA-Z0-9\-_./\\: ~@]+$", path):
         raise HTTPException(status_code=400, detail="Invalid path characters.")
 
 
