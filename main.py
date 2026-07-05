@@ -6137,6 +6137,16 @@ async def pm2_action(data: PM2ActionRequest, user: dict = Depends(require_role("
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def expand_home_dir(path_str: str) -> str:
+    if not path_str:
+        return path_str
+    if path_str == "~":
+        return os.path.expanduser("~")
+    if path_str.startswith("~/") or path_str.startswith("~\\"):
+        return os.path.join(os.path.expanduser("~"), path_str[2:])
+    return path_str
+
+
 @app.post("/api/pm2/start-app")
 async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role("admin"))):
     pm2_cmd = get_pm2_cmd()
@@ -6163,6 +6173,7 @@ async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role
         actual_script = script_str
         actual_args = data.args
         
+    actual_script = expand_home_dir(actual_script)
     validate_path(actual_script)
     if data.cwd:
         validate_path(data.cwd)
@@ -6203,6 +6214,7 @@ async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role
             split_args = shlex.split(actual_args)
         except Exception:
             split_args = actual_args.split()
+        split_args = [expand_home_dir(arg) for arg in split_args]
         cmd_args.extend(["--", *split_args])
         
     env = os.environ.copy()
