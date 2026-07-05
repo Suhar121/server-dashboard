@@ -6142,11 +6142,32 @@ async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role
     pm2_cmd = get_pm2_cmd()
     
     validate_app_name(data.name)
-    validate_path(data.script)
+    
+    import shlex
+    script_str = data.script.strip()
+    try:
+        parts = shlex.split(script_str)
+    except Exception:
+        parts = script_str.split()
+        
+    if len(parts) > 1:
+        actual_script = parts[0]
+        extra_args = parts[1:]
+        if data.args:
+            try:
+                extra_args.extend(shlex.split(data.args))
+            except Exception:
+                extra_args.extend(data.args.split())
+        actual_args = " ".join(extra_args)
+    else:
+        actual_script = script_str
+        actual_args = data.args
+        
+    validate_path(actual_script)
     if data.cwd:
         validate_path(data.cwd)
         
-    cmd_args = [pm2_cmd, "start", data.script, "--name", data.name]
+    cmd_args = [pm2_cmd, "start", actual_script, "--name", data.name]
     
     if data.interpreter and data.interpreter.lower() != "auto":
         valid_interpreters = {"node", "node.js", "python", "python3", "bun", "bash", "php"}
@@ -6177,8 +6198,8 @@ async def pm2_start_app(data: PM2StartRequest, user: dict = Depends(require_role
         if re.match(r"^[0-9\s*/,\-]+$", data.cron_restart):
             cmd_args.extend(["--cron-restart", data.cron_restart])
             
-    if data.args:
-        cmd_args.extend(["--args", data.args])
+    if actual_args:
+        cmd_args.extend(["--args", actual_args])
         
     env = os.environ.copy()
     if data.env_vars:
