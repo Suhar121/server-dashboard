@@ -6302,7 +6302,7 @@ async def pm2_get_logs(
     # Fallback to execution
     try:
         result = subprocess.run(
-            [pm2_cmd, "logs", app_name, "--lines", str(limit), "--raw", "--no-colors"],
+            [pm2_cmd, "logs", app_name, "--lines", str(limit), "--raw"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -6335,7 +6335,7 @@ async def ws_pm2_logs_stream(websocket: WebSocket, app_name: str):
     proc = None
     try:
         proc = subprocess.Popen(
-            [pm2_cmd, "logs", app_name, "--raw", "--no-colors"],
+            [pm2_cmd, "logs", app_name, "--raw"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
