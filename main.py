@@ -6728,22 +6728,12 @@ async def ws_pm2_logs_stream(websocket: WebSocket, app_name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    # Configure reload excludes to avoid restarting the server when
-    # deployed apps copy files, write logs, or write to sqlite databases.
+    # reload is set to False by default to prevent Uvicorn from watching
+    # files and restarting during deployments. Set reload=True if developing.
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
-        reload_excludes=[
-            "deployed_apps/*",
-            "deployed_apps/**/*",
-            "logs/*",
-            "logs/**/*",
-            "*.db",
-            "users.db",
-            ".git/*",
-            ".git/**/*"
-        ]
+        reload=False
     )
 
