@@ -3142,7 +3142,7 @@
       font-weight: 600;
     }
 
-    #deployWizardModal, #deployLogsModal {
+    #deployWizardModal, #deployLogsModal, #ghPrivateRepoModal {
       position: fixed;
       inset: 0;
       display: none;
@@ -3154,7 +3154,7 @@
       padding: 20px;
     }
 
-    #deployWizardBox {
+    #deployWizardBox, #ghPrivateRepoBox {
       max-width: 560px;
       width: 100%;
       max-height: 90vh;
@@ -4280,6 +4280,30 @@
       <pre id="deployLogsContent">Loading...</pre>
       <div style="display:flex; gap:8px;">
         <button class="btn-neutral" onclick="closeDeployLogs()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ghPrivateRepoModal">
+    <div id="ghPrivateRepoBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="lock"></i> Private Repository Authentication</h3>
+      <div class="muted" style="margin-top:4px;">This repository requires authentication. Please enter your GitHub credentials or a Personal Access Token (PAT).</div>
+      
+      <div style="margin-top:16px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Username</label>
+        <input id="ghPrivateUsername" class="field" placeholder="e.g. git or your-username" style="margin-top:4px;" />
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Personal Access Token / Password</label>
+        <input id="ghPrivateToken" class="field" type="password" placeholder="ghp_..." style="margin-top:4px;" />
+      </div>
+
+      <div id="ghPrivateRepoError" class="error-text" style="margin-top:8px;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closePrivateRepoModal()">Cancel</button>
+        <button class="btn-success" onclick="submitPrivateRepoCredentials()"><i data-lucide="check" style="width:14px;height:14px;"></i> Authenticate</button>
       </div>
     </div>
   </div>
@@ -7385,6 +7409,49 @@
     let ghDeployId = null;
     let ghPollTimer = null;
 
+    let ghPrivateUsername = null;
+    let ghPrivateToken = null;
+    let ghPrivatePendingUrl = null;
+    let ghPrivatePendingBranch = null;
+
+    function openPrivateRepoModal(url, branch) {
+      ghPrivatePendingUrl = url;
+      ghPrivatePendingBranch = branch;
+      document.getElementById("ghPrivateUsername").value = ghPrivateUsername || "";
+      document.getElementById("ghPrivateToken").value = ghPrivateToken || "";
+      document.getElementById("ghPrivateRepoError").textContent = "";
+      document.getElementById("ghPrivateRepoModal").style.display = "flex";
+    }
+
+    function closePrivateRepoModal() {
+      document.getElementById("ghPrivateRepoModal").style.display = "none";
+      ghPrivatePendingUrl = null;
+      ghPrivatePendingBranch = null;
+    }
+
+    async function submitPrivateRepoCredentials() {
+      const user = document.getElementById("ghPrivateUsername").value.trim();
+      const token = document.getElementById("ghPrivateToken").value.trim();
+      const errEl = document.getElementById("ghPrivateRepoError");
+      errEl.textContent = "";
+
+      if (!token) {
+        errEl.textContent = "Personal Access Token or password is required.";
+        return;
+      }
+
+      ghPrivateUsername = user || null;
+      ghPrivateToken = token;
+
+      document.getElementById("ghPrivateRepoModal").style.display = "none";
+
+      if (ghPrivatePendingUrl) {
+        document.getElementById("ghRepoUrl").value = ghPrivatePendingUrl;
+        document.getElementById("ghBranch").value = ghPrivatePendingBranch;
+        analyzeGitHubRepo();
+      }
+    }
+
     async function analyzeGitHubRepo() {
       const url = document.getElementById("ghRepoUrl").value.trim();
       const branch = document.getElementById("ghBranch").value.trim() || "main";
@@ -7402,11 +7469,24 @@
         const res = await apiFetch("/deploy/github/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repo_url: url, branch }),
+          body: JSON.stringify({
+            repo_url: url,
+            branch,
+            username: ghPrivateUsername,
+            password: ghPrivateToken
+          }),
         });
         ghAnalysis = await res.json();
         renderAnalysisResult(ghAnalysis);
       } catch (e) {
+        if (e.message === "AUTH_REQUIRED") {
+          const wasPrompted = (ghPrivateToken !== null);
+          openPrivateRepoModal(url, branch);
+          if (wasPrompted) {
+            document.getElementById("ghPrivateRepoError").textContent = "Invalid username or token. Please try again.";
+          }
+          return;
+        }
         errEl.textContent = e.message || "Analysis failed.";
       } finally {
         btn.disabled = false;
@@ -7572,6 +7652,8 @@
             branch: ghAnalysis.branch,
             env_vars: envVars,
             port_overrides: portOverrides,
+            username: ghPrivateUsername,
+            password: ghPrivateToken
           }),
         });
         const data = await res.json();

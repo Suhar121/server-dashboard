@@ -321,9 +321,34 @@ class DeployedAppActionRequest(BaseModel):
     action: str
 
 
+def inject_git_credentials(url: str, username: str | None, password: str | None) -> str:
+    if not username and not password:
+        return url
+    if url.startswith("https://") or url.startswith("http://"):
+        prefix = "https://" if url.startswith("https://") else "http://"
+        rest = url[len(prefix):]
+        if "@" in rest:
+            parts = rest.split("@", 1)
+            rest = parts[1]
+        user_pass = ""
+        if username and password:
+            from urllib.parse import quote_plus
+            user_pass = f"{quote_plus(username)}:{quote_plus(password)}@"
+        elif username:
+            from urllib.parse import quote_plus
+            user_pass = f"{quote_plus(username)}@"
+        elif password:
+            from urllib.parse import quote_plus
+            user_pass = f"{quote_plus(password)}@"
+        return f"{prefix}{user_pass}{rest}"
+    return url
+
+
 class GitHubAnalyzeRequest(BaseModel):
     repo_url: str
     branch: str = "main"
+    username: str | None = None
+    password: str | None = None
 
 
 class GitHubDeployRequest(BaseModel):
@@ -333,6 +358,8 @@ class GitHubDeployRequest(BaseModel):
     env_vars: dict[str, str] = {}
     port_override: int | None = None
     port_overrides: dict[str, int] = {}
+    username: str | None = None
+    password: str | None = None
 
 
 def normalize_service_name(name: str) -> str:
@@ -3416,17 +3443,82 @@ def run_github_deploy_pipeline(deploy_id):
         # Clone into a temp directory to avoid Windows file lock issues
         tmp_clone = tempfile.mkdtemp(prefix="gh-clone-")
         try:
-            result = subprocess.run(
-                ["git", "clone", "--depth", "1", "-b", branch, repo_url, tmp_clone],
-                capture_output=True, text=True, timeout=300,
+            import queue
+            env = os.environ.copy()
+            env["GIT_TERMINAL_PROMPT"] = "0"  # Prevent git from prompting for credentials and hanging
+            env["GIT_ASKPASS"] = "true"       # Disable askpass helper
+            
+            command = ["git", "clone", "--depth", "1", "-b", branch, repo_url, tmp_clone]
+            
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                encoding="utf-8",
+                errors="replace",
+                env=env
             )
-            if result.returncode != 0:
-                _fail("clone", (result.stderr or result.stdout or "clone failed")[:300])
+            
+            q = queue.Queue()
+            def enqueue_output(out, queue_obj):
+                try:
+                    for line in iter(out.readline, ''):
+                        queue_obj.put(line)
+                except Exception:
+                    pass
+                finally:
+                    out.close()
+            
+            t = threading.Thread(target=enqueue_output, args=(process.stdout, q), daemon=True)
+            t.start()
+            
+            start_time = time.time()
+            output_lines = []
+            
+            while True:
+                if time.time() - start_time > 300:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    _fail("clone", "Clone timed out after 300 seconds")
+                    safe_rmtree(tmp_clone, ignore_errors=True)
+                    return
+                    
+                try:
+                    line = q.get_nowait()
+                except queue.Empty:
+                    if process.poll() is not None:
+                        while not q.empty():
+                            line = q.get_nowait()
+                            _log(line.rstrip("\r\n"))
+                            output_lines.append(line)
+                        break
+                    time.sleep(0.1)
+                    continue
+                
+                _log(line.rstrip("\r\n"))
+                output_lines.append(line)
+            
+            returncode = process.wait()
+            if returncode != 0:
+                error_msg = "".join(output_lines)
+                if "terminal prompts disabled" in error_msg or "Authentication failed" in error_msg or "could not read Username" in error_msg or "repository not found" in error_msg.lower():
+                    _log("[clone] [TIP] This seems to be a private repository.")
+                    _log("[clone] [TIP] To clone a private repository, please either:")
+                    _log("[clone]   1. Use a Personal Access Token (PAT) in the URL, e.g.:")
+                    _log("[clone]      https://your_token@github.com/username/repo.git")
+                    _log("[clone]   2. Configure SSH keys in the dashboard and use the SSH URL, e.g.:")
+                    _log("[clone]      git@github.com:username/repo.git")
+                _fail("clone", f"Clone failed with exit code {returncode}")
                 safe_rmtree(tmp_clone, ignore_errors=True)
                 return
-        except subprocess.TimeoutExpired:
+        except Exception as e:
+            _fail("clone", f"Clone execution failed: {str(e)[:300]}")
             safe_rmtree(tmp_clone, ignore_errors=True)
-            _fail("clone", "Clone timed out after 300 seconds")
             return
 
         _log("[clone] Repository cloned to temp directory.")
@@ -5132,12 +5224,21 @@ def github_analyze(data: GitHubAnalyzeRequest, user=Depends(require_role("operat
 
     tmp_dir = tempfile.mkdtemp(prefix="gh-analyze-")
     try:
+        env = os.environ.copy()
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GIT_ASKPASS"] = "true"
+        
+        clone_url = inject_git_credentials(repo_url, data.username, data.password)
+        
         result = subprocess.run(
-            ["git", "clone", "--depth", "1", "-b", branch, repo_url, tmp_dir],
-            capture_output=True, text=True, timeout=60,
+            ["git", "clone", "--depth", "1", "-b", branch, clone_url, tmp_dir],
+            capture_output=True, text=True, timeout=60, env=env
         )
         if result.returncode != 0:
-            raise HTTPException(status_code=400, detail=f"Clone failed: {(result.stderr or result.stdout)[:300]}")
+            stderr = result.stderr or ""
+            if "terminal prompts disabled" in stderr or "Authentication failed" in stderr or "could not read Username" in stderr or "repository not found" in stderr.lower():
+                raise HTTPException(status_code=400, detail="AUTH_REQUIRED")
+            raise HTTPException(status_code=400, detail=f"Clone failed: {stderr[:300]}")
 
         detected = detect_project_type(tmp_dir)
         repo_name = suggest_git_clone_folder_name(repo_url)
@@ -5215,9 +5316,11 @@ def github_deploy(data: GitHubDeployRequest, user=Depends(require_role("operator
     if data.port_overrides:
         env_vars["__port_overrides__"] = json.dumps(data.port_overrides)
 
+    authed_repo_url = inject_git_credentials(repo_url, data.username, data.password)
+
     deploy_id = create_github_deployment(
         app_name=app_name,
-        repo_url=repo_url,
+        repo_url=authed_repo_url,
         branch=branch,
         deploy_path=deploy_path,
         created_by=user["username"],
