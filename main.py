@@ -20,7 +20,25 @@ import re
 import base64
 import tempfile
 import json
+import yaml
 import threading
+
+def safe_rmtree(path, ignore_errors=False):
+    import stat
+    def remove_readonly(func, p, excinfo):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except Exception:
+            if not ignore_errors:
+                raise
+
+    if os.path.exists(path):
+        try:
+            shutil.rmtree(path, onerror=remove_readonly)
+        except Exception:
+            if not ignore_errors:
+                raise
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -100,7 +118,7 @@ ROLE_ORDER = {
 BATTERY_THRESHOLD = 20
 battery_alert_sent = False
 managed_services = {}
-active_sessions = {}
+active_sessions = {}  # in-memory cache, DB is source of truth
 alert_last_sent = {}  # Track when alerts were last sent to avoid spam
 pinned_port_down_alert_state = {}  # port -> bool (True when already alerted as down)
 docker_container_alert_state = {}  # container_id -> snapshot
@@ -314,6 +332,7 @@ class GitHubDeployRequest(BaseModel):
     branch: str = "main"
     env_vars: dict[str, str] = {}
     port_override: int | None = None
+    port_overrides: dict[str, int] = {}
 
 
 def normalize_service_name(name: str) -> str:
@@ -434,6 +453,17 @@ def init_user_db():
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            role TEXT NOT NULL,
+            expires_at REAL NOT NULL
+        )
+        """
+    )
+
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS pinned_services (
@@ -2828,6 +2858,16 @@ def list_github_deployments():
     return [dict(zip(cols, r)) for r in rows]
 
 
+def delete_github_deployment(deploy_id: int):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM github_deployments WHERE id = ?", (deploy_id,))
+    deleted = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
 # ──────────────────────────────────────────────────────────────────
 #  GITHUB DEPLOY — Project detection engine
 # ──────────────────────────────────────────────────────────────────
@@ -2855,6 +2895,117 @@ def _scan_env_file(repo_path):
                     env_vars.append({"key": key.strip(), "default": default.strip().strip('"').strip("'")})
             return env_vars, name
     return [], None
+
+
+def parse_compose_services(compose_path: str) -> list[dict]:
+    try:
+        with open(compose_path, "r") as f:
+            data = yaml.safe_load(f)
+    except Exception:
+        return []
+
+    if not data or not isinstance(data, dict):
+        return []
+
+    services = []
+    for svc_name, svc_config in (data.get("services") or {}).items():
+        if not isinstance(svc_config, dict):
+            continue
+
+        ports = []
+        for p in svc_config.get("ports") or []:
+            if isinstance(p, str):
+                parts = p.split(":")
+                if len(parts) == 2:
+                    try:
+                        ports.append({"host": int(parts[0]), "container": int(parts[1])})
+                    except ValueError:
+                        ports.append({"host": None, "container": parts[1]})
+                elif len(parts) == 3:
+                    try:
+                        ports.append({"host": int(parts[1]), "container": int(parts[2])})
+                    except ValueError:
+                        ports.append({"host": None, "container": parts[2]})
+            elif isinstance(p, dict):
+                try:
+                    host = int(p.get("published", 0)) if p.get("published") else None
+                except (ValueError, TypeError):
+                    host = None
+                try:
+                    container = int(p.get("target", 0)) if p.get("target") else None
+                except (ValueError, TypeError):
+                    container = None
+                ports.append({"host": host, "container": container})
+
+        env_vars = []
+        env = svc_config.get("environment") or {}
+        if isinstance(env, dict):
+            for k, v in env.items():
+                env_vars.append({"key": k, "value": str(v) if v is not None else ""})
+        elif isinstance(env, list):
+            for item in env:
+                if isinstance(item, str) and "=" in item:
+                    k, v = item.split("=", 1)
+                    env_vars.append({"key": k.strip(), "value": v.strip()})
+
+        depends_on = svc_config.get("depends_on") or {}
+        if isinstance(depends_on, dict):
+            depends_on = list(depends_on.keys())
+        elif isinstance(depends_on, list):
+            depends_on = [d if isinstance(d, str) else "" for d in depends_on]
+        else:
+            depends_on = []
+
+        services.append({
+            "name": svc_name,
+            "image": svc_config.get("image"),
+            "build": svc_config.get("build"),
+            "ports": ports,
+            "env_vars": env_vars,
+            "depends_on": depends_on,
+            "has_env_file": bool(svc_config.get("env_file")),
+        })
+
+    return services
+
+
+def apply_port_overrides(compose_path: str, port_overrides: dict[str, int]) -> str | None:
+    try:
+        with open(compose_path, "r") as f:
+            data = yaml.safe_load(f)
+    except Exception:
+        return None
+
+    if not data or not isinstance(data, dict):
+        return None
+
+    changed = False
+    for svc_name, new_port in port_overrides.items():
+        svc = (data.get("services") or {}).get(svc_name)
+        if not svc or not isinstance(svc, dict):
+            continue
+        ports = svc.get("ports")
+        if not isinstance(ports, list):
+            continue
+        for i, p in enumerate(ports):
+            if isinstance(p, str):
+                parts = p.split(":")
+                container_port = parts[-1]
+                if len(parts) == 2:
+                    ports[i] = f"{new_port}:{container_port}"
+                    changed = True
+                elif len(parts) == 3:
+                    parts[1] = str(new_port)
+                    ports[i] = ":".join(parts)
+                    changed = True
+            elif isinstance(p, dict):
+                p["published"] = str(new_port)
+                changed = True
+
+    if not changed:
+        return None
+
+    return yaml.dump(data, default_flow_style=False)
 
 
 def _detect_python(repo_path):
@@ -3159,6 +3310,8 @@ def run_github_deploy_pipeline(deploy_id):
     deploy_path = dep["deploy_path"]
     env_vars = json.loads(dep.get("env_vars", "{}"))
     port_override = env_vars.pop("__port_override__", None)
+    port_overrides_str = env_vars.pop("__port_overrides__", None)
+    port_overrides = json.loads(port_overrides_str) if port_overrides_str else {}
 
     steps = {
         "clone": "pending",
@@ -3185,14 +3338,40 @@ def run_github_deploy_pipeline(deploy_id):
         update_github_deployment_status(deploy_id, "cloning", steps)
         _log(f"[clone] Cloning {repo_url} (branch: {branch})...")
 
-        os.makedirs(deploy_path, exist_ok=True)
-        result = subprocess.run(
-            ["git", "clone", "--depth", "1", "-b", branch, repo_url, deploy_path],
-            capture_output=True, text=True, timeout=120,
-        )
-        if result.returncode != 0:
-            _fail("clone", (result.stderr or result.stdout or "clone failed")[:300])
+        # Clone into a temp directory to avoid Windows file lock issues
+        tmp_clone = tempfile.mkdtemp(prefix="gh-clone-")
+        try:
+            result = subprocess.run(
+                ["git", "clone", "--depth", "1", "-b", branch, repo_url, tmp_clone],
+                capture_output=True, text=True, timeout=300,
+            )
+            if result.returncode != 0:
+                _fail("clone", (result.stderr or result.stdout or "clone failed")[:300])
+                safe_rmtree(tmp_clone, ignore_errors=True)
+                return
+        except subprocess.TimeoutExpired:
+            safe_rmtree(tmp_clone, ignore_errors=True)
+            _fail("clone", "Clone timed out after 300 seconds")
             return
+
+        _log("[clone] Repository cloned to temp directory.")
+
+        # Copy temp clone into deploy_path (overwrites existing files safely)
+        os.makedirs(deploy_path, exist_ok=True)
+        copied_count = 0
+        for item in os.listdir(tmp_clone):
+            if item == ".git":
+                continue
+            src = os.path.join(tmp_clone, item)
+            dst = os.path.join(deploy_path, item)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
+            copied_count += 1
+        _log(f"[clone] Copied {copied_count} items to deployment directory.")
+        safe_rmtree(tmp_clone, ignore_errors=True)
+
         steps["clone"] = "done"
         _log("[clone] Done.")
 
@@ -3214,10 +3393,11 @@ def run_github_deploy_pipeline(deploy_id):
         # Step 3: Configure
         steps["configure"] = "running"
         update_github_deployment_status(deploy_id, "configuring", steps)
-        _log("[configure] Generating Dockerfile and docker-compose.yml...")
+        _log("[configure] Setting up Docker configuration...")
 
         port = port_override or detected["port"]
 
+        # Write Dockerfile only if repo doesn't have one
         dockerfile_content = generate_dockerfile(detected, deploy_path)
         if not detected.get("has_dockerfile"):
             with open(os.path.join(deploy_path, "Dockerfile"), "w") as f:
@@ -3226,19 +3406,42 @@ def run_github_deploy_pipeline(deploy_id):
         else:
             _log("[configure] Using existing Dockerfile.")
 
-        compose_content = generate_compose_yaml(app_name, detected, port)
-        compose_path = os.path.join(deploy_path, "docker-compose.yml")
-        with open(compose_path, "w") as f:
-            f.write(compose_content)
-        _log("[configure] Generated docker-compose.yml.")
+        # Check for existing docker-compose.yml in the cloned repo
+        compose_path = None
+        for candidate in ("docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"):
+            p = os.path.join(deploy_path, candidate)
+            if os.path.exists(p):
+                compose_path = p
+                break
 
+        if compose_path:
+            _log(f"[configure] Found existing {os.path.basename(compose_path)} — preserving it.")
+
+            # Apply per-service port overrides if the user changed any
+            if port_overrides:
+                _log(f"[configure] Applying port overrides: {port_overrides}")
+                modified = apply_port_overrides(compose_path, port_overrides)
+                if modified:
+                    with open(compose_path, "w") as f:
+                        f.write(modified)
+                    _log("[configure] Port overrides applied.")
+                else:
+                    _log("[configure] No port overrides needed or could not apply.")
+        else:
+            compose_content = generate_compose_yaml(app_name, detected, port)
+            compose_path = os.path.join(deploy_path, "docker-compose.yml")
+            with open(compose_path, "w") as f:
+                f.write(compose_content)
+            _log("[configure] Generated docker-compose.yml.")
+
+        # Write .env from user-supplied environment variables
         if env_vars:
-            env_lines = [f"PORT={port}"]
+            env_lines = []
             for k, v in env_vars.items():
                 env_lines.append(f"{k}={v}")
             with open(os.path.join(deploy_path, ".env"), "w") as f:
                 f.write("\n".join(env_lines) + "\n")
-            _log("[configure] Wrote .env file.")
+            _log(f"[configure] Wrote .env with {len(env_vars)} variables.")
 
         steps["configure"] = "done"
         update_github_deployment_fields(deploy_id, compose_path=compose_path)
@@ -3307,15 +3510,75 @@ init_user_db()
 bootstrap_admin_user()
 seed_app_templates()
 
+# Load active sessions from DB into memory (survives --reload)
+try:
+    now = time.time()
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT token, username, role, expires_at FROM sessions WHERE expires_at > ?", (now,))
+    for row in cur.fetchall():
+        active_sessions[row[0]] = {"username": row[1], "role": row[2], "expires_at": row[3]}
+    # Clean expired
+    cur.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+    conn.commit()
+    conn.close()
+    print(f"[sessions] Loaded {len(active_sessions)} active session(s) from DB")
+except Exception as e:
+    print(f"[sessions] Could not load from DB: {e}")
+
 
 def create_session(username: str, role: str) -> str:
     token = secrets.token_urlsafe(32)
-    active_sessions[token] = {
-        "username": username,
-        "role": role,
-        "expires_at": time.time() + SESSION_TIMEOUT_SECONDS,
-    }
+    expires_at = time.time() + SESSION_TIMEOUT_SECONDS
+    session = {"username": username, "role": role, "expires_at": expires_at}
+    active_sessions[token] = session
+    try:
+        conn = db_connect()
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO sessions (token, username, role, expires_at) VALUES (?, ?, ?, ?)",
+                    (token, username, role, expires_at))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
     return token
+
+
+def _load_session_from_db(session_id: str) -> dict | None:
+    try:
+        conn = db_connect()
+        cur = conn.cursor()
+        cur.execute("SELECT username, role, expires_at FROM sessions WHERE token = ?", (session_id,))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            return {"username": row[0], "role": row[1], "expires_at": row[2]}
+    except Exception:
+        pass
+    return None
+
+
+def _save_session_to_db(token: str, username: str, role: str, expires_at: float):
+    try:
+        conn = db_connect()
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO sessions (token, username, role, expires_at) VALUES (?, ?, ?, ?)",
+                    (token, username, role, expires_at))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _delete_session_from_db(token: str):
+    try:
+        conn = db_connect()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def get_current_user(
@@ -3326,14 +3589,21 @@ def get_current_user(
 
     session = active_sessions.get(session_id)
     if not session:
+        session = _load_session_from_db(session_id)
+        if session:
+            active_sessions[session_id] = session
+
+    if not session:
         raise HTTPException(status_code=401, detail="Invalid session")
 
     now = time.time()
     if session["expires_at"] < now:
         active_sessions.pop(session_id, None)
+        _delete_session_from_db(session_id)
         raise HTTPException(status_code=401, detail="Session expired")
 
     session["expires_at"] = now + SESSION_TIMEOUT_SECONDS
+    _save_session_to_db(session_id, session["username"], session["role"], session["expires_at"])
 
     return {
         "username": session["username"],
@@ -3364,14 +3634,21 @@ def get_valid_session(session_id: str | None):
 
     session = active_sessions.get(session_id)
     if not session:
+        session = _load_session_from_db(session_id)
+        if session:
+            active_sessions[session_id] = session
+
+    if not session:
         return None
 
     now = time.time()
     if session["expires_at"] < now:
         active_sessions.pop(session_id, None)
+        _delete_session_from_db(session_id)
         return None
 
     session["expires_at"] = now + SESSION_TIMEOUT_SECONDS
+    _save_session_to_db(session_id, session["username"], session["role"], session["expires_at"])
     return session
 
 
@@ -3383,9 +3660,24 @@ def update_sessions_for_user(username: str, new_role: str | None = None, delete:
                 to_remove.append(token)
             elif new_role:
                 session["role"] = new_role
+                _save_session_to_db(token, session["username"], session["role"], session["expires_at"])
 
     for token in to_remove:
         active_sessions.pop(token, None)
+        _delete_session_from_db(token)
+
+    # Also update/delete in DB for sessions not in cache
+    try:
+        conn = db_connect()
+        cur = conn.cursor()
+        if delete:
+            cur.execute("DELETE FROM sessions WHERE username = ?", (username,))
+        elif new_role:
+            cur.execute("UPDATE sessions SET role = ? WHERE username = ?", (new_role, username))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def send_telegram(msg):
@@ -4587,11 +4879,11 @@ def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(
 
     action = data.action.strip().lower()
     compose_path = app["compose_path"]
+    compose_dir = os.path.dirname(compose_path) if compose_path else None
 
-    if not compose_path or not os.path.exists(compose_path):
-        raise HTTPException(status_code=400, detail="Compose file not found for this app")
-
-    compose_dir = os.path.dirname(compose_path)
+    if action in ("start", "stop", "restart"):
+        if not compose_path or not os.path.exists(compose_path):
+            raise HTTPException(status_code=400, detail="Compose file not found for this app")
 
     if action == "start":
         result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
@@ -4615,15 +4907,16 @@ def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(
         return {"status": "running", "container_ids": container_ids}
 
     elif action == "delete":
-        try:
-            _run_docker_compose(compose_path, ["down", "-v"], timeout=60)
-        except Exception:
-            pass
-        try:
-            import shutil
-            shutil.rmtree(compose_dir, ignore_errors=True)
-        except Exception:
-            pass
+        if compose_path and os.path.exists(compose_path):
+            try:
+                _run_docker_compose(compose_path, ["down", "-v"], timeout=60)
+            except Exception:
+                pass
+        if compose_dir and os.path.exists(compose_dir):
+            try:
+                safe_rmtree(compose_dir, ignore_errors=True)
+            except Exception:
+                pass
         delete_deployed_app(app_id)
         log_audit(user["username"], "deploy_app_delete", f"Deleted app '{app['name']}'")
         return {"status": "deleted"}
@@ -4673,8 +4966,26 @@ def github_analyze(data: GitHubAnalyzeRequest, user=Depends(require_role("operat
         detected = detect_project_type(tmp_dir)
         repo_name = suggest_git_clone_folder_name(repo_url)
 
-        dockerfile_content = generate_dockerfile(detected, tmp_dir)
-        compose_content = generate_compose_yaml(repo_name, detected, detected["port"])
+        # Parse the actual docker-compose.yml if present
+        compose_services = []
+        compose_content = None
+        compose_path = None
+        for candidate in ("docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"):
+            p = os.path.join(tmp_dir, candidate)
+            if os.path.exists(p):
+                compose_path = p
+                compose_content = _read_file_safe(p)
+                compose_services = parse_compose_services(p)
+                break
+
+        dockerfile_content = None
+        if detected.get("has_dockerfile"):
+            dockerfile_content = _read_file_safe(os.path.join(tmp_dir, "Dockerfile"))
+        else:
+            dockerfile_content = generate_dockerfile(detected, tmp_dir)
+
+        if not compose_content:
+            compose_content = generate_compose_yaml(repo_name, detected, detected["port"])
 
         log_audit(user["username"], "github_analyze", f"Analyzed repo: {repo_url}")
         return {
@@ -4683,6 +4994,7 @@ def github_analyze(data: GitHubAnalyzeRequest, user=Depends(require_role("operat
             "branch": branch,
             "dockerfile_content": dockerfile_content,
             "compose_content": compose_content,
+            "compose_services": compose_services,
             **detected,
         }
     except HTTPException:
@@ -4692,7 +5004,7 @@ def github_analyze(data: GitHubAnalyzeRequest, user=Depends(require_role("operat
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:300])
     finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        safe_rmtree(tmp_dir, ignore_errors=True)
 
 
 @app.post("/deploy/github/deploy")
@@ -4709,14 +5021,23 @@ def github_deploy(data: GitHubDeployRequest, user=Depends(require_role("operator
         raise HTTPException(status_code=400, detail="App name must be alphanumeric with dashes/underscores only")
 
     existing = get_github_deployment_by_name(app_name)
-    if existing and existing.get("status") not in ("failed", "stopped"):
-        raise HTTPException(status_code=409, detail=f"App '{app_name}' already exists with status '{existing['status']}'")
+    if existing:
+        old_status = existing.get("status", "")
+        if old_status == "running":
+            raise HTTPException(status_code=409, detail=f"App '{app_name}' is currently running. Stop it first.")
+        # Clean up orphaned deployment (crashed pipeline, server reload, etc.)
+        old_path = existing.get("deploy_path")
+        if old_path and os.path.isdir(old_path):
+            safe_rmtree(old_path, ignore_errors=True)
+        delete_github_deployment(existing["id"])
 
     deploy_path = os.path.join("deployed_apps", app_name)
 
     env_vars = dict(data.env_vars)
     if data.port_override:
         env_vars["__port_override__"] = str(data.port_override)
+    if data.port_overrides:
+        env_vars["__port_overrides__"] = json.dumps(data.port_overrides)
 
     deploy_id = create_github_deployment(
         app_name=app_name,
@@ -4760,8 +5081,24 @@ def github_deploy_status(deploy_id: int, user=Depends(require_role("viewer"))):
         except Exception:
             env_vars = {}
     env_vars.pop("__port_override__", None)
+    env_vars.pop("__port_overrides__", None)
     dep["env_vars"] = env_vars
     return dep
+
+
+@app.delete("/deploy/github/{deploy_id}")
+def github_deploy_delete(deploy_id: int, user=Depends(require_role("operator"))):
+    dep = get_github_deployment(deploy_id)
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    deploy_path = dep.get("deploy_path")
+    if deploy_path and os.path.isdir(deploy_path):
+        safe_rmtree(deploy_path, ignore_errors=True)
+
+    delete_github_deployment(deploy_id)
+    log_audit(user["username"], "github_deploy_delete", f"Deleted deployment {deploy_id} ('{dep.get('app_name', '')}')")
+    return {"status": "deleted"}
 
 
 @app.get("/check-port/{port}")

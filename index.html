@@ -3403,6 +3403,136 @@
 
     .gh-preview-content.visible { display: block; }
 
+    /* ── Service Cards ── */
+    .gh-service-section {
+      margin-bottom: 16px;
+    }
+
+    .gh-service-section > label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .gh-service-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .gh-service-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .gh-service-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .gh-service-image {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      padding: 2px 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+    }
+
+    .gh-service-ports {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .gh-service-port {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .gh-service-port-input {
+      width: 72px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card-soft);
+      color: var(--text);
+      font-size: 0.85rem;
+      text-align: center;
+      outline: none;
+    }
+
+    .gh-service-port-input:focus {
+      border-color: var(--brand);
+    }
+
+    .gh-service-port-sep {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .gh-service-port-container {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+    }
+
+    .gh-service-deps {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .gh-service-dep-tag {
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+      font-size: 0.75rem;
+    }
+
+    .gh-service-envs {
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .gh-service-env-tag {
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      font-size: 0.75rem;
+      font-family: ui-monospace, monospace;
+    }
+
+    .gh-service-badge-compose {
+      background: rgba(139, 92, 246, 0.12);
+      color: #a78bfa;
+      border: 1px solid rgba(167, 139, 250, 0.3);
+    }
+
+    .gh-service-badge-services {
+      background: rgba(236, 72, 153, 0.12);
+      color: #f472b6;
+      border: 1px solid rgba(244, 114, 182, 0.3);
+    }
+
     /* ── Stepper ── */
     .gh-stepper {
       display: flex;
@@ -3974,14 +4104,15 @@
             <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">App Name</label>
             <input id="ghAppName" class="field" placeholder="my-app" style="margin-top:4px;" />
           </div>
-          <div>
-            <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Port Override</label>
-            <input id="ghPortOverride" class="field" type="number" placeholder="Auto" style="margin-top:4px;" />
-          </div>
+        </div>
+
+        <div id="ghServiceSection" class="gh-service-section" style="display:none;">
+          <label>Services <span class="muted" style="font-weight:400;">— edit host ports below</span></label>
+          <div id="ghServiceList"></div>
         </div>
 
         <div id="ghEnvSection" style="display:none;">
-          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Environment Variables</label>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Environment Variables <span class="muted" style="font-weight:400;">(from .env.example)</span></label>
           <div id="ghEnvVars" class="gh-env-list"></div>
         </div>
 
@@ -4038,6 +4169,11 @@
         </div>
 
         <div id="ghDeployLog" class="gh-deploy-log">Waiting for deployment to start...</div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn-danger" id="ghDeleteDeployBtn" style="display:none;" onclick="deleteFailedGitHubDeploy()">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Deployment
+          </button>
+        </div>
       </div>
     </div>
 
@@ -6354,9 +6490,6 @@
       document.getElementById("appSidebar").style.display = "none";
       document.getElementById("appMain").style.display = "none";
 
-      document.getElementById("loginUsername").value = "";
-      document.getElementById("loginPassword").value = "";
-
       const errorEl = document.getElementById("loginError");
       if (message) {
         errorEl.textContent = message;
@@ -7282,20 +7415,77 @@
       }
     }
 
+    function renderComposeServiceList(services) {
+      const section = document.getElementById("ghServiceSection");
+      const list = document.getElementById("ghServiceList");
+      if (!services || services.length === 0) {
+        section.style.display = "none";
+        list.innerHTML = "";
+        return;
+      }
+      section.style.display = "block";
+
+      list.innerHTML = services.map(svc => {
+        const portHtml = (svc.ports || []).map(p => `
+          <div class="gh-service-port">
+            <input class="gh-service-port-input" data-service="${esc(svc.name)}"
+                   type="number" value="${p.host || ''}" placeholder="${p.host || 'auto'}" />
+            <span class="gh-service-port-sep">→</span>
+            <span class="gh-service-port-container">${p.container || '?'}</span>
+          </div>
+        `).join("");
+
+        const envTags = (svc.env_vars || []).map(e =>
+          `<span class="gh-service-env-tag">${esc(e.key)}</span>`
+        ).join("");
+
+        const depTags = (svc.depends_on || []).map(d =>
+          `<span class="gh-service-dep-tag">${esc(d)}</span>`
+        ).join("");
+
+        const imageTag = svc.image
+          ? `<span class="gh-service-image">${esc(svc.image)}</span>`
+          : (svc.build ? `<span class="gh-service-image">build: ${esc(typeof svc.build === 'string' ? svc.build : '.')}</span>` : '');
+
+        return `
+          <div class="gh-service-card">
+            <div class="gh-service-header">
+              <i data-lucide="container" style="width:16px;height:16px;color:var(--brand);"></i>
+              <span class="gh-service-name">${esc(svc.name)}</span>
+              ${imageTag}
+            </div>
+            ${portHtml ? `<div class="gh-service-ports">${portHtml}</div>` : ''}
+            ${depTags ? `<div class="gh-service-deps">Depends on: ${depTags}</div>` : ''}
+            ${envTags ? `<div class="gh-service-envs">Env: ${envTags}</div>` : ''}
+          </div>
+        `;
+      }).join("");
+      lucide.createIcons();
+    }
+
     function renderAnalysisResult(a) {
       const card = document.getElementById("ghAnalysisCard");
       card.classList.add("visible");
 
       const badges = document.getElementById("ghBadges");
+      const hasCompose = a.has_compose && a.compose_services && a.compose_services.length > 0;
+      const svcCount = a.compose_services ? a.compose_services.length : 0;
       badges.innerHTML = `
         <span class="gh-badge gh-badge-type"><i data-lucide="tag" style="width:12px;height:12px;"></i> ${esc(a.type)}</span>
         ${a.framework !== 'none' ? `<span class="gh-badge gh-badge-framework"><i data-lucide="layers" style="width:12px;height:12px;"></i> ${esc(a.framework)}</span>` : ''}
-        <span class="gh-badge gh-badge-port"><i data-lucide="radio" style="width:12px;height:12px;"></i> Port ${a.port}</span>
+        ${hasCompose
+          ? `<span class="gh-badge gh-badge-compose"><i data-lucide="layers" style="width:12px;height:12px;"></i> Compose</span>
+             <span class="gh-badge gh-badge-services"><i data-lucide="box" style="width:12px;height:12px;"></i> ${svcCount} services</span>`
+          : `<span class="gh-badge gh-badge-port"><i data-lucide="radio" style="width:12px;height:12px;"></i> Port ${a.port}</span>`
+        }
       `;
 
       document.getElementById("ghAppName").value = a.repo_name || "";
-      document.getElementById("ghPortOverride").placeholder = `Default: ${a.port}`;
 
+      // Render service cards for compose projects
+      renderComposeServiceList(a.compose_services || []);
+
+      // Render env vars from .env.example
       const envSection = document.getElementById("ghEnvSection");
       const envVars = document.getElementById("ghEnvVars");
       if (a.env_vars && a.env_vars.length > 0) {
@@ -7313,17 +7503,22 @@
 
       lucide.createIcons();
 
+      const dfs = document.getElementById("ghDockerfileToggle");
+      const dfp = document.getElementById("ghDockerfilePreview");
       if (a.dockerfile_content) {
-        document.getElementById("ghDockerfilePreview").textContent = a.dockerfile_content;
-        document.getElementById("ghDockerfileToggle").style.display = "flex";
+        dfp.textContent = a.dockerfile_content;
+        dfs.style.display = "flex";
       } else {
-        document.getElementById("ghDockerfileToggle").style.display = "none";
+        dfs.style.display = "none";
       }
+
+      const cps = document.getElementById("ghComposeToggle");
+      const cpp = document.getElementById("ghComposePreview");
       if (a.compose_content) {
-        document.getElementById("ghComposePreview").textContent = a.compose_content;
-        document.getElementById("ghComposeToggle").style.display = "flex";
+        cpp.textContent = a.compose_content;
+        cps.style.display = "flex";
       } else {
-        document.getElementById("ghComposeToggle").style.display = "none";
+        cps.style.display = "none";
       }
 
       document.getElementById("ghDeployPanel").classList.remove("visible");
@@ -7340,7 +7535,6 @@
     async function deployFromGitHub() {
       if (!ghAnalysis) { alert("Analyze a repo first."); return; }
       const appName = document.getElementById("ghAppName").value.trim();
-      const portVal = document.getElementById("ghPortOverride").value;
       const errEl = document.getElementById("ghDeployError");
       const btn = document.getElementById("ghDeployBtn");
       errEl.textContent = "";
@@ -7348,11 +7542,20 @@
       if (!appName) { errEl.textContent = "App name is required."; return; }
       if (!/^[a-zA-Z0-9_-]+$/.test(appName)) { errEl.textContent = "Name: alphanumeric, dashes, underscores only."; return; }
 
+      // Collect env vars from .env.example form
       const envVars = {};
       document.querySelectorAll(".gh-env-input").forEach(inp => {
         const k = inp.getAttribute("data-key");
         const v = inp.value.trim();
         if (k && v) envVars[k] = v;
+      });
+
+      // Collect per-service port overrides
+      const portOverrides = {};
+      document.querySelectorAll(".gh-service-port-input").forEach(inp => {
+        const svc = inp.getAttribute("data-service");
+        const val = parseInt(inp.value);
+        if (svc && val && !isNaN(val)) portOverrides[svc] = val;
       });
 
       btn.disabled = true;
@@ -7368,7 +7571,7 @@
             app_name: appName,
             branch: ghAnalysis.branch,
             env_vars: envVars,
-            port_override: portVal ? parseInt(portVal) : null,
+            port_overrides: portOverrides,
           }),
         });
         const data = await res.json();
@@ -7386,6 +7589,24 @@
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy';
         lucide.createIcons();
+      }
+    }
+
+    async function deleteFailedGitHubDeploy() {
+      const btn = document.getElementById("ghDeleteDeployBtn");
+      const deployId = btn.getAttribute("data-deploy-id");
+      const appName = btn.getAttribute("data-app-name");
+      if (!deployId) return;
+      if (!confirm(`Delete failed deployment "${appName || deployId}"? This cannot be undone.`)) return;
+
+      try {
+        await apiFetch(`/deploy/github/${deployId}`, { method: "DELETE" });
+        document.getElementById("ghDeployTitle").textContent = "Deployment deleted";
+        document.getElementById("ghDeployStatus").textContent = "Cleaned up.";
+        btn.style.display = "none";
+        lucide.createIcons();
+      } catch (e) {
+        alert("Failed to delete: " + (e.message || "Unknown error"));
       }
     }
 
@@ -7443,8 +7664,13 @@
             ghPollTimer = null;
             if (dep.status === "running") {
               document.getElementById("ghDeployTitle").textContent = `${dep.app_name} is live!`;
+              document.getElementById("ghDeleteDeployBtn").style.display = "none";
             } else {
               document.getElementById("ghDeployTitle").textContent = `Deploy failed`;
+              document.getElementById("ghDeleteDeployBtn").style.display = "inline-flex";
+              document.getElementById("ghDeleteDeployBtn").setAttribute("data-deploy-id", dep.id);
+              document.getElementById("ghDeleteDeployBtn").setAttribute("data-app-name", dep.app_name);
+              lucide.createIcons();
             }
             loadDeployedApps();
           }
@@ -7464,6 +7690,10 @@
       document.getElementById("ghDeployError").textContent = "";
       document.getElementById("ghAnalysisCard").classList.remove("visible");
       document.getElementById("ghDeployPanel").classList.remove("visible");
+      document.getElementById("ghServiceSection").style.display = "none";
+      document.getElementById("ghServiceList").innerHTML = "";
+      document.getElementById("ghEnvSection").style.display = "none";
+      document.getElementById("ghEnvVars").innerHTML = "";
       resetStepper();
     }
 
