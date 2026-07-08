@@ -3531,11 +3531,22 @@ def run_github_deploy_pipeline(deploy_id):
                 continue
             src = os.path.join(tmp_clone, item)
             dst = os.path.join(deploy_path, item)
-            if os.path.isdir(src):
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src, dst)
-            copied_count += 1
+            try:
+                if os.path.islink(src):
+                    try:
+                        linkto = os.readlink(src)
+                        if os.path.exists(dst) or os.path.islink(dst):
+                            os.unlink(dst)
+                        os.symlink(linkto, dst)
+                    except Exception:
+                        pass
+                elif os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True, ignore_dangling_symlinks=True)
+                else:
+                    shutil.copy2(src, dst)
+                copied_count += 1
+            except Exception as copy_err:
+                _log(f"[clone] [WARNING] Skipped copying item '{item}': {copy_err}")
         _log(f"[clone] Copied {copied_count} items to deployment directory.")
         safe_rmtree(tmp_clone, ignore_errors=True)
 
