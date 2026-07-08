@@ -3322,15 +3322,43 @@ def run_github_deploy_pipeline(deploy_id):
         "health": "pending",
     }
 
+    class ThrottledLogger:
+        def __init__(self, deploy_id, initial_logs=""):
+            self.deploy_id = deploy_id
+            self.logs = initial_logs
+            self.last_update = 0.0
+            self.pending_write = False
+            self.lock = threading.Lock()
+
+        def log(self, msg):
+            with self.lock:
+                self.logs += f"\n{msg}"
+                now = time.time()
+                if now - self.last_update > 0.3:
+                    self._write_to_db()
+                else:
+                    self.pending_write = True
+
+        def flush(self):
+            with self.lock:
+                if self.pending_write:
+                    self._write_to_db()
+
+        def _write_to_db(self):
+            update_github_deployment_fields(self.deploy_id, logs=self.logs)
+            self.last_update = time.time()
+            self.pending_write = False
+
+    logger = ThrottledLogger(deploy_id, dep.get("logs", ""))
+
     def _fail(step, msg):
         steps[step] = "failed"
         update_github_deployment_status(deploy_id, "failed", steps)
-        update_github_deployment_fields(deploy_id, logs=dep.get("logs", "") + f"\n[FAIL] {step}: {msg}")
+        logger.log(f"[FAIL] {step}: {msg}")
+        logger.flush()
 
     def _log(msg):
-        current = dep.get("logs", "")
-        dep["logs"] = current + f"\n{msg}"
-        update_github_deployment_fields(deploy_id, logs=dep["logs"])
+        logger.log(msg)
 
     try:
         # Step 1: Clone
@@ -3452,7 +3480,7 @@ def run_github_deploy_pipeline(deploy_id):
         update_github_deployment_status(deploy_id, "building", steps)
         _log("[build] Building Docker image (this may take a while)...")
 
-        build_result = _run_docker_compose(compose_path, ["build"], timeout=600)
+        build_result = _run_docker_compose(compose_path, ["build"], timeout=600, log_callback=_log)
         steps["build"] = "done"
         _log("[build] Build complete.")
 
@@ -3461,7 +3489,7 @@ def run_github_deploy_pipeline(deploy_id):
         update_github_deployment_status(deploy_id, "deploying", steps)
         _log("[deploy] Starting containers...")
 
-        deploy_result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
+        deploy_result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180, log_callback=_log)
         steps["deploy"] = "done"
         _log("[deploy] Containers started.")
 
@@ -3488,6 +3516,8 @@ def run_github_deploy_pipeline(deploy_id):
         current_step = [k for k, v in steps.items() if v == "running"]
         step_name = current_step[0] if current_step else "unknown"
         _fail(step_name, str(e)[:300])
+    finally:
+        logger.flush()
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -4708,7 +4738,7 @@ def _render_compose_yaml(template_yaml: str, app_name: str, env_vars: dict, port
     return rendered
 
 
-def _run_docker_compose(compose_path: str, args: list[str], timeout: int = 120):
+def _run_docker_compose(compose_path: str, args: list[str], timeout: int = 120, log_callback=None):
     commands = [
         ["docker", "compose", "-f", compose_path, *args],
         ["docker-compose", "-f", compose_path, *args],
@@ -4717,7 +4747,69 @@ def _run_docker_compose(compose_path: str, args: list[str], timeout: int = 120):
     last_error = ""
     for command in commands:
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+            if log_callback:
+                import queue
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    encoding="utf-8",
+                    errors="replace"
+                )
+                
+                q = queue.Queue()
+                def enqueue_output(out, queue_obj):
+                    try:
+                        for line in iter(out.readline, ''):
+                            queue_obj.put(line)
+                    except Exception:
+                        pass
+                    finally:
+                        out.close()
+                
+                t = threading.Thread(target=enqueue_output, args=(process.stdout, q), daemon=True)
+                t.start()
+                
+                start_time = time.time()
+                output_lines = []
+                
+                while True:
+                    if time.time() - start_time > timeout:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                        raise subprocess.TimeoutExpired(command, timeout, output="".join(output_lines))
+                        
+                    try:
+                        line = q.get_nowait()
+                    except queue.Empty:
+                        if process.poll() is not None:
+                            while not q.empty():
+                                line = q.get_nowait()
+                                stripped = line.rstrip("\r\n")
+                                log_callback(stripped)
+                                output_lines.append(line)
+                            break
+                        time.sleep(0.1)
+                        continue
+                        
+                    stripped = line.rstrip("\r\n")
+                    log_callback(stripped)
+                    output_lines.append(line)
+                
+                returncode = process.wait()
+                result = subprocess.CompletedProcess(
+                    args=command,
+                    returncode=returncode,
+                    stdout="".join(output_lines),
+                    stderr=""
+                )
+            else:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
         except FileNotFoundError:
             continue
         except Exception as e:
