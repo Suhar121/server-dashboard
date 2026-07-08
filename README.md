@@ -101,8 +101,16 @@ ADMIN_PASSWORD=change_this_password
 
 ### Running
 
+You can run the application directly using python (recommended as it has reload exclusions pre-configured):
+
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python main.py
+```
+
+Or run via Uvicorn command-line by specifying reload exclusions (to prevent background deployment/log updates from triggering a server reload):
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "deployed_apps/*" --reload-exclude "logs/*" --reload-exclude "*.db"
 ```
 
 Open your browser at `http://127.0.0.1:8000/`
