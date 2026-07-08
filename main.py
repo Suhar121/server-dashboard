@@ -641,6 +641,26 @@ def init_user_db():
         if col not in pp_columns:
             cur.execute(f"ALTER TABLE pinned_ports ADD COLUMN {col} {col_type}")
 
+    # Sync existing github_deployments to deployed_apps table if they are missing
+    try:
+        cur.execute("SELECT app_name, compose_path, env_vars, container_ids, created_by, status, created_at, detected_port FROM github_deployments")
+        gh_deps = cur.fetchall()
+        for row in gh_deps:
+            app_name, compose_path, env_vars_str, container_ids_str, created_by, status, created_at, detected_port = row
+            # Check if already exists in deployed_apps
+            cur.execute("SELECT id FROM deployed_apps WHERE name = ?", (app_name,))
+            existing = cur.fetchone()
+            if not existing and status in ("running", "stopped"):
+                port_val = detected_port or 80
+                ports_list = [port_val] if port_val else []
+                cur.execute(
+                    """INSERT INTO deployed_apps (name, template_id, status, compose_path, ports, env_vars, container_ids, created_by, created_at)
+                       VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)""",
+                    (app_name, status, compose_path, json.dumps(ports_list), env_vars_str, container_ids_str, created_by, created_at)
+                )
+    except Exception as e:
+        print("Failed to sync github deployments to deployed_apps:", e)
+
     conn.commit()
     conn.close()
 
@@ -942,6 +962,27 @@ def list_deployed_apps():
         }
         for r in rows
     ]
+
+
+def get_deployed_app_by_name(name: str):
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("""SELECT da.id, da.name, da.template_id, da.status, da.compose_path,
+                          da.ports, da.env_vars, da.container_ids, da.created_by, da.created_at,
+                          t.name as template_name
+                   FROM deployed_apps da LEFT JOIN app_templates t ON da.template_id = t.id
+                   WHERE da.name = ?""", (name,))
+    r = cur.fetchone()
+    conn.close()
+    if not r:
+        return None
+    return {
+        "id": r[0], "name": r[1], "template_id": r[2], "status": r[3],
+        "compose_path": r[4], "ports": json.loads(r[5]) if r[5] else [],
+        "env_vars": json.loads(r[6]) if r[6] else {},
+        "container_ids": json.loads(r[7]) if r[7] else [],
+        "created_by": r[8], "created_at": r[9], "template_name": r[10],
+    }
 
 
 def get_deployed_app(app_id: int):
@@ -3356,6 +3397,12 @@ def run_github_deploy_pipeline(deploy_id):
         update_github_deployment_status(deploy_id, "failed", steps)
         logger.log(f"[FAIL] {step}: {msg}")
         logger.flush()
+        try:
+            existing_app = get_deployed_app_by_name(app_name)
+            if existing_app:
+                update_deployed_app_status(existing_app["id"], "failed")
+        except Exception:
+            pass
 
     def _log(msg):
         logger.log(msg)
@@ -3505,6 +3552,31 @@ def run_github_deploy_pipeline(deploy_id):
             steps["health"] = "done"
             update_github_deployment_status(deploy_id, "running", steps, container_ids)
             _log(f"[health] OK — {len(container_ids)} container(s) running.")
+            
+            # Register or update in deployed_apps table so it shows up in the UI list and stats!
+            existing_app = get_deployed_app_by_name(app_name)
+            port_val = port_override or detected.get("port") or 80
+            ports_list = [port_val] if port_val else []
+            
+            if existing_app:
+                conn = db_connect()
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE deployed_apps SET status = 'running', compose_path = ?, ports = ?, env_vars = ?, container_ids = ?, created_by = ? WHERE id = ?",
+                    (compose_path, json.dumps(ports_list), json.dumps(env_vars), json.dumps(container_ids), dep["created_by"], existing_app["id"])
+                )
+                conn.commit()
+                conn.close()
+            else:
+                conn = db_connect()
+                cur = conn.cursor()
+                cur.execute(
+                    """INSERT INTO deployed_apps (name, template_id, status, compose_path, ports, env_vars, container_ids, created_by, created_at)
+                       VALUES (?, NULL, 'running', ?, ?, ?, ?, ?, ?)""",
+                    (app_name, compose_path, json.dumps(ports_list), json.dumps(env_vars), json.dumps(container_ids), dep["created_by"], int(time.time()))
+                )
+                conn.commit()
+                conn.close()
         else:
             steps["health"] = "failed"
             update_github_deployment_status(deploy_id, "failed", steps)
@@ -4981,12 +5053,18 @@ def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(
         result = _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
         container_ids = _get_compose_container_ids(compose_path)
         update_deployed_app_status(app_id, "running", container_ids)
+        gh_dep = get_github_deployment_by_name(app["name"])
+        if gh_dep:
+            update_github_deployment_status(gh_dep["id"], "running", container_ids=container_ids)
         log_audit(user["username"], "deploy_app_start", f"Started app '{app['name']}'")
         return {"status": "running", "container_ids": container_ids}
 
     elif action == "stop":
         result = _run_docker_compose(compose_path, ["down"], timeout=60)
         update_deployed_app_status(app_id, "stopped", [])
+        gh_dep = get_github_deployment_by_name(app["name"])
+        if gh_dep:
+            update_github_deployment_status(gh_dep["id"], "stopped", container_ids=[])
         log_audit(user["username"], "deploy_app_stop", f"Stopped app '{app['name']}'")
         return {"status": "stopped"}
 
@@ -4995,6 +5073,9 @@ def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(
         _run_docker_compose(compose_path, ["up", "-d"], timeout=180)
         container_ids = _get_compose_container_ids(compose_path)
         update_deployed_app_status(app_id, "running", container_ids)
+        gh_dep = get_github_deployment_by_name(app["name"])
+        if gh_dep:
+            update_github_deployment_status(gh_dep["id"], "running", container_ids=container_ids)
         log_audit(user["username"], "deploy_app_restart", f"Restarted app '{app['name']}'")
         return {"status": "running", "container_ids": container_ids}
 
@@ -5010,6 +5091,9 @@ def deploy_app_action(app_id: int, data: DeployedAppActionRequest, user=Depends(
             except Exception:
                 pass
         delete_deployed_app(app_id)
+        gh_dep = get_github_deployment_by_name(app["name"])
+        if gh_dep:
+            delete_github_deployment(gh_dep["id"])
         log_audit(user["username"], "deploy_app_delete", f"Deleted app '{app['name']}'")
         return {"status": "deleted"}
 
