@@ -3831,7 +3831,7 @@
           <div class="stat-card">
             <span class="stat-label">RAM Usage</span>
             <span class="stat-value" id="ramValue">--%</span>
-            <span class="stat-delta">Current memory consumption</span>
+            <span class="stat-delta" id="ramDelta">Current memory consumption</span>
           </div>
           <div class="stat-card">
             <span class="stat-label">Docker</span>
@@ -8466,6 +8466,14 @@
         document.getElementById("cpuValue").innerText = `${cpu.toFixed(1)}%`;
         document.getElementById("ramValue").innerText = `${ram.toFixed(1)}%`;
 
+        if (data.vmem) {
+          const usedGB = (data.vmem.used / (1024 * 1024 * 1024)).toFixed(1);
+          const totalGB = (data.vmem.total / (1024 * 1024 * 1024)).toFixed(1);
+          document.getElementById("ramDelta").innerText = `${usedGB} GB / ${totalGB} GB Used`;
+        } else {
+          document.getElementById("ramDelta").innerText = "Current memory consumption";
+        }
+
         const nowMs = Date.now();
         if (nowMs - lastTrendPointAt >= TREND_SAMPLE_INTERVAL_MS) {
           lastTrendPointAt = nowMs;
@@ -8490,6 +8498,7 @@
       } catch {
         document.getElementById("cpuValue").innerText = "--%";
         document.getElementById("ramValue").innerText = "--%";
+        document.getElementById("ramDelta").innerText = "Connection failed";
       }
     }
 

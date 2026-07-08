@@ -4818,9 +4818,17 @@ def system(user=Depends(require_role("viewer"))):
         except Exception:
             pass
 
+    vmem = psutil.virtual_memory()
     return {
         "cpu": cpu,
-        "memory": memory
+        "memory": memory,
+        "vmem": {
+            "total": vmem.total,
+            "available": vmem.available,
+            "used": vmem.used,
+            "free": vmem.free,
+            "percent": vmem.percent
+        }
     }
 
 
