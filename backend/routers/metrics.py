@@ -12,6 +12,61 @@ from routers.auth import require_role
 
 router = APIRouter(tags=["metrics"])
 
+# Shared metrics cache
+system_metrics_cache = {
+    "cpu": 0.0,
+    "memory": 0.0,
+    "vmem": {
+        "total": 0,
+        "available": 0,
+        "used": 0,
+        "free": 0,
+        "percent": 0.0
+    },
+    "battery": None
+}
+
+def start_metrics_poller():
+    import threading
+    
+    def poll_metrics():
+        # First call to initialize psutil CPU calculation
+        try:
+            psutil.cpu_percent()
+        except Exception:
+            pass
+            
+        while True:
+            try:
+                cpu = psutil.cpu_percent(interval=1.0)
+                mem = psutil.virtual_memory()
+                battery = psutil.sensors_battery()
+                
+                system_metrics_cache["cpu"] = cpu
+                system_metrics_cache["memory"] = mem.percent
+                system_metrics_cache["vmem"] = {
+                    "total": mem.total,
+                    "available": mem.available,
+                    "used": mem.used,
+                    "free": mem.free,
+                    "percent": mem.percent
+                }
+                if battery:
+                    system_metrics_cache["battery"] = {
+                        "percent": battery.percent,
+                        "charging": battery.is_charging
+                    }
+                else:
+                    system_metrics_cache["battery"] = None
+            except Exception as e:
+                print("[MetricsPoller] Error:", e)
+            time.sleep(1.0)
+
+    t = threading.Thread(target=poll_metrics, daemon=True, name="MetricsPoller")
+    t.start()
+    print("[MetricsPoller] Background metrics daemon thread started.")
+
+
 class SavePinnedPortRequest(BaseModel):
     port: int
 
@@ -196,8 +251,8 @@ def get_server_info():
 
 @router.get("/system")
 def get_system(user=Depends(require_role("viewer"))):
-    cpu = psutil.cpu_percent()
-    memory = psutil.virtual_memory().percent
+    cpu = system_metrics_cache["cpu"]
+    memory = system_metrics_cache["memory"]
 
     check_alert_rules(cpu, memory)
     check_pinned_port_alerts()
@@ -210,23 +265,15 @@ def get_system(user=Depends(require_role("viewer"))):
     if os.getenv("AI_AUTO_REMEDIATION", "").lower() in ("1", "true", "yes"):
         try:
             from ai.remediation import on_cpu_alert
-            cpu_val = psutil.cpu_percent(interval=0.5)
-            if cpu_val > 80:
-                on_cpu_alert(threshold=80, current_cpu=cpu_val, session_id=user.get("session_id"))
+            if cpu > 80:
+                on_cpu_alert(threshold=80, current_cpu=cpu, session_id=user.get("session_id"))
         except Exception:
             pass
 
-    vmem = psutil.virtual_memory()
     return {
         "cpu": cpu,
         "memory": memory,
-        "vmem": {
-            "total": vmem.total,
-            "available": vmem.available,
-            "used": vmem.used,
-            "free": vmem.free,
-            "percent": vmem.percent
-        }
+        "vmem": system_metrics_cache["vmem"]
     }
 
 

@@ -1620,18 +1620,17 @@
     var TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__";
     var ROLE_ORDER = { viewer: 1, operator: 2, admin: 3 };
 
-    // Register global function variables to allow direct calls in ES modules
-    var apiFetch, esc, showModal, showConfirm, showToast, formatBytes, formatDate;
+    // Register global function variables to allow direct calls in ES modules and inline HTML events
+    var apiFetch, esc, formatBytes, formatDuration, getFileIcon, formatFileSize, FILE_ICONS;
     var loadBattery, loadPinnedPorts, loadSystem, loadPorts, updateChartColors;
-    var loadDockerContainers, pruneDocker, startContainer, stopContainer, restartContainer, showDockerLogs;
-    var loadPm2Processes, pm2Action, startPm2App, showPm2Logs, closePm2LogsModal, loadPinnedServices, savePinnedService, deletePinnedService;
-    var browseFiles, openCreateFolderModal, openCreateFileModal, openUploadModal, openGitCloneModal, downloadFolder, downloadFile, deleteFile, viewFileContent, openEditFileModal, openChmodModal;
-    var ensureTerminalReady, requestFitActiveTerminal, syncTerminalFullscreenUi, closeAllTerminalTabs, exitTerminalFullscreenIfActive, openTerminalTab, closeTerminalTab, setActiveTerminalTab, toggleTerminalFullscreen, openTerminalInPath;
+    var loadDockerContainers, pruneDocker, dockerAction, dockerLogs, dockerExec;
+    var loadPm2Processes, pm2GlobalAction, pm2AppAction, openStartPm2AppModal, closeStartPm2AppModal, pm2StartNewApp, openPm2LogsModal, closePm2LogsModal;
+    var browseFiles, renderFileList, renderGridView, renderListView, handleFileClick, handleFileDoubleClick, switchView, refreshCurrentDir, openFileEditor, closeFileEditor, saveFileContent, deleteFileOrFolder, createNewFile, createNewFolder, gitCloneRepo, downloadFile, downloadFolder, openPermissionsModal, closePermissionsModal, savePermissions;
+    var ensureTerminalReady, requestFitActiveTerminal, syncTerminalFullscreenUi, closeAllTerminalTabs, exitTerminalFullscreenIfActive, createTerminalTab, closeTerminalTab, toggleTerminalFullscreen;
     var loadUsers, createUser, changeUserRole, deleteUser, loadAuditLogs, loadAlertRules, createAlertRule, toggleAlertRule, deleteAlertRule, loadLoginAlertsSetting, updateLoginAlertsToggle, toggleLoginAlerts, loadSshKeys, createSshKey, deleteSshKey, loadCloudflaredRoutes, createCloudflaredRoute, deleteCloudflaredRoute, restartCloudflaredTunnel;
-    var loadDeployPage, openDeployAppModal, deployAppFromTemplate, deployAppFromGit, deleteDeployedApp, deployedAppAction;
+    var loadDeployPage, deployAppAction, viewDeployLogs, closeDeployLogs;
     var toggleAIPanel, hideAIPanel, showAIPanel, startNewChat, sendQuickPrompt, clearAIHistory, handleAIInputKey, confirmAIAction, sendAIMessage;
-    var loadCustomServices, runCustomService, stopCustomService, showCustomServiceLogs;
-    var showLoginPage, showSignup, showDashboard, goToPage, FILE_ICONS, hasRole;
+    var showLoginPage, showSignup, showDashboard, goToPage, hasRole;
   </script>
 
   <!-- Load modern ES modules -->

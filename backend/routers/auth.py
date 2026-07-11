@@ -142,12 +142,16 @@ async def login(data: LoginRequest, request: Request, response: Response):
     database.log_audit(username, "login", f"Logged in with role: {role}")
 
     token = create_session(username=username, role=role)
+    is_secure = (
+        request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto") == "https"
+    )
     response.set_cookie(
         key=config.SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=is_secure,
         max_age=config.SESSION_TIMEOUT_SECONDS,
     )
     return {"status": "ok", "username": username, "role": role}

@@ -93,6 +93,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[AI] Warning: Gemini configuration failed: {e}")
             
+    # Start background metrics poller daemon
+    try:
+        from routers.metrics import start_metrics_poller
+        start_metrics_poller()
+    except Exception as e:
+        print("Failed to start metrics poller daemon:", e)
+
     yield
 
 
@@ -155,3 +162,16 @@ def get_dashboard():
 @app.get("/logo")
 def get_logo():
     return FileResponse("frontend/gridcore.jpg", media_type="image/jpeg")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # reload is set to False by default to prevent Uvicorn from watching
+    # files and restarting during deployments. Set reload=True if developing.
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=False
+    )
+

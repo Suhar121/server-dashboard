@@ -51,17 +51,33 @@ def tool(name: str, description: str, parameters: dict, min_role: str = "viewer"
     auto_exec=True,
 )
 def get_system_metrics(session: dict, params: dict) -> dict:
-    cpu = psutil.cpu_percent(interval=0.5)
-    mem = psutil.virtual_memory()
-    battery = psutil.sensors_battery()
-    return {
-        "cpu_percent": cpu,
-        "ram_total_gb": round(mem.total / (1024**3), 1),
-        "ram_used_gb": round(mem.used / (1024**3), 1),
-        "ram_percent": mem.percent,
-        "battery_percent": battery.percent if battery else None,
-        "battery_charging": battery.is_charging if battery else None,
-    }
+    try:
+        from routers.metrics import system_metrics_cache
+        cpu = system_metrics_cache.get("cpu", 0.0)
+        mem_percent = system_metrics_cache.get("memory", 0.0)
+        vmem = system_metrics_cache.get("vmem", {})
+        battery = system_metrics_cache.get("battery")
+        
+        return {
+            "cpu_percent": cpu,
+            "ram_total_gb": round(vmem.get("total", 0) / (1024**3), 1) if vmem else 0.0,
+            "ram_used_gb": round(vmem.get("used", 0) / (1024**3), 1) if vmem else 0.0,
+            "ram_percent": mem_percent,
+            "battery_percent": battery.get("percent") if battery else None,
+            "battery_charging": battery.get("charging") if battery else None,
+        }
+    except Exception:
+        cpu = psutil.cpu_percent(interval=0.5)
+        mem = psutil.virtual_memory()
+        battery = psutil.sensors_battery()
+        return {
+            "cpu_percent": cpu,
+            "ram_total_gb": round(mem.total / (1024**3), 1),
+            "ram_used_gb": round(mem.used / (1024**3), 1),
+            "ram_percent": mem.percent,
+            "battery_percent": battery.percent if battery else None,
+            "battery_charging": battery.is_charging if battery else None,
+        }
 
 
 @tool(
