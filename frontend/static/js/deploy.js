@@ -329,7 +329,17 @@
     function renderComposeServiceList(services) {
       const section = document.getElementById("ghServiceSection");
       const list = document.getElementById("ghServiceList");
-      if (!services || services.length === 0) {
+      
+      let displayServices = services || [];
+      if ((!displayServices || displayServices.length === 0) && ghAnalysis && ghAnalysis.port) {
+        // Render a virtual service card so the user can configure host port overrides
+        displayServices = [{
+          name: document.getElementById("ghAppName")?.value.trim() || ghAnalysis.repo_name || "app",
+          ports: [{ host: ghAnalysis.port, container: ghAnalysis.port }]
+        }];
+      }
+
+      if (displayServices.length === 0) {
         section.style.display = "none";
         list.innerHTML = "";
         return;

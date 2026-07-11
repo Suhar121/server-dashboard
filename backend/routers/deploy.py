@@ -72,19 +72,24 @@ def _read_file_safe(path, max_bytes=65536):
 
 
 def _scan_env_file(repo_path):
-    env_vars = []
-    for name in (".env.example", ".env.sample", ".env.template"):
-        p = os.path.join(repo_path, name)
-        if os.path.isfile(p):
-            content = _read_file_safe(p)
-            for line in content.splitlines():
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    key, _, default = line.partition("=")
-                    env_vars.append({"key": key.strip(), "default": default.strip().strip('"').strip("'")})
-            return env_vars, name
+    exclude_dirs = {".git", "node_modules", "venv", ".venv", "dist", "build"}
+    for root, dirs, files in os.walk(repo_path):
+        # Prune excluded directories in-place to avoid traversing them
+        dirs[:] = [d for d in dirs if d not in exclude_dirs]
+        for name in (".env.example", ".env.sample", ".env.template"):
+            if name in files:
+                p = os.path.join(root, name)
+                content = _read_file_safe(p)
+                env_vars = []
+                for line in content.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        key, _, default = line.partition("=")
+                        env_vars.append({"key": key.strip(), "default": default.strip().strip('"').strip("'")})
+                rel_path = os.path.relpath(p, repo_path)
+                return env_vars, rel_path
     return [], None
 
 
@@ -844,7 +849,10 @@ def run_github_deploy_pipeline(deploy_id):
         database.update_github_deployment_status(deploy_id, "configuring", steps)
         _log("[configure] Setting up Docker configuration...")
 
-        port = port_override or detected["port"]
+        port = port_overrides.get(app_name)
+        if not port and port_overrides:
+            port = list(port_overrides.values())[0]
+        port = port or port_override or detected["port"]
 
         dockerfile_content = generate_dockerfile(detected, deploy_path)
         if not detected.get("has_dockerfile"):
