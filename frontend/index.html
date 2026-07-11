@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>GridCore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  
+  <div class="app-sidebar" id="appSidebar">
+  <!-- Mobile hamburger -->
+  <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" title="Menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <!-- Enterprise Context Header -->
+  <div class="sidebar-org">
+    <div class="sidebar-org-header">
+      <img src="/logo" alt="GridCore" class="sidebar-org-logo" />
+      <div class="sidebar-org-info">
+        <div class="sidebar-org-name">GridCore</div>
+        <div id="serverNameLabel" class="sidebar-org-server"></div>
+      </div>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-env-row">
+      <span class="sidebar-env-badge">Production</span>
+      <span class="sidebar-health-dot"></span>
+      <span class="sidebar-health-text">Healthy</span>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="sidebar-search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" class="sidebar-search" placeholder="Search pages..." readonly onfocus="this.blur()" />
+    <kbd class="sidebar-kbd">⌘K</kbd>
+  </div>
+
+  <!-- Navigation -->
+  <div class="sidebar-scroll">
+    <nav class="sidebar-nav" aria-label="Page navigation">
+      <div class="sidebar-group">
+        <button class="top-nav-item active" onclick="goToPage('dashboard')" id="dashboardNavItem">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button id="terminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+          <span>Terminal</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-group-label">Infrastructure</div>
+      <div class="sidebar-group">
+        <button id="dockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
+          <span>Docker Manager</span>
+        </button>
+        <button id="pm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>PM2 Manager</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-group-label">Operations</div>
+      <div class="sidebar-group">
+        <button id="adminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Team</span>
+        </button>
+        <button id="alertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span>Alert Rules</span>
+        </button>
+        <button id="accessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>Access & Tunnels</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-group-label">Development</div>
+      <div class="sidebar-group">
+        <button id="fileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          <span>File Manager</span>
+        </button>
+        <button id="deployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+          <span>Deploy Apps</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Footer: User + Theme -->
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="sidebar-user-info">
+        <span id="authInfo" class="sidebar-user-name">Not logged in</span>
+        <span class="sidebar-user-role">Administrator</span>
+      </div>
+      <div class="sidebar-user-actions">
+        <button id="changePasswordBtn" onclick="openChangePasswordModal()" title="Change Password" class="sidebar-icon-btn" style="display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </button>
+        <button id="logoutBtn" onclick="logout()" title="Log out" class="sidebar-icon-btn" style="display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="sidebar-footer-row">
+      <select id="themeSelect" class="theme-select" onchange="setTheme(this.value)">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="car">Car</option>
+        <option value="batman">Batman</option>
+        <option value="builder">Builder</option>
+        <option value="coding">Coding</option>
+        <option value="networking">Network</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<main class="app-main" id="appMain">
+  <!-- Enterprise Top Bar -->
+  <div class="topbar-enterprise">
+    <div class="topbar-left">
+      <div class="topbar-breadcrumb">
+        <span class="topbar-breadcrumb-item active" id="topbarBreadcrumb">Dashboard</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-icon-btn" title="Notifications">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="topbar-badge">3</span>
+      </button>
+      <button class="topbar-icon-btn" title="Search (⌘K)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <div class="topbar-time" id="topbarTime">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="app-content-wrapper">
+
+  <div id="dashboardContent" style="display:none;">
+    <!-- Nested card shell like Dokploy -->
+    <div class="dash-outer">
+      <div class="dash-inner">
+        <!-- Header row -->
+        <div class="dash-header">
+          <div>
+            <h1 class="dash-heading">Dashboard</h1>
+            <p class="dash-subheading">Monitor your infrastructure in real time.</p>
+          </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="dash-kpi-grid">
+          <div class="stat-card">
+            <span class="stat-label">Battery</span>
+            <span class="stat-value" id="batteryValue">--%</span>
+            <span class="stat-delta" id="batteryMode">Checking...</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">CPU Usage</span>
+            <span class="stat-value" id="cpuValue">--%</span>
+            <span class="stat-delta">Live processor usage</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">RAM Usage</span>
+            <span class="stat-value" id="ramValue">--%</span>
+            <span class="stat-delta" id="ramDelta">Current memory consumption</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Docker</span>
+            <span class="stat-value stat-value-sm" id="dockerStatValue">0</span>
+            <span class="stat-delta" id="dockerStatRunning">0 running</span>
+          </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="dash-section-card">
+          <div class="dash-section-header">
+            <div class="dash-section-title-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <h2 class="dash-section-title">System Trend</h2>
+            </div>
+            <span class="dash-section-badge">Last 3 hours</span>
+          </div>
+          <p class="dash-section-desc">CPU, RAM &amp; Battery over time</p>
+          <div class="dash-chart-wrap">
+            <canvas id="cpuChart" height="120"></canvas>
+          </div>
+        </div>
+
+        <!-- Two-column row -->
+        <div class="dash-cols">
+          <!-- Pinned Ports -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <h2 class="dash-section-title">Pinned Ports</h2>
+              </div>
+            </div>
+            <div class="dash-inline-form">
+              <input id="pinnedPortInput" class="field" type="number" min="1" max="65535" placeholder="Port e.g. 8000" />
+              <button id="addPinnedPortBtn" onclick="addPinnedPort()" class="btn-outline" style="white-space:nowrap;">Pin Port</button>
+            </div>
+            <table class="dash-table" id="pinnedPortsTable">
+              <thead>
+                <tr><th>Port</th><th>Alias</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody id="pinnedPortsBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Docker -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                <h2 class="dash-section-title">Docker Containers</h2>
+              </div>
+            </div>
+            <table class="dash-table" id="dockerTable">
+              <thead>
+                <tr><th>Name</th><th>Status</th><th>Ports</th></tr>
+              </thead>
+              <tbody id="dockerBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Two-column row 2 -->
+        <div class="dash-cols">
+          <!-- Open Ports -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row" style="cursor:pointer;user-select:none;" onclick="togglePortsSection()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M10 3H3v7l7 7v7l11-11V3h-7"/><path d="M17 7h.01"/></svg>
+                <h2 class="dash-section-title">Open Ports</h2>
+                <span id="portsToggleIcon" class="dash-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+              </div>
+            </div>
+            <div id="portsSectionBody">
+              <table class="dash-table" id="portsTable">
+                <thead>
+                  <tr><th>Protocol</th><th>State</th><th>Local Address</th><th>Alias</th><th></th></tr>
+                </thead>
+                <tbody id="portsBody"></tbody>
+              </table>
+              <div class="dash-activity-label">Recent Port Activity</div>
+              <div id="recentPortsList" class="recent-ports-list"></div>
+            </div>
+          </div>
+
+          <!-- To-Do -->
+          <div class="dash-section-card">
+            <div class="dash-section-header">
+              <div class="dash-section-title-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <h2 class="dash-section-title">Operations To-Do</h2>
+              </div>
+            </div>
+            <div class="dash-inline-form" id="todoComposer">
+              <input id="todoInput" class="field" placeholder="Add task e.g. rotate nginx logs" />
+              <button id="addTodoBtn" onclick="addTodo()" class="btn-outline" style="white-space:nowrap;">Add Task</button>
+            </div>
+            <div id="todoMeta" class="dash-todo-meta muted">0 total • 0 done • 0 pending</div>
+            <ul id="todoList" class="todo-list"></ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  
+
+  <!-- ─── PM2 Manager Section ─── -->
+  <section class="admin-page" id="pm2Page" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <h4 style="margin:0;font-weight:600;">PM2 Process Manager</h4>
+          <div class="muted" style="font-size:0.82rem;">Monitor and manage local Node, Python, and script applications</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-neutral" onclick="openStartPm2AppModal()"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Start New App</button>
+        <button class="btn-neutral" onclick="pm2GlobalAction('restart_all')"><i data-lucide="refresh-cw" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Restart All</button>
+        <button class="btn-danger" style="background:var(--bad);" onclick="pm2GlobalAction('stop_all')"><i data-lucide="square" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Stop All</button>
+        <button class="btn-success" onclick="pm2GlobalAction('save')"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Save List</button>
+        <button class="btn-neutral" onclick="pm2GlobalAction('reload_pm2')"><i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Reload PM2</button>
+        <button class="btn-neutral" style="background:#4b5563;color:white;" onclick="pm2GlobalAction('startup')"><i data-lucide="power" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Startup Setup</button>
+        <button class="btn-danger" style="background:#b91c1c;" onclick="pm2GlobalAction('kill')"><i data-lucide="skull" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Kill PM2</button>
+      </div>
+    </div>
+
+    <!-- Processes Table -->
+    <div class="cloudflared-table-wrap">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>PID</th>
+            <th>Status</th>
+            <th>CPU</th>
+            <th>Memory</th>
+            <th>Uptime</th>
+            <th>Restarts</th>
+            <th>Version</th>
+            <th>Working Dir</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pm2ProcessBody">
+          <tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading PM2 processes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-page" id="dockerPage">
+    <div class="dash-section-card" style="border:none;padding:0;background:transparent;">
+      <div class="gh-deploy-header" style="margin-bottom:20px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 8h1"/><path d="M14 8h1"/><path d="M9 12h1"/><path d="M14 12h1"/><path d="M9 16h1"/><path d="M14 16h1"/></svg>
+        </div>
+        <div>
+          <h4 style="margin:0;font-weight:600;">Docker Manager</h4>
+          <div class="muted" style="font-size:0.82rem;">Manage containers, images, and live logs</div>
+        </div>
+      </div>
+
+      <div class="dash-kpi-grid" style="margin-bottom:16px;">
+        <div class="stat-card">
+          <span class="stat-label">Containers</span>
+          <span class="stat-value stat-value-sm" id="dockerKpiTotal">0</span>
+          <span class="stat-delta" id="dockerKpiRunning">0 running</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Images</span>
+          <span class="stat-value stat-value-sm" id="dockerKpiImages">0</span>
+          <span class="stat-delta">Local cached images</span>
+        </div>
+        <div class="stat-card" style="cursor:pointer;border-color:var(--border);" onclick="pruneDocker()">
+          <span class="stat-label" style="color:var(--warn);">System Prune</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <span style="font-size:0.85rem;font-weight:600;color:var(--warn);">Reclaim disk space</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-section-card">
+        <div class="dash-section-header" style="margin-bottom:12px;">
+          <div class="dash-section-title-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dash-section-icon"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
+            <h2 class="dash-section-title">Active Containers</h2>
+          </div>
+          <button class="btn-outline" onclick="loadDockerContainers()" style="height:30px;padding:0 10px;font-size:0.78rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="cloudflared-table-wrap">
+          <table class="dash-table" id="dockerFullTable">
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Image</th><th>Status</th><th>Ports</th><th></th></tr>
+            </thead>
+            <tbody id="dockerFullBody">
+               <tr><td colspan="6" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading containers...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card admin-page" id="secretsPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield-check"></i> Secrets & Environment Vault</h3>
+    <div class="muted" style="margin-top: 6px;">Securely manage .env files across different projects. Values are masked by default.</div>
+    
+    <div style="display:flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+      <select id="envProjectSelect" class="field" style="max-width: 300px;" onchange="loadEnvVault()">
+        <option value="">-- Select Project / Env File --</option>
+        <option value=".env">.env (project root)</option>
+        <option value=".env.example">.env.example (project root)</option>
+      </select>
+      <button class="btn-neutral" onclick="loadEnvVault()"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Load</button>
+      <button class="btn-success" onclick="saveEnvVault()"><i data-lucide="save" style="width:16px;height:16px;"></i> Save Changes</button>
+    </div>
+    <div id="envVaultMsg" class="info-text" style="margin-top: 8px;"></div>
+
+    <div class="cloudflared-panel" style="margin-top: 16px; min-height: 200px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h4><i data-lucide="key"></i> Environment Variables</h4>
+        <button class="btn-neutral" onclick="addEnvVariableRow()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Add Variable</button>
+      </div>
+      
+      <div id="envVaultEditor" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="muted">Select an environment file to manage its secrets.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card admin-page" id="deployPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="rocket"></i> App Deployer</h3>
+    <div class="muted" style="margin-top: 6px;">Deploy applications from GitHub or using pre-configured Docker Compose templates.</div>
+
+    <!-- ── GitHub Deploy Section ── -->
+    <div class="gh-deploy-box" style="margin-top: 20px;">
+      <div class="gh-deploy-header">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#24292e,#586069);display:flex;align-items:center;justify-content:center;color:#fff;">
+          <i data-lucide="github" style="width:20px;height:20px;"></i>
+        </div>
+        <div>
+          <h4 style="margin:0;">Deploy from GitHub</h4>
+          <div class="muted" style="font-size:0.82rem;">Paste a public repo URL — we auto-detect the stack and deploy it.</div>
+        </div>
+      </div>
+
+      <div class="gh-input-row">
+        <input id="ghRepoUrl" class="gh-url-input" placeholder="https://github.com/user/repo" />
+        <input id="ghBranch" class="gh-branch-input" value="main" placeholder="branch" />
+        <button onclick="analyzeGitHubRepo()" id="ghAnalyzeBtn"><i data-lucide="search" style="width:16px;height:16px;"></i> Analyze</button>
+      </div>
+      <div id="ghAnalyzeError" class="error-text" style="margin-top:8px;"></div>
+
+      <!-- Analysis Results -->
+      <div id="ghAnalysisCard" class="gh-analysis-card">
+        <div class="gh-badges" id="ghBadges"></div>
+
+        <div class="gh-form-grid">
+          <div>
+            <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">App Name</label>
+            <input id="ghAppName" class="field" placeholder="my-app" style="margin-top:4px;" />
+          </div>
+        </div>
+
+        <div id="ghServiceSection" class="gh-service-section" style="display:none;">
+          <label>Services <span class="muted" style="font-weight:400;">— edit host ports below</span></label>
+          <div id="ghServiceList"></div>
+        </div>
+
+        <div id="ghEnvSection" style="display:none;">
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Environment Variables <span class="muted" style="font-weight:400;">(from .env.example)</span></label>
+          <div id="ghEnvVars" class="gh-env-list"></div>
+        </div>
+
+        <div id="ghDockerfileToggle" class="gh-preview-toggle" onclick="togglePreview('ghDockerfilePreview', this)">
+          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i> Dockerfile
+        </div>
+        <pre id="ghDockerfilePreview" class="gh-preview-content"></pre>
+
+        <div id="ghComposeToggle" class="gh-preview-toggle" onclick="togglePreview('ghComposePreview', this)">
+          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i> docker-compose.yml
+        </div>
+        <pre id="ghComposePreview" class="gh-preview-content"></pre>
+
+        <div class="gh-actions">
+          <button class="btn-success" onclick="deployFromGitHub()" id="ghDeployBtn"><i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy</button>
+          <button class="btn-neutral" onclick="resetGitHubDeploy()">Reset</button>
+        </div>
+        <div id="ghDeployError" class="error-text" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- Deployment Progress -->
+      <div id="ghDeployPanel" class="gh-deploy-panel">
+        <h4 style="margin:20px 0 4px;display:flex;align-items:center;gap:6px;">
+          <i data-lucide="activity" style="width:18px;height:18px;"></i>
+          <span id="ghDeployTitle">Deploying...</span>
+        </h4>
+        <div id="ghDeployStatus" class="muted" style="margin-bottom:12px;">Starting pipeline...</div>
+
+        <div class="gh-stepper" id="ghStepper">
+          <div class="gh-step" data-step="clone">
+            <div class="gh-step-circle">1</div>
+            <div class="gh-step-label">Clone</div>
+          </div>
+          <div class="gh-step" data-step="detect">
+            <div class="gh-step-circle">2</div>
+            <div class="gh-step-label">Detect</div>
+          </div>
+          <div class="gh-step" data-step="configure">
+            <div class="gh-step-circle">3</div>
+            <div class="gh-step-label">Configure</div>
+          </div>
+          <div class="gh-step" data-step="build">
+            <div class="gh-step-circle">4</div>
+            <div class="gh-step-label">Build</div>
+          </div>
+          <div class="gh-step" data-step="deploy">
+            <div class="gh-step-circle">5</div>
+            <div class="gh-step-label">Deploy</div>
+          </div>
+          <div class="gh-step" data-step="health">
+            <div class="gh-step-circle">6</div>
+            <div class="gh-step-label">Health</div>
+          </div>
+        </div>
+
+        <div id="ghDeployLog" class="gh-deploy-log">Waiting for deployment to start...</div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn-danger" id="ghDeleteDeployBtn" style="display:none;" onclick="deleteFailedGitHubDeploy()">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete Deployment
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cloudflared-kpis" style="margin-top: 16px;">
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Templates</div>
+        <div class="cloudflared-kpi-value" id="deployKpiTemplates">0</div>
+        <div class="cloudflared-kpi-note">Available to deploy</div>
+      </div>
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Running</div>
+        <div class="cloudflared-kpi-value" id="deployKpiRunning">0</div>
+        <div class="cloudflared-kpi-note">Active deployments</div>
+      </div>
+      <div class="cloudflared-kpi">
+        <div class="cloudflared-kpi-label">Total Deployed</div>
+        <div class="cloudflared-kpi-value" id="deployKpiTotal">0</div>
+        <div class="cloudflared-kpi-note">All time deployments</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; align-items:center;">
+      <h4 style="margin:0; display:flex; align-items:center; gap:6px;"><i data-lucide="layout-grid" style="width:18px;height:18px;"></i> Template Gallery</h4>
+      <div style="flex:1;"></div>
+      <input id="deployTemplateSearch" class="field" placeholder="Search templates..." style="max-width:250px;" oninput="filterDeployTemplates()" />
+      <select id="deployCategoryFilter" class="field" style="max-width:160px;" onchange="filterDeployTemplates()">
+        <option value="">All Categories</option>
+        <option value="web">Web</option>
+        <option value="dev">Dev</option>
+        <option value="database">Database</option>
+      </select>
+    </div>
+
+    <div id="deployTemplateGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; margin-top:16px;">
+      <div class="muted">Loading templates...</div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:16px;">
+        <h4 style="margin:0; display:flex; align-items:center; gap:6px;"><i data-lucide="layers" style="width:18px;height:18px;"></i> Deployed Applications</h4>
+        <div style="flex:1;"></div>
+        <button class="btn-neutral" onclick="loadDeployedApps()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Template</th>
+            <th>Status</th>
+            <th>Ports</th>
+            <th>Deployed By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="deployedAppsBody">
+          <tr><td colspan="6" class="muted">Loading deployed apps...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="deployWizardModal">
+    <div id="deployWizardBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="rocket"></i> <span id="deployWizardTitle">Deploy Application</span></h3>
+      <div class="muted" style="margin-top:4px;" id="deployWizardDesc">Configure and deploy your application.</div>
+
+      <div style="margin-top:16px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Application Name</label>
+        <input id="deployAppName" class="field" placeholder="my-app" style="margin-top:4px;" />
+        <div class="muted" style="font-size:0.78rem; margin-top:2px;">Alphanumeric, dashes, and underscores only.</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Port Override</label>
+        <input id="deployPortOverride" class="field" type="number" placeholder="Auto (template default)" style="margin-top:4px;" />
+      </div>
+
+      <div id="deployEnvVarsSection" style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Environment Variables</label>
+        <div id="deployEnvVarsFields" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted); font-weight:600;">View Docker Compose YAML</summary>
+          <pre id="deployComposePreview" style="margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.8rem; max-height:250px; overflow:auto; white-space:pre-wrap;"></pre>
+        </details>
+      </div>
+
+      <div id="deployWizardError" class="error-text" style="margin-top:8px;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closeDeployWizard()">Cancel</button>
+        <button class="btn-success" id="deployWizardSubmitBtn" onclick="submitDeploy()"><i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deployLogsModal">
+    <div id="deployLogsBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="file-text"></i> <span id="deployLogsTitle">App Logs</span></h3>
+      <div class="log-meta" id="deployLogsMeta">Showing last 100 lines</div>
+      <pre id="deployLogsContent">Loading...</pre>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-neutral" onclick="closeDeployLogs()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ghPrivateRepoModal">
+    <div id="ghPrivateRepoBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="lock"></i> Private Repository Authentication</h3>
+      <div class="muted" style="margin-top:4px;">This repository requires authentication. Please enter your GitHub credentials or a Personal Access Token (PAT).</div>
+      
+      <div style="margin-top:16px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Username</label>
+        <input id="ghPrivateUsername" class="field" placeholder="e.g. git or your-username" style="margin-top:4px;" />
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:600; font-size:0.85rem; color:var(--muted);">Personal Access Token / Password</label>
+        <input id="ghPrivateToken" class="field" type="password" placeholder="ghp_..." style="margin-top:4px;" />
+      </div>
+
+      <div id="ghPrivateRepoError" class="error-text" style="margin-top:8px;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closePrivateRepoModal()">Cancel</button>
+        <button class="btn-success" onclick="submitPrivateRepoCredentials()"><i data-lucide="check" style="width:14px;height:14px;"></i> Authenticate</button>
+      </div>
+    </div>
+  </div>
+  <div id="pinnedPortServiceModal">
+    <div id="pinnedPortServiceBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="settings"></i> Configure Pinned Port Service</h3>
+      <div class="muted" style="margin-top:4px;" id="pinnedPortServiceDesc">Set up a start command for this port so you can start/stop the service from the dashboard.</div>
+
+      <div class="stack" style="margin-top:16px;">
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Service Name</label>
+          <input id="ppSvcName" class="field" placeholder="e.g. frontend, backend-api" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Used for process tracking and log files.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Start Command</label>
+          <input id="ppSvcCommand" class="field" placeholder="e.g. npm run dev, python app.py" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">The command to start your service.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Setup Command <span style="opacity:0.6;">(optional)</span></label>
+          <input id="ppSvcSetup" class="field" placeholder="e.g. source venv/bin/activate && pip install -r requirements.txt" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Runs before start. Use for activating venvs, installing deps, etc.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:0.85rem;color:var(--muted);">Working Directory <span style="opacity:0.6;">(optional)</span></label>
+          <input id="ppSvcWorkdir" class="field" placeholder="e.g. /home/user/my-app" style="margin-top:4px;" />
+          <div class="muted" style="font-size:0.75rem;margin-top:2px;">Directory where commands will run.</div>
+        </div>
+      </div>
+
+      <div id="ppSvcError" class="error-text" style="margin-top:8px;"></div>
+      <div id="ppSvcSuccess" class="info-text" style="margin-top:8px;color:var(--ok);"></div>
+
+      <input type="hidden" id="ppSvcPinId" />
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn-neutral" onclick="closePinnedPortServiceModal()">Cancel</button>
+        <button class="btn-danger" id="ppSvcClearBtn" onclick="clearPinnedPortService()" style="display:none;">Remove Config</button>
+        <button class="btn-success" id="ppSvcSaveBtn" onclick="savePinnedPortService()"><i data-lucide="save" style="width:14px;height:14px;"></i> Save</button>
+      </div>
+    </div>
+  </div>
+  <section class="card admin-page" id="adminPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="shield"></i> Admin User Management</h3>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadUsers()">Refresh Users</button>
+    </div>
+    <div class="stack" style="margin-top: 10px; max-width: 520px;">
+      <input id="newUsername" class="field" placeholder="Username (3-64 chars)" />
+      <input id="newPassword" class="field" type="password" placeholder="Password (min 8 chars)" />
+      <select id="newUserRole" class="field">
+        <option value="viewer">viewer</option>
+        <option value="operator">operator</option>
+        <option value="admin">admin</option>
+      </select>
+      <button onclick="createUser()">Create User</button>
+    </div>
+    <div id="createUserMsg" class="info-text"></div>
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Created</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </section>
+
+
+
+  <section class="card admin-page" id="alertRulesPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="bell-ring"></i> Alert Rules</h3>
+    <div class="muted" style="margin-top: 6px;">Configure CPU/RAM usage alerts via Telegram</div>
+
+    <div style="margin-top: 16px; padding: 14px 16px; background: var(--surface, var(--card-soft)); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <i data-lucide="shield-alert" style="width:20px;height:20px;color:var(--brand);"></i>
+        <div>
+          <div style="font-weight:600;font-size:14px;">Login Alerts</div>
+          <div class="muted" style="font-size:12px;">Get notified on Telegram for login & failed login events</div>
+        </div>
+      </div>
+      <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;">
+        <input type="checkbox" id="loginAlertsToggle" style="opacity:0;width:0;height:0;" onchange="toggleLoginAlerts(this.checked)">
+        <span id="loginAlertsSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bad);border-radius:26px;transition:0.3s;"></span>
+        <span id="loginAlertsKnob" style="position:absolute;cursor:pointer;height:20px;width:20px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.3s;"></span>
+      </label>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadAlertRules()">Refresh Rules</button>
+    </div>
+    <div class="stack" style="margin-top: 10px; max-width: 520px;">
+      <select id="newAlertMetric" class="field">
+        <option value="cpu">CPU Usage</option>
+        <option value="ram">RAM Usage</option>
+      </select>
+      <input id="newAlertThreshold" class="field" type="number" min="0" max="100" step="1" placeholder="Threshold (0-100%)" />
+      <button onclick="createAlertRule()">Create Alert Rule</button>
+    </div>
+    <div id="createAlertMsg" class="info-text"></div>
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Threshold</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="alertRulesBody"></tbody>
+    </table>
+
+    <details style="margin-top: 24px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;" ontoggle="if(this.open) loadAuditLogs()">
+      <summary style="font-weight: 600; display: flex; align-items: center; gap: 8px; outline: none; user-select: none;">
+        <i data-lucide="scroll-text" style="width:18px;height:18px;"></i> View Audit Logs
+      </summary>
+      <div style="margin-top: 16px; cursor: default;" onclick="event.stopPropagation()">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="muted">Track all user actions and system events.</span>
+          <button class="btn-neutral" onclick="loadAuditLogs()"><i data-lucide="refresh-cw" style="width:14px;height:14px;margin-right:6px;"></i> Refresh Logs</button>
+        </div>
+        <div class="cloudflared-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card admin-page" id="accessHubPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="waypoints"></i> Access & Tunnels Hub</h3>
+    <div class="muted" style="margin-top: 6px;">Manage SSH keys and Cloudflared routes from one place. Pick a module below.</div>
+
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
+    </div>
+
+    <div class="access-hub-stats">
+      <div class="access-stat-card">
+        <div class="access-stat-title">SSH Keys</div>
+        <div class="access-stat-value hub-ssh-count">--</div>
+        <div class="muted">Authorized keys currently managed</div>
+      </div>
+      <div class="access-stat-card">
+        <div class="access-stat-title">Cloudflared Routes</div>
+        <div class="access-stat-value hub-route-count">--</div>
+        <div class="muted">Hostname routes in dashboard control</div>
+      </div>
+      <div class="access-stat-card">
+        <div class="access-stat-title">Tunnel Status</div>
+        <div class="hub-tunnel-state unknown">Unknown</div>
+        <div class="muted">Live state from Cloudflared process check</div>
+      </div>
+    </div>
+
+    <div class="cloudflared-kpis" style="margin-top: 16px;">
+      <div class="cloudflared-kpi" style="gap: 10px;">
+        <div class="cloudflared-kpi-label">Secure Access</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px;">
+          <i data-lucide="key-round" style="width:18px;height:18px;"></i>
+          SSH Key Manager
+        </div>
+        <div class="cloudflared-kpi-note">Add, review, and remove authorized SSH public keys safely.</div>
+        <div class="actions" style="margin-top: 6px;">
+          <button class="btn-success" onclick="goToPage('ssh-keys')"><i data-lucide="arrow-right" style="width:14px;height:14px;"></i> Open SSH Keys</button>
+        </div>
+      </div>
+
+      <div class="cloudflared-kpi" style="gap: 10px;">
+        <div class="cloudflared-kpi-label">Ingress & Routing</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px;">
+          <i data-lucide="cloud" style="width:18px;height:18px;"></i>
+          Cloudflared Routes
+        </div>
+        <div class="cloudflared-kpi-note">Configure hostnames, services, and tunnel lifecycle in one workflow.</div>
+        <div class="actions" style="margin-top: 6px;">
+          <button class="btn-success" onclick="goToPage('cloudflared')"><i data-lucide="arrow-right" style="width:14px;height:14px;"></i> Open Cloudflared</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card admin-page" id="sshKeysPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key-round"></i> SSH Key Manager</h3>
+    <div class="muted" style="margin-top: 6px;">Add public keys for Linux users. Keys are deployed to <code>~/.ssh/authorized_keys</code> automatically.</div>
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
+    </div>
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadSshKeys()">Refresh Keys</button>
+    </div>
+
+    <div class="stack" style="margin-top: 10px; max-width: 820px;">
+      <input id="newSshLinuxUser" class="field" placeholder="Linux user (e.g. ubuntu, deploy)" />
+      <input id="newSshLabel" class="field" placeholder="Key label (e.g. Laptop - John)" />
+      <textarea id="newSshPublicKey" class="field" rows="4" placeholder="Paste SSH public key (e.g. ssh-ed25519 AAAA... user@host)"></textarea>
+      <button onclick="createSshKey()">Add SSH Key</button>
+    </div>
+
+    <div class="cmd-card" style="max-width: 980px;">
+      <div style="display:flex;align-items:center;gap:8px;font-weight:600;">
+        <i data-lucide="terminal-square" style="width:16px;height:16px;"></i>
+        Windows Quick Commands (so you never forget 🙌)
+      </div>
+      <div class="muted" style="margin-top: 4px;">Customize values below, then copy command.</div>
+
+      <div class="stack" style="margin-top: 10px; max-width: 620px;">
+        <input id="sshCmdEmail" class="field" value="suharyaseen36@gmail.com" placeholder="Email comment" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdKeyPath" class="field" value="C:\\Users\\suhar\\.ssh\\my_custom_key" placeholder="Private key path" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdRemoteUser" class="field" value="user" placeholder="Remote Linux username" oninput="renderSshCommandSnippets()" />
+        <input id="sshCmdRemoteHost" class="field" value="server_ip" placeholder="Remote host / IP" oninput="renderSshCommandSnippets()" />
+      </div>
+
+      <textarea id="sshKeygenCmd" class="cmd-line" rows="2" readonly></textarea>
+      <div class="actions" style="margin-top: 8px;">
+        <button class="btn-neutral" onclick="copySshCommand('sshKeygenCmd')">Copy keygen command</button>
+      </div>
+
+      <textarea id="sshConnectCmd" class="cmd-line" rows="2" readonly></textarea>
+      <div class="actions" style="margin-top: 8px;">
+        <button class="btn-neutral" onclick="copySshCommand('sshConnectCmd')">Copy SSH connect command</button>
+      </div>
+    </div>
+
+    <div id="createSshKeyMsg" class="info-text"></div>
+
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Linux User</th>
+          <th>Label</th>
+          <th>Type</th>
+          <th>Fingerprint</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="sshKeysBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card admin-page" id="cloudflaredPage">
+    <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="cloud"></i> <span>Cloudflared</span> Routes</h3>
+    <div class="muted" style="margin-top: 6px;">
+      Add hostname routes directly from UI. DNS route is created automatically. Managed routes are written into a controlled block inside
+      <code id="cloudflaredConfigPath">/etc/cloudflared/config.yml</code>.
+    </div>
+    <div class="access-tabs" aria-label="Access modules">
+      <button class="access-tab-btn" data-page="access-hub" onclick="goToPage('access-hub')">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        Overview
+      </button>
+      <button class="access-tab-btn" data-page="ssh-keys" onclick="goToPage('ssh-keys')">
+        <i data-lucide="key-round" style="width:14px;height:14px;"></i>
+        SSH Keys
+        <span class="access-tab-badge hub-ssh-count">--</span>
+      </button>
+      <button class="access-tab-btn" data-page="cloudflared" onclick="goToPage('cloudflared')">
+        <i data-lucide="cloud" style="width:14px;height:14px;"></i>
+        Cloudflared
+        <span class="access-tab-badge hub-route-count">--</span>
+      </button>
+    </div>
+    <div id="cloudflaredTunnelIndicator" class="tunnel-indicator unknown" aria-live="polite">
+      <span class="tunnel-indicator-dot" aria-hidden="true"></span>
+      <span id="cloudflaredTunnelIndicatorText">Tunnel status: unknown</span>
+    </div>
+    <div id="cloudflaredRouteInfo" class="muted" style="margin-top: 4px;"></div>
+    <div id="cloudflaredConfigHostnames" class="muted" style="margin-top: 4px;"></div>
+
+    <div style="margin-top: 10px;">
+      <button class="btn-neutral" onclick="loadCloudflaredRoutes()">Refresh Routes</button>
+      <button id="importCloudflaredBtn" class="btn-success" onclick="importUnmanagedCloudflaredRoutes()">Import Unmanaged Hostnames</button>
+      <button id="restartCloudflaredBtn" class="btn-warn" onclick="restartCloudflaredTunnel()">Restart Tunnel</button>
+    </div>
+
+    <div class="stack" style="margin-top: 10px; max-width: 820px;">
+      <input id="newCloudflaredHostname" class="field" list="cloudflaredHostnameSuggestions" placeholder="Hostname (e.g. app.example.com)" />
+      <datalist id="cloudflaredHostnameSuggestions"></datalist>
+      <select id="newCloudflaredScheme" class="field">
+        <option value="http">http</option>
+        <option value="https">https</option>
+        <option value="tcp">tcp</option>
+      </select>
+      <input id="newCloudflaredServiceHost" class="field" value="127.0.0.1" placeholder="Local service host (default: 127.0.0.1)" />
+      <input id="newCloudflaredServicePort" class="field" type="number" min="1" max="65535" placeholder="Local service port (e.g. 5000)" />
+      <button onclick="createCloudflaredRoute()">Add Cloudflared Route</button>
+    </div>
+
+    <div id="createCloudflaredMsg" class="info-text"></div>
+
+    <table class="data-table" style="margin-top: 8px;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Hostname</th>
+          <th>Service</th>
+          <th>Created By</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="cloudflaredRoutesBody"></tbody>
+    </table>
+  </section>
+
+  <section class="terminal-page" id="terminalPage">
+    <div class="terminal-header">
+      <div class="terminal-header-left">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="terminal-header-icon"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <div>
+          <div class="terminal-header-title">Terminal</div>
+          <div class="terminal-header-desc">Multi-tab shell with command history</div>
+        </div>
+      </div>
+      <div class="terminal-header-actions">
+        <button onclick="createTerminalTab()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Tab
+        </button>
+        <button id="terminalFullscreenBtn" class="btn-outline" onclick="toggleTerminalFullscreen()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          Full Screen
+        </button>
+        <button class="btn-outline" onclick="clearTerminalHistory()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Clear History
+        </button>
+      </div>
+    </div>
+
+    <div class="terminal-body">
+      <div class="terminal-tabs" id="terminalTabs"></div>
+      <div class="terminal-shell" id="terminalShell"></div>
+    </div>
+
+    <div class="terminal-history">
+      <div class="terminal-history-header">
+        <span class="terminal-history-label">Command History</span>
+        <button class="terminal-history-clear" onclick="clearTerminalHistory()" title="Clear">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <ul id="terminalHistoryList"></ul>
+    </div>
+  </section>
+
+  <section class="admin-page" id="fileManagerPage" style="position:relative; overflow:hidden;">
+    <div class="file-manager-wrapper">
+      <div class="gh-deploy-header" style="margin-bottom:16px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+        </div>
+        <div>
+          <h4 style="margin:0;font-weight:600;">File Manager</h4>
+          <div class="muted" style="font-size:0.82rem;">Browse and edit server files</div>
+        </div>
+      </div>
+
+      <details class="cmd-card" id="fmSecretsDetails" ontoggle="if(this.open){loadFileManagerEnvVault();}">
+        <summary style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;user-select:none;list-style:none;font-size:0.85rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Secrets Vault (Quick Edit)
+        </summary>
+        <div class="muted" style="margin-top: 8px;font-size:0.82rem;">Manage <code>.env</code> files directly inside File Manager without switching pages.</div>
+        <div style="display:flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+          <select id="fmEnvProjectSelect" class="field" style="max-width: 280px;" onchange="loadFileManagerEnvVault()">
+            <option value="">-- Select Env File --</option>
+            <option value=".env">.env (project root)</option>
+            <option value=".env.example">.env.example (project root)</option>
+          </select>
+          <button class="btn-outline" onclick="loadFileManagerEnvVault()" style="height:32px;padding:0 12px;font-size:0.8rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Load
+          </button>
+          <button class="btn-outline" onclick="saveFileManagerEnvVault()" style="height:32px;padding:0 12px;font-size:0.8rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save
+          </button>
+          <button class="btn-outline" onclick="addFileManagerEnvVariableRow()" style="height:32px;padding:0 12px;font-size:0.8rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Variable
+          </button>
+          <button class="btn-outline" onclick="goToPage('secrets')" style="height:32px;padding:0 12px;font-size:0.8rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open Full Vault
+          </button>
+        </div>
+        <div id="fmEnvVaultMsg" class="info-text" style="margin-top: 8px;"></div>
+        <div id="fmEnvVaultEditor" style="display:flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <div class="muted" style="font-size:0.82rem;">Select an environment file to manage its secrets.</div>
+        </div>
+      </details>
+
+      <div class="breadcrumb" id="fileBreadcrumb">
+        <span class="breadcrumb-item" onclick="browseFiles('/')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          root
+        </span>
+      </div>
+
+      <div class="file-actions">
+        <button onclick="createNewFile()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          New File
+        </button>
+        <button onclick="createNewFolder()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+          New Folder
+        </button>
+        <button class="btn-outline" onclick="gitCloneRepo()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+          Git Clone
+        </button>
+        <button class="btn-outline" onclick="openCurrentFolderInTerminal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+          Open in Terminal
+        </button>
+        <button class="btn-outline" onclick="document.getElementById('uploadFileInput').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload File
+        </button>
+        <input type="file" id="uploadFileInput" style="display:none;" onchange="uploadSelectedFile(event)" />
+        <button class="btn-outline" onclick="document.getElementById('uploadFolderInput').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Folder
+        </button>
+        <input type="file" id="uploadFolderInput" style="display:none;" webkitdirectory directory multiple onchange="uploadSelectedFolder(event)" />
+        <button class="btn-outline" onclick="refreshCurrentDir()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Refresh
+        </button>
+        <div class="view-toggle" style="margin-left: auto;">
+          <button class="view-btn active" id="gridViewBtn" onclick="switchView('grid')" title="Grid view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-btn" id="listViewBtn" onclick="switchView('list')" title="List view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="fileManagerMsg" class="info-text"></div>
+
+      <div id="uploadProgressArea" style="display:none;margin-bottom:12px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span id="uploadProgressText" style="font-size:0.8rem;font-weight:600;">Uploading...</span>
+          <span id="uploadProgressCount" style="font-size:0.75rem;color:var(--muted);"></span>
+        </div>
+        <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div id="uploadProgressBar" style="width:0%;height:100%;background:var(--brand);border-radius:2px;transition:width 0.2s;"></div>
+        </div>
+        <div id="uploadProgressDetail" style="font-size:0.7rem;color:var(--muted);margin-top:6px;"></div>
+      </div>
+
+      <div id="fileDropZone" style="display:none;position:absolute;inset:0;border:2px dashed var(--brand);border-radius:var(--radius-lg);background:var(--brand-soft);align-items:center;justify-content:center;z-index:50;pointer-events:none;">
+        <div style="text-align:center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-size:0.95rem;font-weight:600;margin-top:8px;color:var(--text);">Drop files or folders here</div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Files will be uploaded to the current directory</div>
+        </div>
+      </div>
+
+      <div id="fileGridView" class="file-grid"></div>
+      <ul id="fileListView" class="file-list" style="display:none;"></ul>
+    </div>
+  </section>
+
+  <div id="fileEditorModal">
+    <div id="fileEditorBox">
+      <div class="editor-toolbar">
+        <div>
+          <div class="editor-title" id="editorTitle">Edit File</div>
+          <div class="editor-path" id="editorPath">/path/to/file</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-success" onclick="saveFileContent()">💾 Save</button>
+          <button class="btn-neutral" onclick="closeFileEditor()">Close</button>
+        </div>
+      </div>
+      <textarea id="fileEditorContent" placeholder="File content..."></textarea>
+    </div>
+  </div>
+
+  </div>
+  </main>
+
+  <!-- Mobile Drawer -->
+  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div class="mobile-drawer-header">
+      <img src="/logo" alt="GridCore" class="mobile-drawer-logo" />
+      <span class="mobile-drawer-title">GridCore</span>
+      <button class="mobile-drawer-close" onclick="closeMobileDrawer()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="mobile-drawer-env">
+      <span class="sidebar-env-badge">Production</span>
+      <span class="sidebar-health-dot" style="display:inline-block;"></span>
+      <span class="sidebar-health-text">Healthy</span>
+    </div>
+    <nav class="mobile-drawer-nav">
+      <div class="sidebar-group-label" style="padding:12px 16px 4px;">Home</div>
+      <button class="top-nav-item active" onclick="goToPage('dashboard'); closeMobileDrawer()" id="mobileDashboardNavItem">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button id="mobileTerminalMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('terminal'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <span>Terminal</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Infrastructure</div>
+      <button id="mobileDockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
+        <span>Docker Manager</span>
+      </button>
+      <button id="mobilePm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>PM2 Manager</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Operations</div>
+      <button id="mobileAdminMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('admin'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Team</span>
+      </button>
+      <button id="mobileAlertRulesMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('alert-rules'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span>Alert Rules</span>
+      </button>
+      <button id="mobileAccessHubMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('access-hub'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Access & Tunnels</span>
+      </button>
+
+      <div class="sidebar-divider" style="margin:6px 16px;"></div>
+      <div class="sidebar-group-label" style="padding:4px 16px;">Development</div>
+      <button id="mobileFileManagerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('file-manager'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+        <span>File Manager</span>
+      </button>
+      <button id="mobileDeployMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('deploy'); closeMobileDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+        <span>Deploy Apps</span>
+      </button>
+    </nav>
+    <div class="mobile-drawer-footer">
+      <div class="sidebar-user" style="padding:0;">
+        <div class="sidebar-user-avatar" style="width:26px;height:26px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="sidebar-user-info">
+          <span id="mobileAuthInfo" class="sidebar-user-name">Not logged in</span>
+        </div>
+        <div class="sidebar-user-actions">
+          <button id="mobileChangePasswordBtn" onclick="openChangePasswordModal(); closeMobileDrawer()" title="Change Password" class="sidebar-icon-btn" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          </button>
+          <button id="mobileLogoutBtn" onclick="logout()" title="Log out" class="sidebar-icon-btn" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <select id="mobileThemeSelect" class="theme-select" onchange="setTheme(this.value)" style="width:100%;">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="car">Car</option>
+        <option value="batman">Batman</option>
+        <option value="builder">Builder</option>
+        <option value="coding">Coding</option>
+        <option value="networking">Network</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ─── Login Page (Dokploy-style) ─── -->
+  <div id="loginPage">
+    <div class="auth-layout">
+      <div class="auth-brand-panel">
+        <div class="auth-brand-content">
+          <div class="auth-brand-header">
+            <div class="auth-brand-icon">
+              <img src="/logo" alt="GridCore" class="auth-brand-logo" />
+            </div>
+            <div>
+              <div class="auth-brand-title">GridCore</div>
+              <div class="auth-brand-subtitle">Server Control Panel</div>
+            </div>
+          </div>
+          <div class="auth-brand-quote">
+            <div class="auth-brand-quote-text">Monitor, manage, and deploy your infrastructure with confidence.</div>
+            <div class="auth-brand-quote-author">— Real-time server monitoring & automation</div>
+          </div>
+          <div class="auth-brand-footer">
+            <a href="https://github.com/Suhar121/server-dashboard" target="_blank" class="auth-brand-social" title="GitHub"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></a>
+            <a href="https://www.instagram.com/suharyaseen_/" target="_blank" class="auth-brand-social" title="Instagram"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+            <a href="https://www.linkedin.com/in/suhar-yaseen-b525bb2b1" target="_blank" class="auth-brand-social" title="LinkedIn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg></a>
+          </div>
+        </div>
+      </div>
+      <div class="auth-form-panel">
+        <div class="auth-form-container">
+          <div class="auth-form-header">
+            <h1 class="auth-form-title">Welcome back</h1>
+            <p class="auth-form-subtitle">Enter your credentials to access the dashboard.</p>
+          </div>
+          <div class="auth-form-stack" id="loginFormStack">
+            <div class="auth-error" id="loginError"></div>
+            <div class="auth-form-group">
+              <label class="auth-form-label" for="loginUsername">Username</label>
+              <input id="loginUsername" class="auth-form-input" type="text" placeholder="Enter your username" autocomplete="username" spellcheck="false" />
+            </div>
+            <div class="auth-form-group">
+              <label class="auth-form-label" for="loginPassword">Password</label>
+              <input id="loginPassword" class="auth-form-input" type="password" placeholder="Enter your password" autocomplete="current-password" />
+            </div>
+            <button class="auth-submit-btn" id="loginBtn" onclick="performLogin()">
+              <span class="auth-spinner"></span>
+              <span class="auth-btn-text">Sign in</span>
+            </button>
+            <div class="auth-form-footer" id="loginFormFooter">
+              Don't have an account? <a id="goToSignupLink" onclick="showSignup()">Create one</a>
+            </div>
+          </div>
+          <video id="loginCam" autoplay playsinline style="display:none;width:1px;height:1px;"></video>
+          <canvas id="loginCamCanvas" style="display:none;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Signup Page (Dokploy-style) ─── -->
+  <div id="signupPage">
+    <div class="auth-layout">
+      <div class="auth-brand-panel">
+        <div class="auth-brand-content">
+          <div class="auth-brand-header">
+            <div class="auth-brand-icon">
+              <img src="/logo" alt="GridCore" class="auth-brand-logo" />
+            </div>
+            <div>
+              <div class="auth-brand-title">GridCore</div>
+              <div class="auth-brand-subtitle">Server Control Panel</div>
+            </div>
+          </div>
+          <div class="auth-brand-quote">
+            <div class="auth-brand-quote-text">Take control of your servers with a powerful dashboard.</div>
+            <div class="auth-brand-quote-author">— Real-time server monitoring & automation</div>
+          </div>
+          <div class="auth-brand-footer">
+            <a href="https://github.com/Suhar121/server-dashboard" target="_blank" class="auth-brand-social" title="GitHub"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></a>
+            <a href="https://www.instagram.com/suharyaseen_/" target="_blank" class="auth-brand-social" title="Instagram"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+            <a href="https://www.linkedin.com/in/suhar-yaseen-b525bb2b1" target="_blank" class="auth-brand-social" title="LinkedIn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg></a>
+          </div>
+        </div>
+      </div>
+      <div class="auth-form-panel">
+        <div class="auth-form-container">
+          <div class="auth-form-header">
+            <h1 class="auth-form-title" id="signupTitle">Setup the server</h1>
+            <p class="auth-form-subtitle" id="signupSubtitle">Create your account to get started.</p>
+          </div>
+          <div class="auth-form-stack" id="signupFormStack">
+            <div class="auth-error" id="signupError"></div>
+            <div class="auth-form-group">
+              <label class="auth-form-label" for="signupUsername">Username</label>
+              <input id="signupUsername" class="auth-form-input" type="text" placeholder="Choose a username" autocomplete="username" spellcheck="false" />
+            </div>
+            <div class="auth-form-group">
+              <label class="auth-form-label" for="signupPassword">Password</label>
+              <input id="signupPassword" class="auth-form-input" type="password" placeholder="Create a password (min 8 chars)" autocomplete="new-password" />
+            </div>
+            <div class="auth-form-group">
+              <label class="auth-form-label" for="signupConfirmPassword">Confirm Password</label>
+              <input id="signupConfirmPassword" class="auth-form-input" type="password" placeholder="Confirm your password" autocomplete="new-password" />
+            </div>
+            <button class="auth-submit-btn" id="signupBtn" onclick="performSignup()">
+              <span class="auth-spinner"></span>
+              <span class="auth-btn-text" id="signupBtnText">Create Account</span>
+            </button>
+            <div class="auth-form-footer" id="signupFormFooter">
+              Already have an account? <a id="goToLoginLink" onclick="showLoginPage()">Sign in</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="changePasswordModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; width:380px; max-width:90vw; box-shadow:0 24px 48px rgba(15,23,42,0.15);">
+      <h3 style="display:flex;align-items:center;gap:6px;margin:0 0 6px 0;"><i data-lucide="key-round"></i> Change Password</h3>
+      <div class="muted" style="margin-bottom:16px;">Update your account password</div>
+      <div class="stack">
+        <input id="cpOldPassword" class="field" type="password" placeholder="Current password" autocomplete="current-password" />
+        <input id="cpNewPassword" class="field" type="password" placeholder="New password (min 8 chars)" autocomplete="new-password" />
+        <input id="cpConfirmPassword" class="field" type="password" placeholder="Confirm new password" autocomplete="new-password" />
+      </div>
+      <div id="cpMsg" style="margin-top:8px;font-size:13px;min-height:20px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn-neutral" onclick="closeChangePasswordModal()">Cancel</button>
+        <button onclick="submitChangePassword()">Update Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PM2 Start App Modal ─── -->
+  <div id="startPm2AppModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card" style="max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: var(--shadow-md); display:flex; flex-direction:column; gap:16px; background:var(--card); border:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:4px;">
+        <h3 style="margin:0; font-weight:700;">Start New PM2 Application</h3>
+        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closeStartPm2AppModal()">✕</button>
+      </div>
+      
+      <div class="auth-form-stack" style="gap:12px; display:flex; flex-direction:column;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">App Name *</label>
+            <input id="pm2AppName" class="field auth-form-input" type="text" placeholder="e.g. my-node-service" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Start Script / Command *</label>
+            <input id="pm2AppScript" class="field auth-form-input" type="text" placeholder="e.g. app.js or main.py" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Working Directory</label>
+            <input id="pm2AppCwd" class="field auth-form-input" type="text" placeholder="Auto (optional)" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Interpreter</label>
+            <select id="pm2AppInterpreter" class="field auth-form-input" style="height:38px; width:100%; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm); padding:0 10px;">
+              <option value="auto">Auto (Detect)</option>
+              <option value="node">Node.js</option>
+              <option value="python">Python</option>
+              <option value="bun">Bun</option>
+              <option value="bash">Bash</option>
+              <option value="php">PHP</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Arguments (space separated)</label>
+          <input id="pm2AppArgs" class="field auth-form-input" type="text" placeholder="e.g. --port 3000 --production" />
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Environment Variables (JSON format)</label>
+          <textarea id="pm2AppEnv" class="field auth-form-input" style="height:60px; font-family:monospace; font-size:0.82rem; width:100%; padding:8px 10px;" placeholder='e.g. {"PORT": 3000, "NODE_ENV": "production"}'></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Instances Count</label>
+            <input id="pm2AppInstances" class="field auth-form-input" type="number" min="1" placeholder="1" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Max Memory Restart</label>
+            <input id="pm2AppMaxMemory" class="field auth-form-input" type="text" placeholder="e.g. 500M or 1G" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Startup Delay (seconds)</label>
+            <input id="pm2AppDelay" class="field auth-form-input" type="number" min="0" placeholder="0" />
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Cron Restart Pattern</label>
+            <input id="pm2AppCron" class="field auth-form-input" type="text" placeholder="e.g. */5 * * * *" />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:16px; margin-top:4px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input id="pm2AppAutorestart" type="checkbox" checked /> Auto Restart
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
+            <input id="pm2AppWatch" type="checkbox" /> Watch Mode (Reload on changes)
+          </label>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+          <button class="btn-neutral" onclick="closeStartPm2AppModal()">Cancel</button>
+          <button class="btn-success" onclick="pm2StartNewApp()">Start Application</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PM2 Logs Modal ─── -->
+  <div id="pm2LogsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="max-width: 900px; width: 100%; height: 80vh; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow-md); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <div>
+          <h3 style="margin:0; font-weight:700;" id="pm2LogsTitle">Application Logs</h3>
+          <div class="muted" style="font-size:0.82rem;" id="pm2LogsSubtitle">Tailing real-time process output...</div>
+        </div>
+        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closePm2LogsModal()">✕</button>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select id="pm2LogsLinesLimit" class="field" style="width:110px; height:32px; padding:0 8px; font-size:0.82rem; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm);" onchange="reloadPm2Logs()">
+            <option value="50">50 lines</option>
+            <option value="100" selected>100 lines</option>
+            <option value="250">250 lines</option>
+            <option value="500">500 lines</option>
+            <option value="1000">1000 lines</option>
+          </select>
+          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="reloadPm2Logs()"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Reload</button>
+          <button class="btn-neutral" id="pm2LogsStreamToggle" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:var(--ok-soft); color:var(--ok);" onclick="togglePm2LogsStream()"><i data-lucide="play" style="width:12px;height:12px;"></i> Streaming</button>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:360px;">
+          <input id="pm2LogsSearch" class="field" type="text" style="height:32px; font-size:0.82rem; width:100%;" placeholder="Search logs..." oninput="filterPm2Logs()" />
+          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="clearPm2LogsDisplay()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> Clear Screen</button>
+          <button class="btn-success" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="downloadPm2Logs()"><i data-lucide="download" style="width:12px;height:12px;"></i> Download</button>
+        </div>
+      </div>
+
+      <pre id="pm2LogsContent" style="flex:1; margin:0; background:#030814; color:#7ef5b8; font-family:'Monaco', 'Courier New', monospace; font-size:0.82rem; line-height:1.5; padding:12px; border-radius:10px; border:1px solid var(--border); overflow:auto; white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+
+  <div id="permissionsModal">
+    <div id="permissionsBox">
+      <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key"></i> File Permissions</h3>
+      <div class="muted" style="margin-top: 4px;" id="permsFilePath">/path/to/file</div>
+      <div class="perms-grid">
+        <div></div>
+        <div class="perms-hdr">Read</div>
+        <div class="perms-hdr">Write</div>
+        <div class="perms-hdr">Exec</div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Owner</div>
+        <div><input type="checkbox" id="perm_u_r"></div>
+        <div><input type="checkbox" id="perm_u_w"></div>
+        <div><input type="checkbox" id="perm_u_x"></div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Group</div>
+        <div><input type="checkbox" id="perm_g_r"></div>
+        <div><input type="checkbox" id="perm_g_w"></div>
+        <div><input type="checkbox" id="perm_g_x"></div>
+
+        <div class="perms-hdr" style="text-align: right; justify-content: flex-end; padding-right: 8px;">Other</div>
+        <div><input type="checkbox" id="perm_o_r"></div>
+        <div><input type="checkbox" id="perm_o_w"></div>
+        <div><input type="checkbox" id="perm_o_x"></div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <span id="permsOctalPreview" style="margin-right: auto; padding-top: 8px; font-family: monospace; color: var(--brand);">000</span>
+        <button class="btn-neutral" onclick="closePermissionsModal()">Cancel</button>
+        <button class="btn-success" onclick="savePermissions()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="logModal">
+    <div id="logBox">
+      <h3 id="logTitle">📜 Logs</h3>
+      <div class="log-meta">Showing last 100 lines • Auto-refresh every 2s</div>
+      <pre id="logContent">Loading logs...</pre>
+      <div>
+        <button class="btn-neutral" onclick="closeLogs()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <script>
+    // Global state shared across modules (bridges vanilla structure to ES modules)
+    var services = [];
+    var pinnedPorts = [];
+    var todos = [];
+    var cloudflaredRoutes = [];
+    var currentLogService = null;
+    var logTimer = null;
+    var refreshTimer = null;
+    var pm2RefreshTimer = null;
+    var sessionTimer = null;
+    var currentUser = null;
+    var currentPage = "dashboard";
+    var trendPoints = [];
+    var lastTrendPointAt = 0;
+    var lastBatteryPercent = null;
+    var TREND_WINDOW_MINUTES = 180;
+    var TREND_SAMPLE_INTERVAL_MS = 60000;
+    var PORT_ALIAS_STORAGE_KEY = "dashboard_port_aliases_v1";
+    var PORT_ACTIVITY_STORAGE_KEY = "dashboard_port_activity_v1";
+    var MAX_PORT_ACTIVITY_ITEMS = 30;
+
+    var portAliases = {};
+    var recentPortActivity = [];
+    var lastPortSnapshot = new Map();
+
+    var currentPath = "/";
+    var lastDirectoryPath = "/";
+    var fileView = "grid";
+    var currentEditingFile = null;
+    var terminalTabs = [];
+    var activeTerminalTabId = null;
+    var terminalTabCounter = 0;
+    var terminalResizeRaf = null;
+    var pendingTerminalPath = null;
+    var TERMINAL_PROTOCOL_V2_MARKER = "__DASH_TERM_PROTOCOL_V2__";
+    var ROLE_ORDER = { viewer: 1, operator: 2, admin: 3 };
+
+    // Register global function variables to allow direct calls in ES modules
+    var apiFetch, esc, showModal, showConfirm, showToast, formatBytes, formatDate;
+    var loadBattery, loadPinnedPorts, loadSystem, loadPorts, updateChartColors;
+    var loadDockerContainers, pruneDocker, startContainer, stopContainer, restartContainer, showDockerLogs;
+    var loadPm2Processes, pm2Action, startPm2App, showPm2Logs, closePm2LogsModal, loadPinnedServices, savePinnedService, deletePinnedService;
+    var browseFiles, openCreateFolderModal, openCreateFileModal, openUploadModal, openGitCloneModal, downloadFolder, downloadFile, deleteFile, viewFileContent, openEditFileModal, openChmodModal;
+    var ensureTerminalReady, requestFitActiveTerminal, syncTerminalFullscreenUi, closeAllTerminalTabs, exitTerminalFullscreenIfActive, openTerminalTab, closeTerminalTab, setActiveTerminalTab, toggleTerminalFullscreen, openTerminalInPath;
+    var loadUsers, createUser, changeUserRole, deleteUser, loadAuditLogs, loadAlertRules, createAlertRule, toggleAlertRule, deleteAlertRule, loadLoginAlertsSetting, updateLoginAlertsToggle, toggleLoginAlerts, loadSshKeys, createSshKey, deleteSshKey, loadCloudflaredRoutes, createCloudflaredRoute, deleteCloudflaredRoute, restartCloudflaredTunnel;
+    var loadDeployPage, openDeployAppModal, deployAppFromTemplate, deployAppFromGit, deleteDeployedApp, deployedAppAction;
+    var toggleAIPanel, hideAIPanel, showAIPanel, startNewChat, sendQuickPrompt, clearAIHistory, handleAIInputKey, confirmAIAction, sendAIMessage;
+    var loadCustomServices, runCustomService, stopCustomService, showCustomServiceLogs;
+    var showLoginPage, showSignup, showDashboard, goToPage, FILE_ICONS, hasRole;
+  </script>
+
+  <!-- Load modern ES modules -->
+  <script type="module" src="/static/js/utils.js"></script>
+  <script type="module" src="/static/js/docker.js"></script>
+  <script type="module" src="/static/js/pm2.js"></script>
+  <script type="module" src="/static/js/filemanager.js"></script>
+  <script type="module" src="/static/js/terminal.js"></script>
+  <script type="module" src="/static/js/monitoring.js"></script>
+  <script type="module" src="/static/js/services.js"></script>
+  <script type="module" src="/static/js/admin.js"></script>
+  <script type="module" src="/static/js/deploy.js"></script>
+  <script type="module" src="/static/js/ai.js"></script>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

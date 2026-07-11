@@ -53,3 +53,10 @@ lint_js.js
 sweep_emojis.py
 test_browse.py
 hello.py
+
+# Temporary and local agent files
+.kilo/
+tmp_test_clone/
+replace_chat.py
+response.html
+todo.md

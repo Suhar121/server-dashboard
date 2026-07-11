@@ -104,19 +104,19 @@ ADMIN_PASSWORD=change_this_password
 To run the application stably (recommended, ignores all file changes and does not reload):
 
 ```bash
-python main.py
+python backend/main.py
 ```
 
 Or via standard Uvicorn command (without reload):
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 If you are developing and need auto-reload, specify reload exclusions to prevent deployment files and logs from triggering restarts:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "**/deployed_apps/**" --reload-exclude "**/logs/**" --reload-exclude "**/*.db"
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "**/deployed_apps/**" --reload-exclude "**/logs/**" --reload-exclude "**/*.db"
 ```
 
 Open your browser at `http://127.0.0.1:8000/`
@@ -126,7 +126,7 @@ The first user to register becomes the **admin**. Subsequent users register as *
 ### Optional: Battery Monitor
 
 ```bash
-python battery.py
+python backend/battery.py
 ```
 
 ---
@@ -155,17 +155,18 @@ python battery.py
 ## Tech Stack
 
 ### Backend
-- **Python 3** with [FastAPI](https://fastapi.tiangolo.com/)
+- **Python 3** with [FastAPI](https://fastapi.tiangolo.com/) (modularized with APIRouter endpoints)
 - **SQLite** for persistent storage
 - **psutil** for system metrics
 - Native Linux tools: `ss` (ports), `docker` CLI (containers), PTY (`pty`, `fcntl`, `os`, `signal`)
 
 ### Frontend
-- Single-page `index.html` (no build step, no framework)
+- Single-page application layout via `index.html` (zero build step, lightweight and frameworkless)
+- Modularized using **Native ES6 Javascript Modules** for clean state management and readability
 - [Chart.js](https://www.chartjs.org/) for CPU trend visualization
 - [xterm.js](https://xtermjs.org/) for the web terminal
 - [Lucide](https://lucide.dev/) icons
-- Responsive CSS with container queries and themed UI
+- Responsive themed CSS stylesheet with container queries
 
 ---
 
@@ -334,21 +335,24 @@ Base URL: `http://127.0.0.1:8000`
 
 ```
 server-dashboard/
-├── main.py                    # FastAPI app (API + auth + RBAC + terminal + files + alerts)
-├── index.html                 # Full frontend UI and client-side logic
-├── battery.py                 # Optional battery monitor script using /notify API
-├── .env.example               # Environment template (copy to .env)
-├── requirements.txt           # Python dependencies
-├── gridcore.jpg               # GridCore logo
-├── users.db                   # SQLite database (local runtime, gitignored)
-├── logs/                      # Service log files (gitignored)
-├── docs/
-│   └── screenshots/           # README UI screenshot assets
-├── tests/                     # Test suite
-├── ai/                        # AI integration modules
-├── .github/                   # GitHub workflows and config
-├── LICENSE                    # MIT License
-└── CONTRIBUTING.md            # Contribution guidelines
+├── backend/                    # Python FastAPI application root
+│   ├── main.py                 # Core FastAPI entrypoint
+│   ├── config.py               # Shared backend configurations & state caches
+│   ├── database.py             # Database connections & operations
+│   ├── battery.py              # Battery monitor checker
+│   ├── routers/                # Decoupled backend API endpoints
+│   └── ai/                     # Standalone AI agent logic
+├── frontend/                   # UI Single Page Application root
+│   ├── index.html              # Main SPA layout structure
+│   ├── gridcore.jpg            # Application logo
+│   └── static/                 # Static CSS stylesheet and modular JS files
+├── tests/                      # Unit & integration test suites
+├── logs/                       # Custom service log outputs (gitignored)
+├── .env.example                # Environment template (copy to .env)
+├── requirements.txt            # Python dependencies
+├── users.db                    # SQLite database (local runtime, gitignored)
+├── LICENSE                     # MIT License
+└── CONTRIBUTING.md             # Contribution guidelines
 ```
 
 ---
