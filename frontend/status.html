@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Status - Server Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c1322;
+      --card-bg: #111a2e;
+      --card-border: #1e2b45;
+      --card-hover: #16223b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --emerald: #20c997;
+      --emerald-bg: rgba(32, 201, 151, 0.12);
+      --emerald-border: rgba(32, 201, 151, 0.35);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.12);
+      --red-border: rgba(239, 68, 68, 0.35);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --amber-border: rgba(245, 158, 11, 0.35);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59, 130, 246, 0.12);
+      --blue-border: rgba(59, 130, 246, 0.35);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      flex: 1;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0c1322;
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge-refresh {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .btn-admin {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-admin:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--text-dim);
+    }
+    /* Hero Banner */
+    .hero-banner {
+      padding: 20px 24px;
+      border-radius: 12px;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      transition: all 0.2s ease;
+    }
+    .hero-operational {
+      background: var(--emerald-bg);
+      border-color: var(--emerald-border);
+      color: var(--emerald);
+    }
+    .hero-degraded {
+      background: var(--red-bg);
+      border-color: var(--red-border);
+      color: var(--red);
+    }
+    .hero-icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+    .hero-content h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .hero-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Incidents Section */
+    .incidents-container {
+      margin-bottom: 32px;
+    }
+    .incident-card {
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1px solid;
+      margin-bottom: 12px;
+    }
+    .incident-warning {
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+    }
+    .incident-critical {
+      background: var(--red-bg);
+      border-color: var(--red-border);
+    }
+    .incident-info {
+      background: var(--blue-bg);
+      border-color: var(--blue-border);
+    }
+    .incident-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 10px;
+    }
+    .incident-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .incident-time {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+    .incident-body {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* Groups and Components */
+    .group-section {
+      margin-bottom: 28px;
+    }
+    .group-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+    .component-list {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    .component-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .component-item:last-child {
+      border-bottom: none;
+    }
+    .component-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-up {
+      background: var(--emerald);
+      box-shadow: 0 0 10px rgba(32, 201, 151, 0.5);
+    }
+    .dot-down {
+      background: var(--red);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+      animation: pulse 1.5s infinite;
+    }
+    .dot-paused {
+      background: var(--amber);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
+    }
+    .component-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .component-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .component-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .uptime-percent {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    /* Heartbeat Strip */
+    .heartbeat-strip {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .heartbeat-tick {
+      width: 4px;
+      height: 18px;
+      border-radius: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .heartbeat-tick:hover {
+      transform: scaleY(1.3);
+    }
+    .tick-up {
+      background: var(--emerald);
+    }
+    .tick-down {
+      background: var(--red);
+    }
+    .tick-paused {
+      background: var(--amber);
+    }
+    /* Tooltip */
+    .heartbeat-tick:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #fff;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .badge-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge-up {
+      background: var(--emerald-bg);
+      border-color: var(--emerald-border);
+      color: var(--emerald);
+    }
+    .badge-down {
+      background: var(--red-bg);
+      border-color: var(--red-border);
+      color: var(--red);
+    }
+    .badge-paused {
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+      color: var(--amber);
+    }
+    /* Footer */
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      padding-top: 32px;
+      border-top: 1px solid var(--card-border);
+      margin-top: 32px;
+    }
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    .empty-state {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .restricted-msg {
+      padding: 40px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      color: var(--amber);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-brand">
+        <div class="header-logo">⚡</div>
+        <div>
+          <h1 class="header-title" id="pageTitle">System Status</h1>
+          <div class="header-desc" id="pageDesc">Live service and infrastructure telemetry</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="badge-refresh" id="refreshTimer">Auto refresh: --s</span>
+        <a href="/" class="btn-admin">Admin Dashboard</a>
+      </div>
+    </header>
+
+    <!-- Hero Operational Banner -->
+    <div id="heroBanner" class="hero-banner hero-operational">
+      <div class="hero-icon" id="heroIcon">✓</div>
+      <div class="hero-content">
+        <h2 id="heroHeading">All Systems Operational</h2>
+        <p id="heroText">All monitored services, background daemons, and host capacities are running normally.</p>
+      </div>
+    </div>
+
+    <!-- Active Incidents -->
+    <div id="incidentsContainer" class="incidents-container" style="display:none;"></div>
+
+    <!-- Component Groups -->
+    <div id="groupsContainer">
+      <div class="empty-state">Loading status telemetry...</div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <span id="footerText">Powered by Server Dashboard</span>
+    </footer>
+  </div>
+
+  <script>
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const slug = (pathParts[0] === 'status' && pathParts[1]) ? pathParts[1] : 'monitor';
+
+    let countdown = 60;
+    let refreshIntervalSec = 60;
+
+    async function loadStatus() {
+      try {
+        const res = await fetch(`/api/status-page/${slug}`);
+        if (!res.ok) {
+          throw new Error('Failed to load status page');
+        }
+        const data = await res.json();
+        renderStatusPage(data);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('groupsContainer').innerHTML = `
+          <div class="empty-state" style="color: var(--red);">
+            Failed to connect to monitoring service. Please check back shortly.
+          </div>
+        `;
+      }
+    }
+
+    function renderStatusPage(data) {
+      if (data.isRestricted) {
+        document.getElementById('groupsContainer').innerHTML = `
+          <div class="restricted-msg">
+            <h3>🔒 Access Restricted</h3>
+            <p style="margin-top: 8px; font-size: 13px; color: var(--text-muted);">${data.message || 'This status page is private.'}</p>
+            <a href="/" class="btn-admin" style="display:inline-block; margin-top: 16px;">Sign in with Credentials</a>
+          </div>
+        `;
+        document.getElementById('heroBanner').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('pageTitle').textContent = data.title || 'System Status';
+      document.title = `${data.title || 'System Status'} - Status Page`;
+      document.getElementById('pageDesc').textContent = data.description || 'Live service and infrastructure telemetry';
+      if (data.footerText) {
+        document.getElementById('footerText').textContent = data.footerText;
+      }
+
+      if (data.refreshInterval) {
+        refreshIntervalSec = data.refreshInterval;
+        countdown = refreshIntervalSec;
+      }
+
+      // Check overall system health across all monitors
+      let allMonitors = [];
+      if (Array.isArray(data.groupDetails)) {
+        data.groupDetails.forEach(g => {
+          if (Array.isArray(g.monitors)) {
+            allMonitors = allMonitors.concat(g.monitors);
+          }
+        });
+      }
+
+      const totalMonitors = allMonitors.length;
+      const downMonitors = allMonitors.filter(m => m.status === 'down');
+      const heroBanner = document.getElementById('heroBanner');
+      const heroIcon = document.getElementById('heroIcon');
+      const heroHeading = document.getElementById('heroHeading');
+      const heroText = document.getElementById('heroText');
+
+      if (downMonitors.length === 0) {
+        heroBanner.className = 'hero-banner hero-operational';
+        heroIcon.textContent = '✓';
+        heroHeading.textContent = 'All Systems Operational';
+        heroText.textContent = totalMonitors > 0
+          ? `All ${totalMonitors} monitored services and host metrics are running normally.`
+          : 'All systems are operating normally.';
+      } else {
+        heroBanner.className = 'hero-banner hero-degraded';
+        heroIcon.textContent = '⚠️';
+        heroHeading.textContent = `Partial Outage (${downMonitors.length} ${downMonitors.length === 1 ? 'service degraded' : 'services degraded'})`;
+        heroText.textContent = 'Our automated telemetry system has detected active incidents on the components listed below.';
+      }
+
+      // Render Incidents
+      const incidentsContainer = document.getElementById('incidentsContainer');
+      if (Array.isArray(data.incidents) && data.incidents.length > 0) {
+        incidentsContainer.style.display = 'block';
+        incidentsContainer.innerHTML = data.incidents.map(inc => {
+          const styleClass = inc.style === 'critical' ? 'incident-critical' : (inc.style === 'info' ? 'incident-info' : 'incident-warning');
+          const timeFormatted = inc.createdAt ? new Date(inc.createdAt).toLocaleString() : '';
+          return `
+            <div class="incident-card ${styleClass}">
+              <div class="incident-header">
+                <span class="incident-title">${escapeHtml(inc.title)}</span>
+                <span class="incident-time">${timeFormatted}</span>
+              </div>
+              <div class="incident-body">${escapeHtml(inc.content || 'Active service investigation in progress.')}</div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        incidentsContainer.style.display = 'none';
+      }
+
+      // Render Groups & Components
+      const groupsContainer = document.getElementById('groupsContainer');
+      if (!Array.isArray(data.groupDetails) || data.groupDetails.length === 0) {
+        groupsContainer.innerHTML = '<div class="empty-state">No monitored components configured for this status page.</div>';
+        return;
+      }
+
+      let groupsHtml = '';
+      data.groupDetails.forEach(group => {
+        const monitors = group.monitors || [];
+        groupsHtml += `
+          <div class="group-section">
+            <div class="group-title">${escapeHtml(group.name || 'Services')}</div>
+            <div class="component-list">
+              ${monitors.length === 0 ? '<div class="empty-state">No services assigned to this group yet.</div>' : monitors.map(renderComponentItem).join('')}
+            </div>
+          </div>
+        `;
+      });
+      groupsContainer.innerHTML = groupsHtml;
+    }
+
+    function renderComponentItem(m) {
+      const isDown = m.status === 'down';
+      const isPaused = m.status === 'paused';
+      const dotClass = isDown ? 'dot-down' : (isPaused ? 'dot-paused' : 'dot-up');
+      const badgeClass = isDown ? 'badge-down' : (isPaused ? 'badge-paused' : 'badge-up');
+      const badgeText = isDown ? 'Degraded' : (isPaused ? 'Paused' : 'Operational');
+
+      const heartbeats = m.heartbeats || [];
+      const totalSlots = 36;
+      const ticks = heartbeats.slice(-totalSlots);
+      while (ticks.length < totalSlots) {
+        ticks.unshift({ status: 'empty' });
+      }
+
+      const stripHtml = ticks.map(t => {
+        let tClass = '';
+        if (t.status === 'up') tClass = 'tick-up';
+        else if (t.status === 'down') tClass = 'tick-down';
+        else if (t.status === 'paused') tClass = 'tick-paused';
+
+        const tooltip = t.time ? `${new Date(t.time).toLocaleTimeString()} - ${t.msg || t.status}` : 'No check data';
+        return `<div class="heartbeat-tick ${tClass}" data-tooltip="${escapeHtml(tooltip)}"></div>`;
+      }).join('');
+
+      const targetText = m.url || (m.target ? `Drive ${m.target}` : m.type.toUpperCase());
+
+      return `
+        <div class="component-item">
+          <div class="component-left">
+            <span class="status-dot ${dotClass}"></span>
+            <div>
+              <div class="component-name">${escapeHtml(m.name)}</div>
+              <div class="component-sub">${escapeHtml(targetText)}</div>
+            </div>
+          </div>
+          <div class="component-right">
+            <div class="heartbeat-strip">${stripHtml}</div>
+            <div class="uptime-percent">${m.uptime24h || 100}%</div>
+            <span class="badge-status ${badgeClass}">${badgeText}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Refresh countdown loop
+    setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        countdown = refreshIntervalSec;
+        loadStatus();
+      }
+      document.getElementById('refreshTimer').textContent = `Auto refresh: ${countdown}s`;
+    }, 1000);
+
+    // Initial load
+    loadStatus();
+  </script>
+</body>
+</html>

@@ -364,11 +364,17 @@
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("deployMenuItem").style.display = canOperate ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
+      const uptimeMenu = document.getElementById("uptimeMenuItem");
+      if (uptimeMenu) uptimeMenu.style.display = "inline-flex";
+      const spMenu = document.getElementById("statusPagesMenuItem");
+      if (spMenu) spMenu.style.display = "inline-flex";
       // Sync mobile drawer menu items
-      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobilePm2MenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem"].forEach(id => {
+      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobilePm2MenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem","mobileUptimeMenuItem","mobileStatusPagesMenuItem"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        if (id === "mobileTerminalMenuItem" || id === "mobileDeployMenuItem") {
+        if (id === "mobileUptimeMenuItem" || id === "mobileStatusPagesMenuItem") {
+          el.style.display = "flex";
+        } else if (id === "mobileTerminalMenuItem" || id === "mobileDeployMenuItem") {
           el.style.display = canOperate ? "flex" : "none";
         } else {
           el.style.display = isAdmin ? "flex" : "none";
@@ -408,6 +414,8 @@
         "secrets": "fileManagerMenuItem",
         "file-manager": "fileManagerMenuItem",
         "deploy": "deployMenuItem",
+        "uptime": "uptimeMenuItem",
+        "status-pages": "statusPagesMenuItem",
       };
 
       document.querySelectorAll(".top-nav-item").forEach((btn) => btn.classList.remove("active"));
@@ -442,6 +450,10 @@
       document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("deployPage").style.display = showDeploy ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
+      const uptimePageEl = document.getElementById("uptimePage");
+      if (uptimePageEl) uptimePageEl.style.display = (currentPage === "uptime") ? "flex" : "none";
+      const spPageEl = document.getElementById("statusPagesPage");
+      if (spPageEl) spPageEl.style.display = (currentPage === "status-pages") ? "block" : "none";
       if (!showTerminal) {
         exitTerminalFullscreenIfActive();
       }
@@ -495,6 +507,8 @@
         "secrets": "Secrets Vault",
         "file-manager": "File Manager",
         "deploy": "Deploy Apps",
+        "uptime": "Uptime & Monitors",
+        "status-pages": "Status Pages",
       };
       const bc = document.getElementById("topbarBreadcrumb");
       if (bc) bc.textContent = breadcrumbLabels[page] || page.charAt(0).toUpperCase() + page.slice(1);
@@ -523,6 +537,10 @@
         ensureTerminalReady();
       } else if (page === "deploy") {
         loadDeployPage();
+      } else if (page === "uptime") {
+        loadUptimeDashboard();
+      } else if (page === "status-pages") {
+        loadStatusPagesAdmin();
       }
       closeMenu();
     }

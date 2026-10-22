@@ -34,7 +34,9 @@ Manage your servers, monitor system health, deploy applications, and access a br
 | **Terminal** | Browser-based terminal via WebSocket + PTY, multi-tab sessions, per-tab command history |
 | **Saved Commands** | Command library with template variables (`{{var}}`), inline variable forms |
 | **Admin Tools** | User lifecycle management, audit logs, SSH key manager, Cloudflared route manager, PM2 process manager |
-| **Notifications** | Telegram bot integration for alerts and custom notifications |
+| **Uptime & Monitors** | Uptime Kuma-style multi-target monitoring (HTTP/S, TCP Port, Host Disks, CPU & RAM), 36-slot heartbeat strips, 5 KPI tiles, latency curves with downtime shading, incident toasts |
+| **Status Pages** | Standalone zero-auth public status pages (`/status/{slug}`), status page manager, component grouping, active incident announcements |
+| **Notifications** | Telegram bot integration for alerts, custom notifications, and automated downtime/recovery alerts |
 
 ---
 
@@ -304,7 +306,32 @@ Base URL: `http://127.0.0.1:8000`
 </details>
 
 <details>
-<summary><strong>File Manager</strong></summary>
+<summary><strong>Uptime &amp; Status Pages (Uptime Kuma)</strong></summary>
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/monitors` | List all monitors and recent heartbeat strips |
+| `POST` | `/api/monitors` | Create a new monitor (HTTP, Port, Disk, CPU, Memory) |
+| `GET` | `/api/monitors/{id}` | Get monitor details |
+| `PUT` | `/api/monitors/{id}` | Update monitor configuration |
+| `DELETE` | `/api/monitors/{id}` | Delete a monitor |
+| `POST` | `/api/monitors/{id}/pause` | Pause or resume monitor checks |
+| `POST` | `/api/monitors/{id}/clear` | Clear heartbeat history |
+| `POST` | `/api/monitors/{id}/toggle-telegram` | Toggle Telegram alerts per monitor |
+| `GET` | `/api/system/drives` | List local drives and disk utilization |
+| `GET` | `/api/settings` | Get Telegram alert settings |
+| `POST` | `/api/settings` | Save Telegram alert settings |
+| `POST` | `/api/settings/telegram/test` | Send test Telegram notification |
+| `GET` | `/api/status-pages` | List status page configurations |
+| `GET` | `/api/status-page/{slug}` | Get status page configuration with components |
+| `POST` | `/api/status-page` | Create or update status page |
+| `DELETE` | `/api/status-page/{slug}` | Delete status page |
+| `POST` | `/api/status-page/incident` | Post an incident banner |
+| `DELETE` | `/api/status-page/incident/{id}` | Resolve/delete an incident banner |
+| `GET` | `/status` / `/status/{slug}` | Zero-auth standalone public status page |
+| `WS` | `/ws/uptime` | Real-time WebSocket event stream |
+
+</details>
 
 | Method | Endpoint | Description |
 |---|---|---|

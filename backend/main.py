@@ -51,6 +51,8 @@ from routers.terminal import router as terminal_router
 from routers.admin import router as admin_router
 from routers.ai_chat import router as ai_router
 from routers.deploy import router as deploy_router
+from routers.uptime_kuma import router as uptime_router
+from routers.public_status import router as public_status_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -100,7 +102,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print("Failed to start metrics poller daemon:", e)
 
+    # Start background uptime monitoring engine
+    try:
+        from uptime.engine import start_uptime_engine
+        await start_uptime_engine()
+    except Exception as e:
+        print("Failed to start uptime monitoring engine:", e)
+
     yield
+
+    # Shutdown background uptime monitoring engine
+    try:
+        from uptime.engine import stop_uptime_engine
+        await stop_uptime_engine()
+    except Exception as e:
+        print("Failed to stop uptime monitoring engine:", e)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -152,6 +168,8 @@ app.include_router(terminal_router)
 app.include_router(admin_router)
 app.include_router(ai_router)
 app.include_router(deploy_router)
+app.include_router(uptime_router)
+app.include_router(public_status_router)
 
 # Serve the single-page application index
 @app.get("/")

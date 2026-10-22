@@ -404,6 +404,81 @@ def init_user_db():
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS kuma_monitors (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            tag TEXT,
+            type TEXT NOT NULL,
+            url TEXT,
+            target TEXT,
+            interval INTEGER DEFAULT 60,
+            active INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'pending',
+            uptime24h REAL DEFAULT 100.0,
+            uptime30d REAL DEFAULT 100.0,
+            uptime1y REAL DEFAULT 100.0,
+            avg_ping REAL DEFAULT 0.0,
+            last_ping REAL DEFAULT 0.0,
+            last_error TEXT,
+            threshold REAL DEFAULT 90.0,
+            telegram_enabled INTEGER DEFAULT 1,
+            telegram_bot_token TEXT,
+            telegram_chat_id TEXT,
+            config_json TEXT DEFAULT '{}',
+            created_at INTEGER NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS kuma_heartbeats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            monitor_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            ping REAL DEFAULT 0,
+            msg TEXT,
+            time INTEGER NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_kuma_heartbeats_monitor_time ON kuma_heartbeats (monitor_id, time DESC)
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS status_pages (
+            slug TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            footer_text TEXT,
+            refresh_interval INTEGER DEFAULT 300,
+            theme TEXT DEFAULT 'auto',
+            show_tags INTEGER DEFAULT 0,
+            show_powered_by INTEGER DEFAULT 1,
+            show_certificate_expiry INTEGER DEFAULT 0,
+            show_only_last_heartbeat INTEGER DEFAULT 0,
+            domain_names TEXT DEFAULT '[]',
+            groups_json TEXT DEFAULT '[]',
+            is_public INTEGER DEFAULT 1
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS status_page_incidents (
+            id TEXT PRIMARY KEY,
+            status_page_slug TEXT DEFAULT 'monitor',
+            title TEXT NOT NULL,
+            content TEXT,
+            style TEXT DEFAULT 'warning',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
 
     # Migrations & database seeding
     cur.execute("PRAGMA table_info(alert_rules)")
