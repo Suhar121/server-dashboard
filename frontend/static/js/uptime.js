@@ -137,6 +137,10 @@ function renderMonitorSidebar() {
   if (upCountEl) upCountEl.textContent = upCount;
   if (downCountEl) downCountEl.textContent = downCount;
   if (pausedCountEl) pausedCountEl.textContent = pausedCount;
+  const dirCountEl = document.getElementById('uptimeDirectoryCount');
+  if (dirCountEl) {
+    dirCountEl.textContent = (filtered.length === total) ? `${total} Total` : `${filtered.length} of ${total}`;
+  }
 
   // Filter monitors
   let filtered = [...uptimeMonitors];
@@ -369,6 +373,24 @@ function renderMonitorDetail() {
 // 4. PING & TELEMETRY CHART
 // =========================================================================
 
+function colorWithAlpha(colorStr, alpha, fallback) {
+  if (!colorStr) return fallback;
+  const c = colorStr.trim();
+  if (c.startsWith('#')) {
+    let hex = c.substring(1);
+    if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+    if (hex.length === 6) {
+      const num = parseInt(hex, 16);
+      return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+  } else if (c.startsWith('rgb(')) {
+    return c.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+  } else if (c.startsWith('rgba(')) {
+    return c.replace(/[\d\.]+\)$/, `${alpha})`);
+  }
+  return fallback;
+}
+
 function drawUptimeChart(monitor) {
   const canvas = document.getElementById('uptimeLatencyCanvas');
   if (!canvas) return;
@@ -380,6 +402,12 @@ function drawUptimeChart(monitor) {
   canvas.width = rect.width * dpr;
   canvas.height = 140 * dpr;
   ctx.scale(dpr, dpr);
+
+  const cs = getComputedStyle(document.documentElement);
+  const okColor = cs.getPropertyValue('--ok').trim() || '#10b981';
+  const badColor = cs.getPropertyValue('--bad').trim() || '#ef4444';
+  const mutedColor = cs.getPropertyValue('--muted').trim() || '#64748b';
+  const borderColor = cs.getPropertyValue('--border').trim() || 'rgba(255, 255, 255, 0.08)';
 
   const heartbeats = monitor.heartbeats || [];
   const W = rect.width;
@@ -394,7 +422,7 @@ function drawUptimeChart(monitor) {
   ctx.clearRect(0, 0, W, H);
 
   if (heartbeats.length < 2) {
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = mutedColor;
     ctx.font = '12px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Gathering heartbeat ticks...', W / 2, H / 2);
@@ -410,10 +438,10 @@ function drawUptimeChart(monitor) {
   const getY = (val) => padTop + chartH - ((Math.min(val, maxVal) - minVal) / (maxVal - minVal || 1)) * chartH;
 
   // Grid lines
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  ctx.strokeStyle = borderColor;
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = mutedColor;
   ctx.font = '9px JetBrains Mono, monospace';
   ctx.textAlign = 'right';
 
@@ -431,7 +459,7 @@ function drawUptimeChart(monitor) {
   ctx.setLineDash([]);
 
   // Draw downtime outage vertical highlight bands
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+  ctx.fillStyle = colorWithAlpha(badColor, 0.16, 'rgba(239, 68, 68, 0.16)');
   const slotW = chartW / (heartbeats.length - 1);
   heartbeats.forEach((h, idx) => {
     if (h.status === 'down') {
@@ -442,8 +470,8 @@ function drawUptimeChart(monitor) {
 
   // Draw gradient area
   const gradient = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
-  gradient.addColorStop(0, 'rgba(32, 201, 151, 0.35)');
-  gradient.addColorStop(1, 'rgba(32, 201, 151, 0.0)');
+  gradient.addColorStop(0, colorWithAlpha(okColor, 0.28, 'rgba(16, 185, 129, 0.28)'));
+  gradient.addColorStop(1, colorWithAlpha(okColor, 0.0, 'rgba(16, 185, 129, 0.0)'));
 
   ctx.beginPath();
   heartbeats.forEach((h, idx) => {
@@ -466,12 +494,12 @@ function drawUptimeChart(monitor) {
     if (idx === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = '#20c997';
+  ctx.strokeStyle = okColor;
   ctx.lineWidth = 2;
   ctx.stroke();
 
   // Timestamp labels at start and end
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = mutedColor;
   ctx.font = '9px JetBrains Mono, monospace';
   ctx.textAlign = 'left';
   ctx.fillText(new Date(heartbeats[0].time).toLocaleTimeString(), padLeft, H - 8);
@@ -490,7 +518,7 @@ function selectUptimeMonitor(id) {
 
 function setUptimeFilter(filter) {
   currentUptimeFilter = filter;
-  document.querySelectorAll('.uptime-filter-btn').forEach(btn => {
+  document.querySelectorAll('.uptime-tab-btn, .uptime-filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === filter);
   });
   renderMonitorSidebar();
@@ -1259,3 +1287,33 @@ window.postStatusIncident = postStatusIncident;
 window.deleteStatusIncident = deleteStatusIncident;
 window.copyStatusPageLink = copyStatusPageLink;
 window.viewStatusPageLive = viewStatusPageLive;
+
+
+// =========================================================================
+// REACTIVE RESIZE & THEME LISTENERS
+// =========================================================================
+
+let uptimeResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(uptimeResizeTimer);
+  uptimeResizeTimer = setTimeout(() => {
+    const uptimePage = document.getElementById('uptimePage');
+    if (uptimePage && uptimePage.style.display !== 'none' && selectedMonitorId) {
+      const activeMonitor = uptimeMonitors.find(m => String(m.id) === String(selectedMonitorId));
+      if (activeMonitor) drawUptimeChart(activeMonitor);
+    }
+  }, 100);
+});
+
+try {
+  const uptimeThemeObserver = new MutationObserver(() => {
+    const uptimePage = document.getElementById('uptimePage');
+    if (uptimePage && uptimePage.style.display !== 'none' && selectedMonitorId) {
+      const activeMonitor = uptimeMonitors.find(m => String(m.id) === String(selectedMonitorId));
+      if (activeMonitor) drawUptimeChart(activeMonitor);
+    }
+  });
+  uptimeThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+} catch (e) {
+  console.warn('[Uptime] Theme observer setup error:', e);
+}

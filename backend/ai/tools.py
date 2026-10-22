@@ -76,7 +76,7 @@ def get_system_metrics(session: dict, params: dict) -> dict:
             "ram_used_gb": round(mem.used / (1024**3), 1),
             "ram_percent": mem.percent,
             "battery_percent": battery.percent if battery else None,
-            "battery_charging": battery.is_charging if battery else None,
+            "battery_charging": getattr(battery, "power_plugged", getattr(battery, "is_charging", None)) if battery else None,
         }
 
 

@@ -69,10 +69,6 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
           <span>Docker Manager</span>
         </button>
-        <button id="pm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span>PM2 Manager</span>
-        </button>
       </div>
 
       <div class="sidebar-divider"></div>
@@ -311,53 +307,6 @@
 
   
 
-  <!-- ─── PM2 Manager Section ─── -->
-  <section class="admin-page" id="pm2Page" style="display:none;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </div>
-        <div>
-          <h4 style="margin:0;font-weight:600;">PM2 Process Manager</h4>
-          <div class="muted" style="font-size:0.82rem;">Monitor and manage local Node, Python, and script applications</div>
-        </div>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn-neutral" onclick="openStartPm2AppModal()"><i data-lucide="plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Start New App</button>
-        <button class="btn-neutral" onclick="pm2GlobalAction('restart_all')"><i data-lucide="refresh-cw" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Restart All</button>
-        <button class="btn-danger" style="background:var(--bad);" onclick="pm2GlobalAction('stop_all')"><i data-lucide="square" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Stop All</button>
-        <button class="btn-success" onclick="pm2GlobalAction('save')"><i data-lucide="save" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Save List</button>
-        <button class="btn-neutral" onclick="pm2GlobalAction('reload_pm2')"><i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Reload PM2</button>
-        <button class="btn-neutral" style="background:#4b5563;color:white;" onclick="pm2GlobalAction('startup')"><i data-lucide="power" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Startup Setup</button>
-        <button class="btn-danger" style="background:#b91c1c;" onclick="pm2GlobalAction('kill')"><i data-lucide="skull" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Kill PM2</button>
-      </div>
-    </div>
-
-    <!-- Processes Table -->
-    <div class="cloudflared-table-wrap">
-      <table class="dash-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>PID</th>
-            <th>Status</th>
-            <th>CPU</th>
-            <th>Memory</th>
-            <th>Uptime</th>
-            <th>Restarts</th>
-            <th>Version</th>
-            <th>Working Dir</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="pm2ProcessBody">
-          <tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading PM2 processes...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
 
   <section class="admin-page" id="dockerPage">
     <div class="dash-section-card" style="border:none;padding:0;background:transparent;">
@@ -1204,154 +1153,199 @@
 
 
   <!-- UPTIME & MONITORS PAGE -->
-  <section id="uptimePage" class="uptime-page-container" style="display:none;">
-    <!-- Left Monitor List Sidebar -->
-    <div class="uptime-sidebar">
-      <div class="uptime-sidebar-header">
-        <span class="uptime-sidebar-title">Monitors</span>
-        <div style="display:flex; gap:6px;">
-          <button onclick="openTelegramSettingsModal()" class="btn-outline uptime-btn-sm" title="Configure Telegram Alerts">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Telegram
-          </button>
-          <button onclick="openAddMonitorModal()" class="btn-success uptime-btn-sm" title="Add New Monitor">
-            + Add
-          </button>
+  <section class="admin-page" id="uptimePage" style="display:none;">
+    <!-- Enterprise Page Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--ok-soft, rgba(16,185,129,0.12));display:flex;align-items:center;justify-content:center;color:var(--ok, #10b981);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0;font-weight:700;font-size:1.15rem;letter-spacing:-0.01em;">Uptime &amp; Service Monitors</h3>
+          <div class="muted" style="font-size:0.82rem;margin-top:2px;">Real-time service health, latency metrics, and automated alerts</div>
         </div>
       </div>
-
-      <!-- Quick Counts Bar -->
-      <div class="uptime-counts-bar">
-        <div class="uptime-count-item">
-          <span class="uptime-count-val" id="uptimeTotalCount">0</span>
-          <span class="uptime-count-lbl">Total</span>
-        </div>
-        <div class="uptime-count-item">
-          <span class="uptime-count-val" id="uptimeUpCount" style="color:#20c997;">0</span>
-          <span class="uptime-count-lbl">Up</span>
-        </div>
-        <div class="uptime-count-item">
-          <span class="uptime-count-val" id="uptimeDownCount" style="color:#ef4444;">0</span>
-          <span class="uptime-count-lbl">Down</span>
-        </div>
-        <div class="uptime-count-item">
-          <span class="uptime-count-val" id="uptimePausedCount" style="color:#f59e0b;">0</span>
-          <span class="uptime-count-lbl">Paused</span>
-        </div>
-      </div>
-
-      <!-- Filters & Search -->
-      <div class="uptime-filters">
-        <button class="uptime-filter-btn active" data-filter="all" onclick="setUptimeFilter('all')">All</button>
-        <button class="uptime-filter-btn" data-filter="up" onclick="setUptimeFilter('up')">Up</button>
-        <button class="uptime-filter-btn" data-filter="down" onclick="setUptimeFilter('down')">Down</button>
-        <button class="uptime-filter-btn" data-filter="paused" onclick="setUptimeFilter('paused')">Paused</button>
-      </div>
-
-      <div class="uptime-search-wrap">
-        <input type="text" class="field uptime-search-input" placeholder="Search monitors..." oninput="handleUptimeSearch(this.value)" />
-      </div>
-
-      <!-- Scrollable List of Monitors -->
-      <div class="uptime-monitor-list" id="uptimeMonitorList">
-        <div class="uptime-empty-state">Loading monitors...</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-neutral" onclick="openTelegramSettingsModal()" style="display:inline-flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Telegram Alerts
+        </button>
+        <button class="btn-neutral" onclick="goToPage('status-pages')" style="display:inline-flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Status Pages
+        </button>
+        <button class="btn-success" onclick="openAddMonitorModal()" style="display:inline-flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Monitor
+        </button>
       </div>
     </div>
 
-    <!-- Right Monitor Detail Pane -->
-    <div class="uptime-detail-pane" id="uptimeMonitorDetail">
-      <div class="uptime-no-selection">
-        <h3>Loading service detail...</h3>
+    <!-- KPI Overview Grid -->
+    <div class="dash-kpi-grid" style="margin-bottom:20px;">
+      <div class="stat-card">
+        <span class="stat-label">Total Monitors</span>
+        <span class="stat-value stat-value-sm font-mono" id="uptimeTotalCount">0</span>
+        <span class="stat-delta">Active tracking targets</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label" style="color:var(--ok);">Operational</span>
+        <span class="stat-value stat-value-sm font-mono" id="uptimeUpCount" style="color:var(--ok);">0</span>
+        <span class="stat-delta" style="color:var(--ok);">Passing all checks</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label" style="color:var(--bad);">Outage / Degraded</span>
+        <span class="stat-value stat-value-sm font-mono" id="uptimeDownCount" style="color:var(--bad);">0</span>
+        <span class="stat-delta" style="color:var(--bad);">Requires attention</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label" style="color:var(--warn);">Paused</span>
+        <span class="stat-value stat-value-sm font-mono" id="uptimePausedCount" style="color:var(--warn);">0</span>
+        <span class="stat-delta">Checks suspended</span>
+      </div>
+    </div>
+
+    <!-- Main 2-Column Responsive Workspace -->
+    <div class="uptime-workspace">
+      <!-- Left: Monitors Directory -->
+      <div class="uptime-directory-panel">
+        <div class="uptime-panel-header">
+          <div class="uptime-panel-title">Monitored Services</div>
+          <span class="badge" id="uptimeDirectoryCount">0 Total</span>
+        </div>
+
+        <!-- Filter Tabs & Search -->
+        <div class="uptime-filters-wrap">
+          <div class="uptime-filter-tabs">
+            <button class="uptime-tab-btn active" data-filter="all" onclick="setUptimeFilter('all')">All</button>
+            <button class="uptime-tab-btn" data-filter="up" onclick="setUptimeFilter('up')">Up</button>
+            <button class="uptime-tab-btn" data-filter="down" onclick="setUptimeFilter('down')">Down</button>
+            <button class="uptime-tab-btn" data-filter="paused" onclick="setUptimeFilter('paused')">Paused</button>
+          </div>
+          <div class="uptime-search-box">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="uptime-search-svg"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="field uptime-search-field" placeholder="Search monitors..." oninput="handleUptimeSearch(this.value)" />
+          </div>
+        </div>
+
+        <!-- Scrollable Monitor List -->
+        <div class="uptime-monitor-scroll" id="uptimeMonitorList">
+          <div class="uptime-empty-state">Loading monitors...</div>
+        </div>
+      </div>
+
+      <!-- Right: Selected Monitor Inspector -->
+      <div class="uptime-inspector-panel" id="uptimeMonitorDetail">
+        <div class="uptime-no-selection">
+          <h3>Loading service detail...</h3>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- STATUS PAGES ADMIN PAGE -->
-  <section class="card admin-page" id="statusPagesPage" style="display:none;">
-    <div class="sp-admin-container">
-      <div class="sp-top-toolbar">
+  <section class="admin-page" id="statusPagesPage" style="display:none;">
+    <!-- Enterprise Page Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
         <div>
-          <h2 style="margin:0; font-size:1.3rem; font-weight:700;">Status Page Manager</h2>
-          <div class="muted" style="font-size:0.82rem; margin-top:2px;">Publish and customize zero-auth public or private status pages.</div>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <select id="statusPageSelect" class="field" style="max-width:240px;" onchange="switchStatusPageAdmin(this.value)"></select>
-          <button onclick="openNewStatusPageModal()" class="btn-success uptime-btn-sm">+ New Status Page</button>
+          <h3 style="margin:0;font-weight:700;font-size:1.15rem;letter-spacing:-0.01em;">Status Page Manager</h3>
+          <div class="muted" style="font-size:0.82rem;margin-top:2px;">Publish and customize zero-auth public or private status pages</div>
         </div>
       </div>
-
-      <!-- Public URL Banner -->
-      <div class="sp-link-row">
-        <span style="font-size:0.8rem; font-weight:600; color:var(--muted);">Public URL:</span>
-        <span class="sp-link-pill" id="spPublicLinkPill">/status/monitor</span>
-        <button onclick="copyStatusPageLink()" class="btn-outline uptime-btn-sm">Copy Link</button>
-        <button onclick="viewStatusPageLive()" class="btn-outline uptime-btn-sm">View Live ↗</button>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="statusPageSelect" class="field" style="max-width:240px;" onchange="switchStatusPageAdmin(this.value)"></select>
+        <button class="btn-success" onclick="openNewStatusPageModal()" style="display:inline-flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Status Page
+        </button>
       </div>
+    </div>
 
-      <!-- Status Page Configuration Form -->
-      <div class="cmd-card" style="padding:16px;">
-        <h4 style="margin:0 0 12px 0; font-size:0.95rem;">General Settings</h4>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+    <!-- Public URL Banner Card -->
+    <div class="dash-section-card" style="margin-bottom:20px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:0.82rem; font-weight:600; color:var(--muted);">Public URL:</span>
+        <code class="sp-link-pill font-mono" id="spPublicLinkPill">/status/monitor</code>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="copyStatusPageLink()" class="btn-outline" style="height:32px;padding:0 12px;font-size:0.78rem;">Copy Link</button>
+        <button onclick="viewStatusPageLive()" class="btn-outline" style="height:32px;padding:0 12px;font-size:0.78rem;">View Live ↗</button>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <!-- General Settings Card -->
+      <div class="dash-section-card">
+        <div class="dash-section-header" style="margin-bottom:14px;">
+          <div class="dash-section-title-row">
+            <h4 style="margin:0; font-size:0.95rem; font-weight:600;">General Settings</h4>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
           <div>
-            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:4px;">Page Title</label>
+            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:5px; font-weight:500;">Page Title</label>
             <input type="text" id="spTitleInput" class="field" placeholder="e.g. System Status" />
           </div>
           <div>
-            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:4px;">Slug (URL Path)</label>
-            <input type="text" id="spSlugInput" class="field" placeholder="e.g. monitor" />
+            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:5px; font-weight:500;">Slug (URL Path)</label>
+            <input type="text" id="spSlugInput" class="field font-mono" placeholder="e.g. monitor" />
           </div>
         </div>
 
-        <div style="margin-top:12px;">
-          <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:4px;">Description</label>
+        <div style="margin-top:14px;">
+          <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:5px; font-weight:500;">Description Subtitle</label>
           <input type="text" id="spDescInput" class="field" placeholder="Live service and infrastructure telemetry" />
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:14px;">
           <div>
-            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:4px;">Footer Text</label>
+            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:5px; font-weight:500;">Footer Text</label>
             <input type="text" id="spFooterInput" class="field" placeholder="Powered by Server Dashboard" />
           </div>
           <div>
-            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:4px;">Auto-Refresh Interval (seconds)</label>
-            <input type="number" id="spRefreshInput" class="field" min="10" max="600" value="300" />
+            <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:5px; font-weight:500;">Auto-Refresh Interval (seconds)</label>
+            <input type="number" id="spRefreshInput" class="field font-mono" min="10" max="600" value="300" />
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:18px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; gap:12px;">
           <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
             <input type="checkbox" id="spPublicCheck" checked />
-            <span>Public Status Page (Zero login required for clients &amp; visitors)</span>
+            <span style="font-weight:500;">Public Status Page (Zero authentication required for visitors)</span>
           </label>
           <div style="display:flex; gap:8px;">
-            <button onclick="deleteStatusPageAdmin()" class="btn-outline uptime-btn-danger uptime-btn-sm">Delete Page</button>
-            <button onclick="saveStatusPageConfig()" class="btn-success uptime-btn-sm">Save Changes</button>
+            <button onclick="deleteStatusPageAdmin()" class="btn-danger" style="background:var(--bad);">Delete Page</button>
+            <button onclick="saveStatusPageConfig()" class="btn-success">Save Configuration</button>
           </div>
         </div>
       </div>
 
-      <!-- Active Incidents Management -->
-      <div class="cmd-card" style="padding:16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <!-- Active Incidents Card -->
+      <div class="dash-section-card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
           <div>
-            <h4 style="margin:0; font-size:0.95rem;">Active Incidents &amp; Announcements</h4>
-            <div class="muted" style="font-size:0.78rem;">Display notice banners to visitors regarding outages or maintenance.</div>
+            <h4 style="margin:0; font-size:0.95rem; font-weight:600;">Active Outage Announcements &amp; Incidents</h4>
+            <div class="muted" style="font-size:0.78rem; margin-top:2px;">Post active investigation banners visible to visitors</div>
           </div>
-          <button onclick="openNewIncidentModal()" class="btn-outline uptime-btn-sm">+ Post Incident</button>
+          <button onclick="openNewIncidentModal()" class="btn-neutral" style="height:32px;padding:0 12px;font-size:0.78rem;">+ Post Incident</button>
         </div>
         <div id="spIncidentsList">
           <div class="uptime-empty-state">No active incidents posted.</div>
         </div>
       </div>
 
-      <!-- Component Groups -->
-      <div class="cmd-card" style="padding:16px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <!-- Component Groups Card -->
+      <div class="dash-section-card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
           <div>
-            <h4 style="margin:0; font-size:0.95rem;">Component Groups</h4>
-            <div class="muted" style="font-size:0.78rem;">Group and organize monitors displayed on the status page.</div>
+            <h4 style="margin:0; font-size:0.95rem; font-weight:600;">Component Groups</h4>
+            <div class="muted" style="font-size:0.78rem; margin-top:2px;">Group and categorize services displayed on this status page</div>
           </div>
-          <button onclick="addNewMonitorGroup()" class="btn-outline uptime-btn-sm">+ Add Group</button>
+          <button onclick="addNewMonitorGroup()" class="btn-neutral" style="height:32px;padding:0 12px;font-size:0.78rem;">+ Add Group</button>
         </div>
         <div id="spGroupsContainer"></div>
       </div>
@@ -1392,10 +1386,6 @@
       <button id="mobileDockerMenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('docker'); closeMobileDrawer()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2"/><path d="M14 17v2"/><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M20 7v.01"/><path d="M22 11v.01"/><path d="M18 11v.01"/><path d="M16 11v.01"/><path d="M14 11v.01"/></svg>
         <span>Docker Manager</span>
-      </button>
-      <button id="mobilePm2MenuItem" class="top-nav-item" style="display:none;" onclick="goToPage('pm2'); closeMobileDrawer()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        <span>PM2 Manager</span>
       </button>
 
       <div class="sidebar-divider" style="margin:6px 16px;"></div>
@@ -1595,128 +1585,6 @@
     </div>
   </div>
 
-  <!-- ─── PM2 Start App Modal ─── -->
-  <div id="startPm2AppModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="card" style="max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: var(--shadow-md); display:flex; flex-direction:column; gap:16px; background:var(--card); border:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:4px;">
-        <h3 style="margin:0; font-weight:700;">Start New PM2 Application</h3>
-        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closeStartPm2AppModal()">✕</button>
-      </div>
-      
-      <div class="auth-form-stack" style="gap:12px; display:flex; flex-direction:column;">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">App Name *</label>
-            <input id="pm2AppName" class="field auth-form-input" type="text" placeholder="e.g. my-node-service" />
-          </div>
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Start Script / Command *</label>
-            <input id="pm2AppScript" class="field auth-form-input" type="text" placeholder="e.g. app.js or main.py" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Working Directory</label>
-            <input id="pm2AppCwd" class="field auth-form-input" type="text" placeholder="Auto (optional)" />
-          </div>
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Interpreter</label>
-            <select id="pm2AppInterpreter" class="field auth-form-input" style="height:38px; width:100%; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm); padding:0 10px;">
-              <option value="auto">Auto (Detect)</option>
-              <option value="node">Node.js</option>
-              <option value="python">Python</option>
-              <option value="bun">Bun</option>
-              <option value="bash">Bash</option>
-              <option value="php">PHP</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="auth-form-group">
-          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Arguments (space separated)</label>
-          <input id="pm2AppArgs" class="field auth-form-input" type="text" placeholder="e.g. --port 3000 --production" />
-        </div>
-
-        <div class="auth-form-group">
-          <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Environment Variables (JSON format)</label>
-          <textarea id="pm2AppEnv" class="field auth-form-input" style="height:60px; font-family:monospace; font-size:0.82rem; width:100%; padding:8px 10px;" placeholder='e.g. {"PORT": 3000, "NODE_ENV": "production"}'></textarea>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Instances Count</label>
-            <input id="pm2AppInstances" class="field auth-form-input" type="number" min="1" placeholder="1" />
-          </div>
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Max Memory Restart</label>
-            <input id="pm2AppMaxMemory" class="field auth-form-input" type="text" placeholder="e.g. 500M or 1G" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Startup Delay (seconds)</label>
-            <input id="pm2AppDelay" class="field auth-form-input" type="number" min="0" placeholder="0" />
-          </div>
-          <div class="auth-form-group">
-            <label class="auth-form-label" style="font-weight:600;font-size:0.82rem;color:var(--muted); margin-bottom:4px; display:block;">Cron Restart Pattern</label>
-            <input id="pm2AppCron" class="field auth-form-input" type="text" placeholder="e.g. */5 * * * *" />
-          </div>
-        </div>
-
-        <div style="display:flex; gap:16px; margin-top:4px;">
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
-            <input id="pm2AppAutorestart" type="checkbox" checked /> Auto Restart
-          </label>
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem;">
-            <input id="pm2AppWatch" type="checkbox" /> Watch Mode (Reload on changes)
-          </label>
-        </div>
-
-        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
-          <button class="btn-neutral" onclick="closeStartPm2AppModal()">Cancel</button>
-          <button class="btn-success" onclick="pm2StartNewApp()">Start Application</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── PM2 Logs Modal ─── -->
-  <div id="pm2LogsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; padding:20px;">
-    <div class="card" style="max-width: 900px; width: 100%; height: 80vh; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow-md); display:flex; flex-direction:column; gap:12px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
-        <div>
-          <h3 style="margin:0; font-weight:700;" id="pm2LogsTitle">Application Logs</h3>
-          <div class="muted" style="font-size:0.82rem;" id="pm2LogsSubtitle">Tailing real-time process output...</div>
-        </div>
-        <button class="btn-neutral" style="padding:4px 8px; min-height:0; border:none;" onclick="closePm2LogsModal()">✕</button>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <select id="pm2LogsLinesLimit" class="field" style="width:110px; height:32px; padding:0 8px; font-size:0.82rem; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:var(--radius-sm);" onchange="reloadPm2Logs()">
-            <option value="50">50 lines</option>
-            <option value="100" selected>100 lines</option>
-            <option value="250">250 lines</option>
-            <option value="500">500 lines</option>
-            <option value="1000">1000 lines</option>
-          </select>
-          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="reloadPm2Logs()"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Reload</button>
-          <button class="btn-neutral" id="pm2LogsStreamToggle" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px; background:var(--ok-soft); color:var(--ok);" onclick="togglePm2LogsStream()"><i data-lucide="play" style="width:12px;height:12px;"></i> Streaming</button>
-        </div>
-        
-        <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:360px;">
-          <input id="pm2LogsSearch" class="field" type="text" style="height:32px; font-size:0.82rem; width:100%;" placeholder="Search logs..." oninput="filterPm2Logs()" />
-          <button class="btn-neutral" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="clearPm2LogsDisplay()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> Clear Screen</button>
-          <button class="btn-success" style="height:32px; padding:0 12px; font-size:0.82rem; display:inline-flex; align-items:center; justify-content:center; gap:4px;" onclick="downloadPm2Logs()"><i data-lucide="download" style="width:12px;height:12px;"></i> Download</button>
-        </div>
-      </div>
-
-      <pre id="pm2LogsContent" style="flex:1; margin:0; background:#030814; color:#7ef5b8; font-family:'Monaco', 'Courier New', monospace; font-size:0.82rem; line-height:1.5; padding:12px; border-radius:10px; border:1px solid var(--border); overflow:auto; white-space:pre-wrap;"></pre>
-    </div>
-  </div>
-
   <div id="permissionsModal">
     <div id="permissionsBox">
       <h3 style="display:flex;align-items:center;gap:6px;"><i data-lucide="key"></i> File Permissions</h3>
@@ -1771,7 +1639,6 @@
     var currentLogService = null;
     var logTimer = null;
     var refreshTimer = null;
-    var pm2RefreshTimer = null;
     var sessionTimer = null;
     var currentUser = null;
     var currentPage = "dashboard";
@@ -1804,7 +1671,6 @@
     var apiFetch, esc, formatBytes, formatDuration, getFileIcon, formatFileSize, FILE_ICONS;
     var loadBattery, loadPinnedPorts, loadSystem, loadPorts, updateChartColors;
     var loadDockerContainers, pruneDocker, dockerAction, dockerLogs, dockerExec;
-    var loadPm2Processes, pm2GlobalAction, pm2AppAction, openStartPm2AppModal, closeStartPm2AppModal, pm2StartNewApp, openPm2LogsModal, closePm2LogsModal;
     var browseFiles, renderFileList, renderGridView, renderListView, handleFileClick, handleFileDoubleClick, switchView, refreshCurrentDir, openFileEditor, closeFileEditor, saveFileContent, deleteFileOrFolder, createNewFile, createNewFolder, gitCloneRepo, downloadFile, downloadFolder, openPermissionsModal, closePermissionsModal, savePermissions;
     var ensureTerminalReady, requestFitActiveTerminal, syncTerminalFullscreenUi, closeAllTerminalTabs, exitTerminalFullscreenIfActive, createTerminalTab, closeTerminalTab, toggleTerminalFullscreen;
     var loadUsers, createUser, changeUserRole, deleteUser, loadAuditLogs, loadAlertRules, createAlertRule, toggleAlertRule, deleteAlertRule, loadLoginAlertsSetting, updateLoginAlertsToggle, toggleLoginAlerts, loadSshKeys, createSshKey, deleteSshKey, loadCloudflaredRoutes, createCloudflaredRoute, deleteCloudflaredRoute, restartCloudflaredTunnel;
@@ -1816,7 +1682,6 @@
   <!-- Load modern ES modules -->
   <script type="module" src="/static/js/utils.js"></script>
   <script type="module" src="/static/js/docker.js"></script>
-  <script type="module" src="/static/js/pm2.js"></script>
   <script type="module" src="/static/js/filemanager.js"></script>
   <script type="module" src="/static/js/terminal.js"></script>
   <script type="module" src="/static/js/monitoring.js"></script>
@@ -1827,7 +1692,7 @@
   <script type="module" src="/static/js/app.js"></script>
 
   <!-- ADD / EDIT MONITOR MODAL -->
-  <div class="modal" id="uptimeMonitorModal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
+  <div class="modal" id="uptimeMonitorModal" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
     <div class="card" style="width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:20px; border:1px solid var(--border);">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <h3 id="monitorModalTitle" style="margin:0; font-size:1.05rem;">Add New Monitor</h3>
@@ -1863,7 +1728,7 @@
         <div id="monitorThresholdGroup" style="margin-bottom:12px; display:none;">
           <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
             <label class="muted" style="font-size:0.78rem;">Alert Threshold (Trigger DOWN when &gt;= threshold)</label>
-            <span id="monitorThresholdVal" class="font-mono" style="font-size:0.78rem; color:#20c997;">90%</span>
+            <span id="monitorThresholdVal" class="font-mono" style="font-size:0.78rem; color:var(--ok); font-weight:600;">90%</span>
           </div>
           <input type="range" id="monitorThresholdInput" min="50" max="99" value="90" class="field" style="height:auto; padding:4px;" oninput="document.getElementById('monitorThresholdVal').textContent = this.value + '%'" />
         </div>
@@ -1873,7 +1738,7 @@
           <input type="number" id="monitorIntervalInput" class="field" min="5" max="600" value="30" required />
         </div>
 
-        <div style="margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px;">
+        <div style="margin-bottom:16px; padding:12px; background:var(--card-soft); border:1px solid var(--border); border-radius:var(--radius-md);">
           <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; cursor:pointer;">
             <input type="checkbox" id="monitorTelegramCheck" checked />
             <span>Enable Telegram Alerts for this monitor</span>
@@ -1893,11 +1758,11 @@
   </div>
 
   <!-- TELEGRAM SETTINGS MODAL -->
-  <div class="modal" id="uptimeTelegramModal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
+  <div class="modal" id="uptimeTelegramModal" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
     <div class="card" style="width:100%; max-width:500px; padding:20px; border:1px solid var(--border);">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:28px; height:28px; border-radius:6px; background:rgba(32,201,151,0.15); color:#20c997; display:flex; align-items:center; justify-content:center;">
+          <div style="width:28px; height:28px; border-radius:6px; background:var(--ok-soft); color:var(--ok); display:flex; align-items:center; justify-content:center;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </div>
           <h3 style="margin:0; font-size:1.05rem;">Telegram Notifications</h3>
@@ -1906,7 +1771,7 @@
       </div>
 
       <form onsubmit="saveTelegramSettings(event)">
-        <div style="margin-bottom:14px; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px;">
+        <div style="margin-bottom:14px; padding:12px; background:var(--card-soft); border:1px solid var(--border); border-radius:var(--radius-md);">
           <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
             <input type="checkbox" id="tgEnabledCheck" checked />
             <span style="font-weight:600;">Enable Telegram Notifications</span>
@@ -1924,7 +1789,7 @@
           <input type="text" id="tgChatIdInput" class="field font-mono" placeholder="e.g. 123456789 or -1001234567890 for groups" />
         </div>
 
-        <div style="padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; font-size:0.75rem; color:var(--muted); line-height:1.5; margin-bottom:14px;">
+        <div style="padding:10px 14px; background:var(--card-soft); border:1px solid var(--border); border-radius:var(--radius-md); font-size:0.75rem; color:var(--muted); line-height:1.5; margin-bottom:14px;">
           <strong>Quick Setup:</strong>
           <ol style="margin-left:18px; margin-top:4px;">
             <li>Message <strong>@BotFather</strong> on Telegram and send <code>/newbot</code> to get your token.</li>
@@ -1949,7 +1814,7 @@
   </div>
 
   <!-- NEW STATUS PAGE MODAL -->
-  <div class="modal" id="newStatusPageModal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
+  <div class="modal" id="newStatusPageModal" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
     <div class="card" style="width:100%; max-width:440px; padding:20px; border:1px solid var(--border);">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <h3 style="margin:0; font-size:1.05rem;">Create Status Page</h3>
@@ -1979,7 +1844,7 @@
   </div>
 
   <!-- INCIDENT MODAL -->
-  <div class="modal" id="uptimeIncidentModal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
+  <div class="modal" id="uptimeIncidentModal" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);">
     <div class="card" style="width:100%; max-width:480px; padding:20px; border:1px solid var(--border);">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <h3 style="margin:0; font-size:1.05rem;">Post Status Incident</h3>

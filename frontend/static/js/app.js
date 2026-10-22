@@ -360,7 +360,6 @@
       document.getElementById("alertRulesMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("accessHubMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("dockerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
-      document.getElementById("pm2MenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("fileManagerMenuItem").style.display = isAdmin ? "inline-flex" : "none";
       document.getElementById("deployMenuItem").style.display = canOperate ? "inline-flex" : "none";
       document.getElementById("terminalMenuItem").style.display = canOperate ? "inline-flex" : "none";
@@ -369,7 +368,7 @@
       const spMenu = document.getElementById("statusPagesMenuItem");
       if (spMenu) spMenu.style.display = "inline-flex";
       // Sync mobile drawer menu items
-      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobilePm2MenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem","mobileUptimeMenuItem","mobileStatusPagesMenuItem"].forEach(id => {
+      ["mobileTerminalMenuItem","mobileDockerMenuItem","mobileAdminMenuItem","mobileAlertRulesMenuItem","mobileAccessHubMenuItem","mobileFileManagerMenuItem","mobileDeployMenuItem","mobileUptimeMenuItem","mobileStatusPagesMenuItem"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (id === "mobileUptimeMenuItem" || id === "mobileStatusPagesMenuItem") {
@@ -385,7 +384,7 @@
         currentPage = "dashboard";
       }
 
-      if (!isAdmin && (currentPage === "admin" || currentPage === "alert-rules" || currentPage === "access-hub" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager" || currentPage === "pm2")) {
+      if (!isAdmin && (currentPage === "admin" || currentPage === "alert-rules" || currentPage === "access-hub" || currentPage === "ssh-keys" || currentPage === "cloudflared" || currentPage === "file-manager")) {
         currentPage = "dashboard";
       }
 
@@ -410,7 +409,6 @@
         "ssh-keys": "accessHubMenuItem",
         "cloudflared": "accessHubMenuItem",
         "docker": "dockerMenuItem",
-        "pm2": "pm2MenuItem",
         "secrets": "fileManagerMenuItem",
         "file-manager": "fileManagerMenuItem",
         "deploy": "deployMenuItem",
@@ -432,7 +430,6 @@
       const showCloudflared = currentPage === "cloudflared" && hasRole("admin");
       const showFileManager = currentPage === "file-manager" && hasRole("admin");
       const showDocker = currentPage === "docker" && hasRole("admin");
-      const showPm2 = currentPage === "pm2" && hasRole("admin");
       const showSecrets = currentPage === "secrets" && hasRole("admin");
       const showDeploy = currentPage === "deploy" && hasRole("operator");
       const showTerminal = currentPage === "terminal" && hasRole("operator");
@@ -446,12 +443,11 @@
       document.getElementById("cloudflaredPage").style.display = showCloudflared ? "block" : "none";
       document.getElementById("fileManagerPage").style.display = showFileManager ? "block" : "none";
       document.getElementById("dockerPage").style.display = showDocker ? "block" : "none";
-      document.getElementById("pm2Page").style.display = showPm2 ? "block" : "none";
       document.getElementById("secretsPage").style.display = showSecrets ? "block" : "none";
       document.getElementById("deployPage").style.display = showDeploy ? "block" : "none";
       document.getElementById("terminalPage").style.display = showTerminal ? "block" : "none";
       const uptimePageEl = document.getElementById("uptimePage");
-      if (uptimePageEl) uptimePageEl.style.display = (currentPage === "uptime") ? "flex" : "none";
+      if (uptimePageEl) uptimePageEl.style.display = (currentPage === "uptime") ? "block" : "none";
       const spPageEl = document.getElementById("statusPagesPage");
       if (spPageEl) spPageEl.style.display = (currentPage === "status-pages") ? "block" : "none";
       if (!showTerminal) {
@@ -470,7 +466,7 @@
         page = "alert-rules";
       }
 
-      if ((page === "admin" || page === "alert-rules" || page === "access-hub" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "pm2" || page === "secrets") && !hasRole("admin")) {
+      if ((page === "admin" || page === "alert-rules" || page === "access-hub" || page === "ssh-keys" || page === "cloudflared" || page === "file-manager" || page === "docker" || page === "secrets") && !hasRole("admin")) {
         alert("Admin role required.");
         return;
       }
@@ -487,18 +483,12 @@
         exitTerminalFullscreenIfActive();
       }
 
-      // Handle PM2 Timer teardown
-      if (pm2RefreshTimer) {
-        clearInterval(pm2RefreshTimer);
-        pm2RefreshTimer = null;
-      }
 
       currentPage = page;
       const breadcrumbLabels = {
         "dashboard": "Dashboard",
         "terminal": "Terminal",
         "docker": "Docker Manager",
-        "pm2": "PM2 Manager",
         "admin": "Team",
         "alert-rules": "Alert Rules",
         "access-hub": "Access & Tunnels",
@@ -524,9 +514,6 @@
         loadSshKeys();
       } else if (page === "docker") {
         loadDockerContainers();
-      } else if (page === "pm2") {
-        loadPm2Processes();
-        pm2RefreshTimer = setInterval(loadPm2Processes, 5000);
       } else if (page === "secrets") {
         // sync state if needed
       } else if (page === "cloudflared") {

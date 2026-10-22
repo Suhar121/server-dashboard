@@ -3642,135 +3642,139 @@
 
 
 /* =========================================================================
-   UPTIME KUMA & STATUS PAGES STYLES
+   UPTIME KUMA & STATUS PAGES STYLES (THEME INTEGRATED & RESPONSIVE FIT)
    ========================================================================= */
 
-.uptime-page-container {
-  display: flex;
-  height: calc(100vh - 56px);
-  overflow: hidden;
-  background: var(--bg);
+.uptime-workspace {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 20px;
+  align-items: start;
+  width: 100%;
 }
 
-.uptime-sidebar {
-  width: 320px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
+@media (max-width: 1024px) {
+  .uptime-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Directory Panel (Left) */
+.uptime-directory-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--card-bg, #0b1120);
 }
 
-.uptime-sidebar-header {
+.uptime-panel-header {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
 }
 
-.uptime-sidebar-title {
-  font-size: 0.95rem;
+.uptime-panel-title {
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
 }
 
-.uptime-counts-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 10px 16px;
+.uptime-filters-wrap {
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-  text-align: center;
-  gap: 4px;
-}
-
-.uptime-count-item {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  background: var(--card-soft);
 }
 
-.uptime-count-val {
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.uptime-count-lbl {
-  font-size: 0.68rem;
-  color: var(--muted, #94a3b8);
-  text-transform: uppercase;
-  margin-top: 2px;
-}
-
-.uptime-filters {
+.uptime-filter-tabs {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
+  background: var(--surface, var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
 }
 
-.uptime-filter-btn {
+.uptime-tab-btn {
+  flex: 1;
   background: transparent;
-  border: 1px solid transparent;
-  color: var(--muted, #94a3b8);
+  border: none;
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 5px 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: center;
 }
 
-.uptime-filter-btn:hover {
-  color: var(--text-main, #f1f5f9);
-  background: rgba(255, 255, 255, 0.04);
+.uptime-tab-btn:hover {
+  color: var(--text);
 }
 
-.uptime-filter-btn.active {
-  background: rgba(32, 201, 151, 0.15);
-  color: #20c997;
-  border-color: rgba(32, 201, 151, 0.3);
+.uptime-tab-btn.active {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
-.uptime-search-wrap {
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.uptime-search-input {
+.uptime-search-box {
+  position: relative;
   width: 100%;
-  font-size: 0.78rem;
 }
 
-.uptime-monitor-list {
-  flex: 1;
+.uptime-search-svg {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.uptime-search-field {
+  padding-left: 28px !important;
+  font-size: 0.78rem !important;
+  height: 32px !important;
+  background: var(--surface, var(--card)) !important;
+}
+
+.uptime-monitor-scroll {
+  max-height: 600px;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+/* Monitor Card */
 .uptime-monitor-card {
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--card-soft);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .uptime-monitor-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--border);
+  border-color: var(--brand);
+  background: var(--surface, var(--card));
+  transform: translateY(-1px);
 }
 
 .uptime-monitor-card.active {
-  background: rgba(32, 201, 151, 0.08);
-  border-color: rgba(32, 201, 151, 0.35);
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  box-shadow: 0 0 0 1px var(--ok);
 }
 
 .uptime-card-header {
@@ -3795,29 +3799,29 @@
 }
 
 .dot-up {
-  background: #20c997;
-  box-shadow: 0 0 8px rgba(32, 201, 151, 0.6);
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
 }
 
 .dot-down {
-  background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
-  animation: pulse-outage 1.5s infinite;
+  background: var(--bad);
+  box-shadow: 0 0 8px var(--bad);
+  animation: pulse-outage 1.4s infinite;
 }
 
 .dot-paused {
-  background: #f59e0b;
+  background: var(--warn);
 }
 
 @keyframes pulse-outage {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
+  50% { opacity: 0.4; transform: scale(1.2); }
 }
 
 .uptime-card-name {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3825,7 +3829,7 @@
 
 .uptime-card-value {
   font-size: 0.75rem;
-  color: var(--muted, #94a3b8);
+  color: var(--muted);
   flex-shrink: 0;
 }
 
@@ -3840,11 +3844,12 @@
 .uptime-badge-type {
   font-size: 0.65rem;
   font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--muted, #94a3b8);
+  background: var(--surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
 }
 
 .uptime-mini-strip {
@@ -3859,36 +3864,37 @@
   width: 2.5px;
   height: 12px;
   border-radius: 0.5px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(128, 128, 128, 0.2);
 }
 
-.mini-tick-up { background: #20c997; }
-.mini-tick-down { background: #ef4444; }
-.mini-tick-paused { background: #f59e0b; }
+.mini-tick-up { background: var(--ok); }
+.mini-tick-down { background: var(--bad); }
+.mini-tick-paused { background: var(--warn); }
 
 .uptime-pct {
-  font-size: 0.7rem;
-  color: var(--muted, #94a3b8);
+  font-size: 0.72rem;
+  color: var(--muted);
   font-weight: 600;
-  width: 42px;
+  width: 44px;
   text-align: right;
   flex-shrink: 0;
 }
 
-/* Detail Pane */
-.uptime-detail-pane {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
+/* Inspector Panel (Right) */
+.uptime-inspector-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  background: var(--bg);
+  gap: 16px;
+  min-width: 0;
 }
 
 .uptime-detail-header {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -3901,17 +3907,18 @@
 }
 
 .uptime-detail-title {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
+  margin: 0;
 }
 
 .uptime-target-link {
   font-size: 0.78rem;
-  color: #20c997;
+  color: var(--ok);
   text-decoration: none;
-  background: rgba(32, 201, 151, 0.1);
-  border: 1px solid rgba(32, 201, 151, 0.25);
+  background: var(--ok-soft);
+  border: 1px solid var(--ok);
   padding: 3px 8px;
   border-radius: 6px;
   display: inline-block;
@@ -3923,8 +3930,8 @@
 
 .uptime-target-badge {
   font-size: 0.78rem;
-  color: var(--muted, #94a3b8);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  background: var(--card-soft);
   border: 1px solid var(--border);
   padding: 3px 8px;
   border-radius: 6px;
@@ -3939,29 +3946,23 @@
 }
 
 .uptime-btn-telegram-active {
-  background: rgba(32, 201, 151, 0.15) !important;
-  color: #20c997 !important;
-  border-color: rgba(32, 201, 151, 0.35) !important;
+  background: var(--ok-soft) !important;
+  color: var(--ok) !important;
+  border-color: var(--ok) !important;
 }
 
 .uptime-btn-danger:hover {
-  color: #ef4444 !important;
-  border-color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-}
-
-.uptime-btn-sm {
-  padding: 4px 10px !important;
-  font-size: 0.75rem !important;
-  height: auto !important;
+  color: var(--bad) !important;
+  border-color: var(--bad) !important;
+  background: var(--bad-soft) !important;
 }
 
 /* Strip Card */
 .uptime-strip-card {
   padding: 16px 20px;
-  background: var(--card-bg, #0b1120);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3975,29 +3976,32 @@
 
 .uptime-strip-label {
   font-size: 0.75rem;
-  color: var(--muted, #94a3b8);
+  color: var(--muted);
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .uptime-strip-bars {
   display: flex;
   align-items: center;
   gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .uptime-tick {
   width: 7px;
   height: 28px;
   border-radius: 1.5px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(128, 128, 128, 0.2);
   cursor: pointer;
   position: relative;
   transition: transform 0.12s ease;
+  flex-shrink: 0;
 }
 
 .uptime-tick:hover {
-  transform: scaleY(1.2);
+  transform: scaleY(1.25);
 }
 
 .uptime-tick:hover::after {
@@ -4009,7 +4013,7 @@
   background: #000;
   color: #fff;
   font-size: 10px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   padding: 4px 8px;
   border-radius: 4px;
   white-space: nowrap;
@@ -4019,82 +4023,81 @@
 }
 
 .uptime-tick.tick-up {
-  background: #20c997;
-  box-shadow: 0 0 4px rgba(32, 201, 151, 0.4);
+  background: var(--ok);
 }
 
 .uptime-tick.tick-down {
-  background: #ef4444;
-  box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  background: var(--bad);
 }
 
 .uptime-tick.tick-paused {
-  background: #f59e0b;
+  background: var(--warn);
 }
 
 .uptime-status-pill {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  padding: 6px 20px;
+  padding: 6px 18px;
   border-radius: 30px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .status-up {
-  background: #20c997;
-  color: #0c1322;
-  box-shadow: 0 0 15px rgba(32, 201, 151, 0.4);
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok);
 }
 
 .status-down {
-  background: #ef4444;
-  color: #fff;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  background: var(--bad-soft);
+  color: var(--bad);
+  border: 1px solid var(--bad);
 }
 
 .status-paused {
-  background: #f59e0b;
-  color: #0c1322;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid var(--warn);
 }
 
 /* 5 KPI Grid */
 .uptime-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 
 .uptime-kpi-tile {
-  background: var(--card-bg, #0b1120);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
 }
 
 .uptime-kpi-label {
   font-size: 0.72rem;
-  color: var(--muted, #94a3b8);
+  color: var(--muted);
   font-weight: 600;
 }
 
 .uptime-kpi-label span {
   font-size: 0.65rem;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .uptime-kpi-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
   margin-top: 6px;
 }
 
 /* Chart Card */
 .uptime-chart-card {
-  background: var(--card-bg, #0b1120);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 16px 20px;
 }
 
@@ -4111,14 +4114,14 @@
   gap: 8px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
 }
 
 .uptime-chart-dot {
   width: 8px;
   height: 8px;
   border-radius: 2px;
-  background: #20c997;
+  background: var(--ok);
 }
 
 .uptime-canvas-wrap {
@@ -4131,10 +4134,10 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: #dc2626;
+  background: var(--bad);
   color: #fff;
   padding: 12px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -4150,27 +4153,10 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-.toast-icon {
-  font-size: 1.3rem;
-}
-
-.toast-content {
-  flex: 1;
-}
-
-.toast-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.toast-msg {
-  font-size: 0.72rem;
-  margin-top: 2px;
-  opacity: 0.9;
-}
-
+.toast-icon { font-size: 1.3rem; }
+.toast-content { flex: 1; }
+.toast-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
+.toast-msg { font-size: 0.72rem; margin-top: 2px; opacity: 0.95; }
 .toast-close-btn {
   background: rgba(0, 0, 0, 0.25);
   border: none;
@@ -4190,66 +4176,41 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: var(--muted, #94a3b8);
+  padding: 60px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
   text-align: center;
   gap: 8px;
 }
 
 .uptime-no-selection h3 {
-  font-size: 1.1rem;
-  color: var(--text-main, #f1f5f9);
+  font-size: 1.05rem;
+  color: var(--text);
+  margin: 0;
 }
 
 .uptime-empty-state {
-  padding: 24px;
+  padding: 32px;
   text-align: center;
-  color: var(--muted, #94a3b8);
+  color: var(--muted);
   font-size: 0.8rem;
 }
 
-/* Status Pages Admin */
-.sp-admin-container {
-  padding: 24px;
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.sp-top-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.sp-link-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--card-bg, #0b1120);
-  border: 1px solid var(--border);
-  padding: 10px 16px;
-  border-radius: 10px;
-}
-
+/* Status Pages Admin Styles */
 .sp-link-pill {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
-  color: #20c997;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--brand);
+  background: var(--brand-soft);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
 }
 
 .sp-group-card {
-  background: var(--card-bg, #0b1120);
+  background: var(--card-soft);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 12px;
 }
@@ -4263,31 +4224,32 @@
 }
 
 .sp-group-name-input {
-  font-weight: 700;
-  font-size: 0.95rem;
-  max-width: 300px;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  max-width: 280px;
+  height: 32px !important;
 }
 
 .sp-group-monitors-wrap {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  min-height: 38px;
+  min-height: 40px;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface, var(--card));
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 12px;
 }
 
 .sp-monitor-pill {
-  background: rgba(32, 201, 151, 0.12);
-  border: 1px solid rgba(32, 201, 151, 0.3);
-  color: #20c997;
+  background: var(--ok-soft);
+  border: 1px solid var(--ok);
+  color: var(--ok);
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -4310,9 +4272,25 @@
 
 .sp-incident-item {
   padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--card-soft);
   margin-bottom: 10px;
+}
+
+.sp-incident-item.incident-critical {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.sp-incident-item.incident-warning {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.sp-incident-item.incident-info {
+  border-color: var(--info);
+  background: var(--info-soft);
 }
 
 .sp-incident-header {
@@ -4323,69 +4301,55 @@
 }
 
 .sp-incident-title {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text-main, #f1f5f9);
+  color: var(--text);
 }
 
 .sp-incident-style-tag {
   font-size: 0.65rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: 8px;
   font-weight: 700;
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .sp-incident-content {
   font-size: 0.8rem;
-  color: var(--muted, #94a3b8);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .sp-incident-time {
   font-size: 0.7rem;
-  color: var(--muted, #94a3b8);
+  color: var(--muted);
   margin-top: 6px;
 }
 
 .uptime-test-banner {
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.78rem;
   margin-top: 10px;
 }
 
 .test-success {
-  background: rgba(32, 201, 151, 0.15);
-  border: 1px solid rgba(32, 201, 151, 0.4);
-  color: #20c997;
+  background: var(--ok-soft);
+  border: 1px solid var(--ok);
+  color: var(--ok);
 }
 
 .test-failed {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+  background: var(--bad-soft);
+  border: 1px solid var(--bad);
+  color: var(--bad);
 }
 
 .test-pending {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  color: #3b82f6;
-}
-
-@media (max-width: 900px) {
-  .uptime-page-container {
-    flex-direction: column;
-    height: auto;
-  }
-  .uptime-sidebar {
-    width: 100%;
-    max-height: 350px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-  .uptime-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  background: var(--info-soft);
+  border: 1px solid var(--info);
+  color: var(--info);
 }

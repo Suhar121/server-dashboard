@@ -502,6 +502,27 @@ def init_user_db():
         if col not in pp_columns:
             cur.execute(f"ALTER TABLE pinned_ports ADD COLUMN {col} {col_type}")
 
+    cur.execute("PRAGMA table_info(ssh_public_keys)")
+    ssh_columns = {row[1] for row in cur.fetchall()}
+    if "name" not in ssh_columns:
+        cur.execute("SELECT COUNT(*) FROM ssh_public_keys")
+        cnt = cur.fetchone()[0]
+        if cnt == 0:
+            cur.execute("DROP TABLE ssh_public_keys")
+            cur.execute(
+                """
+                CREATE TABLE ssh_public_keys (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    key_type TEXT NOT NULL,
+                    public_key TEXT UNIQUE NOT NULL,
+                    fingerprint TEXT NOT NULL,
+                    added_at INTEGER NOT NULL
+                )
+                """
+            )
+
     # Sync existing github_deployments to deployed_apps table if they are missing
     try:
         cur.execute("SELECT app_name, compose_path, env_vars, container_ids, created_by, status, created_at, detected_port FROM github_deployments")

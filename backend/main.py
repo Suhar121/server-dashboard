@@ -45,7 +45,6 @@ import database
 from routers.auth import router as auth_router, get_valid_session, require_role
 from routers.metrics import router as metrics_router
 from routers.docker_manager import router as docker_router
-from routers.pm2_manager import router as pm2_router
 from routers.file_manager import router as file_router
 from routers.terminal import router as terminal_router
 from routers.admin import router as admin_router
@@ -162,7 +161,6 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 app.include_router(auth_router)
 app.include_router(metrics_router)
 app.include_router(docker_router)
-app.include_router(pm2_router)
 app.include_router(file_router)
 app.include_router(terminal_router)
 app.include_router(admin_router)
@@ -184,12 +182,13 @@ def get_logo():
 
 if __name__ == "__main__":
     import uvicorn
+    port = int(os.getenv("PORT", 8000))
     # reload is set to False by default to prevent Uvicorn from watching
     # files and restarting during deployments. Set reload=True if developing.
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=False
     )
 

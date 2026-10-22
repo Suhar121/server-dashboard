@@ -54,7 +54,7 @@ def start_metrics_poller():
                 if battery:
                     system_metrics_cache["battery"] = {
                         "percent": battery.percent,
-                        "charging": battery.is_charging
+                        "charging": getattr(battery, "power_plugged", getattr(battery, "is_charging", False))
                     }
                 else:
                     system_metrics_cache["battery"] = None
