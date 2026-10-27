@@ -43,7 +43,7 @@ The backend uses a modular [FastAPI](https://fastapi.tiangolo.com/) setup backed
 
 ### SQLite Database Layer (`backend/database.py`)
 - Coordinates connection pool mappings to `users.db`.
-- Standardizes SQLite schema definitions and upgrades (e.g., user tables, alert rules, PM2 pinned services, Cloudflared ingress routes, and deployment pipeline logs).
+- Standardizes SQLite schema definitions and upgrades (e.g., user tables, alert rules, Cloudflared ingress routes, and deployment pipeline logs).
 - Consolidates all model-specific CRUD query helpers (e.g., `create_user_record`, `get_app_template`, `delete_pinned_service`).
 
 ### Modular Endpoints (`backend/routers/`)
@@ -51,7 +51,6 @@ All endpoints are grouped logically inside APIRouter modules:
 - `auth.py`: Cookie-based session validation and user account lifecycle.
 - `metrics.py`: System resource metrics check, open ports scanner, and port processes control.
 - `docker_manager.py`: Docker CLI integrations, logs, and container alerts.
-- `pm2_manager.py`: PM2 daemon control, apps deployer, and real-time logs WS channels.
 - `file_manager.py`: Path traversal safety guards, file system CRUD, downloads, uploads, and git clones.
 - `terminal.py`: Websocket channel connecting frontend terminals to local PTY shell forks.
 - `admin.py`: Audit logging, rule configurations, SSH keys deployments, CF routes, and todos.

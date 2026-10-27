@@ -38,6 +38,11 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+target/
+**/target/
+*.rs.bk
+*.pdb
+*.exe
 
 # Worktrees
 .worktrees/

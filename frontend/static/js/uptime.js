@@ -137,11 +137,6 @@ function renderMonitorSidebar() {
   if (upCountEl) upCountEl.textContent = upCount;
   if (downCountEl) downCountEl.textContent = downCount;
   if (pausedCountEl) pausedCountEl.textContent = pausedCount;
-  const dirCountEl = document.getElementById('uptimeDirectoryCount');
-  if (dirCountEl) {
-    dirCountEl.textContent = (filtered.length === total) ? `${total} Total` : `${filtered.length} of ${total}`;
-  }
-
   // Filter monitors
   let filtered = [...uptimeMonitors];
   if (currentUptimeFilter === 'up') {
@@ -150,6 +145,11 @@ function renderMonitorSidebar() {
     filtered = filtered.filter(m => m.status === 'down');
   } else if (currentUptimeFilter === 'paused') {
     filtered = filtered.filter(m => m.status === 'paused');
+  }
+
+  const dirCountEl = document.getElementById('uptimeDirectoryCount');
+  if (dirCountEl) {
+    dirCountEl.textContent = (filtered.length === total) ? `${total} Total` : `${filtered.length} of ${total}`;
   }
 
   if (uptimeSearchQuery.trim()) {
@@ -198,7 +198,7 @@ function renderMonitorSidebar() {
           <span class="uptime-card-value font-mono">${valText}</span>
         </div>
         <div class="uptime-card-footer">
-          <span class="uptime-badge-type">${m.type.toUpperCase()}</span>
+          <span class="uptime-badge-type">${(m.type || 'HTTP').toUpperCase()}</span>
           <div class="uptime-mini-strip">${miniTicksHtml}</div>
           <span class="uptime-pct font-mono">${m.uptime24h || 100}%</span>
         </div>
@@ -253,7 +253,7 @@ function renderMonitorDetail() {
   } else if (monitor.target) {
     targetHtml = `<span class="uptime-target-badge font-mono">Host Partition: ${escapeUptimeHtml(monitor.target)} (Alert > ${monitor.threshold}%)</span>`;
   } else {
-    targetHtml = `<span class="uptime-target-badge font-mono">Host Metric (${monitor.type.toUpperCase()}) (Alert > ${monitor.threshold}%)</span>`;
+    targetHtml = `<span class="uptime-target-badge font-mono">Host Metric (${(monitor.type || 'HTTP').toUpperCase()}) (Alert > ${monitor.threshold}%)</span>`;
   }
 
   detailEl.innerHTML = `
@@ -262,7 +262,7 @@ function renderMonitorDetail() {
       <div>
         <div class="uptime-detail-title-row">
           <h2 class="uptime-detail-title">${escapeUptimeHtml(monitor.name)}</h2>
-          <span class="uptime-badge-type">${monitor.type.toUpperCase()}</span>
+          <span class="uptime-badge-type">${(monitor.type || 'HTTP').toUpperCase()}</span>
         </div>
         <div style="margin-top: 4px;">${targetHtml}</div>
       </div>
@@ -724,20 +724,22 @@ function updateMonitorFormTypeFields() {
 async function saveUptimeMonitor(e) {
   if (e) e.preventDefault();
   const name = document.getElementById('monitorNameInput').value.trim();
-  const type = document.getElementById('monitorTypeSelect').value;
+  const type = document.getElementById('monitorTypeSelect').value || 'http';
   const url = document.getElementById('monitorUrlInput').value.trim();
-  const target = document.getElementById('monitorDriveSelect').value;
+  const targetDrive = document.getElementById('monitorDriveSelect').value;
   const threshold = Number(document.getElementById('monitorThresholdInput').value);
   const interval = Number(document.getElementById('monitorIntervalInput').value);
   const telegramEnabled = document.getElementById('monitorTelegramCheck').checked;
   const telegramChatId = document.getElementById('monitorTelegramChatInput').value.trim();
 
+  const target = (type === 'disk') ? targetDrive : ((type === 'http' || type === 'port') ? url : '');
+
   const payload = {
-    name: name || (type === 'disk' ? `Disk (${target})` : `${type.toUpperCase()} Monitor`),
-    tag: name || type.toUpperCase(),
+    name: name || (type === 'disk' ? `Disk (${targetDrive})` : `${(type || 'HTTP').toUpperCase()} Monitor`),
+    tag: name || (type || 'HTTP').toUpperCase(),
     type,
     url: (type === 'http' || type === 'port') ? url : '',
-    target: type === 'disk' ? target : '',
+    target: target,
     threshold,
     interval: interval || 30,
     telegramEnabled,
@@ -754,7 +756,16 @@ async function saveUptimeMonitor(e) {
       if (res.ok) {
         const updated = await res.json();
         const idx = uptimeMonitors.findIndex(m => String(m.id) === String(editingMonitorId));
-        if (idx !== -1) uptimeMonitors[idx] = updated;
+        if (idx !== -1) {
+          if (updated && updated.type) {
+            uptimeMonitors[idx] = updated;
+          } else {
+            uptimeMonitors[idx] = { ...uptimeMonitors[idx], ...payload, type: payload.type || uptimeMonitors[idx].type || 'http' };
+          }
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || `HTTP ${res.status}`);
       }
     } else {
       const res = await apiFetch('/api/monitors', {
@@ -764,8 +775,15 @@ async function saveUptimeMonitor(e) {
       });
       if (res.ok) {
         const created = await res.json();
+        if (!created.type) created.type = type || 'http';
+        if (!created.url && (created.type === 'http' || created.type === 'port')) {
+          created.url = created.target || url;
+        }
         uptimeMonitors.push(created);
         selectedMonitorId = created.id;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || `HTTP ${res.status}`);
       }
     }
     closeMonitorModal();

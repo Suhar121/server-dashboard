@@ -33,7 +33,7 @@ Manage your servers, monitor system health, deploy applications, and access a br
 | **File Manager** | Browse, read, write, upload, download, chmod, mkdir, Git clone support |
 | **Terminal** | Browser-based terminal via WebSocket + PTY, multi-tab sessions, per-tab command history |
 | **Saved Commands** | Command library with template variables (`{{var}}`), inline variable forms |
-| **Admin Tools** | User lifecycle management, audit logs, SSH key manager, Cloudflared route manager, PM2 process manager |
+| **Admin Tools** | User lifecycle management, audit logs, SSH key manager, Cloudflared route manager |
 | **Uptime & Monitors** | Uptime Kuma-style multi-target monitoring (HTTP/S, TCP Port, Host Disks, CPU & RAM), 36-slot heartbeat strips, 5 KPI tiles, latency curves with downtime shading, incident toasts |
 | **Status Pages** | Standalone zero-auth public status pages (`/status/{slug}`), status page manager, component grouping, active incident announcements |
 | **Notifications** | Telegram bot integration for alerts, custom notifications, and automated downtime/recovery alerts |
@@ -289,19 +289,6 @@ Base URL: `http://127.0.0.1:8000`
 | `GET` | `/cloudflared/routes` | List routes |
 | `POST` | `/cloudflared/routes` | Create a route |
 | `DELETE` | `/cloudflared/routes/{route_id}` | Delete a route |
-
-</details>
-
-<details>
-<summary><strong>PM2 Process Manager (admin)</strong></summary>
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/pm2/list` | List local PM2 processes |
-| `POST` | `/api/pm2/action` | Perform control/daemon actions |
-| `POST` | `/api/pm2/start-app` | Start new application |
-| `GET` | `/api/pm2/logs/{app_name}` | Fetch application logs |
-| `WS` | `/ws/pm2/logs/{app_name}/stream` | Stream logs real-time |
 
 </details>
 

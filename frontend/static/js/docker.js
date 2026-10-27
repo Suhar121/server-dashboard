@@ -117,10 +117,6 @@
       alert("Manual mode: run this in your terminal -> docker image prune -f");
     }
 
-    // ─── PM2 Manager JS Functions ───
-    let pm2LogsWs = null;
-    let pm2LogsAppName = null;
-    let pm2LogsFullContent = "";
 
 
 // Expose to window

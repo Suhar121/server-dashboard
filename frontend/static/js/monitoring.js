@@ -591,6 +591,40 @@
           document.getElementById("ramDelta").innerText = "Current memory consumption";
         }
 
+        // Render Real Hardware CPU Cores
+        if (Array.isArray(data.cpus) && data.cpus.length > 0) {
+          const coreCountBadge = document.getElementById("cpuCoreCountBadge");
+          if (coreCountBadge) coreCountBadge.textContent = `${data.cpus.length} Cores ⌵`;
+
+          const wrap = document.getElementById("cpuCoresWrap");
+          if (wrap) {
+            wrap.innerHTML = data.cpus.map((coreLoad, idx) => {
+              const loadNum = Number(coreLoad || 0);
+              const rounded = Math.round(loadNum);
+              const isHigh = rounded >= 60;
+
+              let bubbleCount = 1;
+              if (rounded >= 20) bubbleCount = 2;
+              if (rounded >= 45) bubbleCount = 3;
+              if (rounded >= 75) bubbleCount = 4;
+
+              const bubblesHtml = Array(bubbleCount).fill('<div class="workload-bubble"></div>').join('');
+              const badgeClass = isHigh ? "workload-badge-top highlight" : "workload-badge-top";
+              const formattedVal = rounded < 10 ? `0${rounded}` : `${rounded}`;
+
+              return `
+                <div class="workload-col" title="Core ${idx + 1}: ${loadNum.toFixed(1)}% load">
+                  <div class="bubble-stack">
+                    <div class="${badgeClass}">${formattedVal}%</div>
+                    ${bubblesHtml}
+                  </div>
+                  <span class="workload-name">Core ${idx + 1}</span>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
         const nowMs = Date.now();
         if (nowMs - lastTrendPointAt >= TREND_SAMPLE_INTERVAL_MS) {
           lastTrendPointAt = nowMs;
